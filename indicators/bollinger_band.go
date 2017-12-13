@@ -1,10 +1,10 @@
 package indicators
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/util"
 )
 
 type BollingerBand interface {
@@ -17,35 +17,35 @@ type BollingerBand interface {
 type Bollinger struct {
 	k     int
 	price float64
-	sma   SimpleMovingAverage
+	sma   common.MovingAverage
 }
 
-func NewBollingerBand(sma SimpleMovingAverage) *Bollinger {
+func NewBollingerBand(sma common.MovingAverage) *Bollinger {
 	return &Bollinger{
 		k:   2,
 		sma: sma}
 }
 
-func CreateBollingerBand(sma SimpleMovingAverage, k int) *Bollinger {
+func CreateBollingerBand(sma common.MovingAverage, k int) *Bollinger {
 	return &Bollinger{
 		k:   k,
 		sma: sma}
 }
 
 func (b *Bollinger) GetUpper() float64 {
-	fmt.Println("GetUpper() price: ", b.price)
-	for _, c := range b.sma.GetCandlesticks() {
-		fmt.Printf("%+v\n", c)
-	}
-	return b.sma.GetAverage() + b.standardDeviation(b.getPrices(), b.price)
+	return util.FloatPrecision(
+		b.sma.GetAverage()+b.standardDeviation(b.getPrices(), b.price),
+		2)
 }
 
 func (b *Bollinger) GetMiddle() float64 {
-	return b.sma.GetAverage()
+	return util.FloatPrecision(b.sma.GetAverage(), 2)
 }
 
 func (b *Bollinger) GetLower() float64 {
-	return b.sma.GetAverage() - b.standardDeviation(b.getPrices(), b.price)
+	return util.FloatPrecision(
+		b.sma.GetAverage()-b.standardDeviation(b.getPrices(), b.price),
+		2)
 }
 
 func (b *Bollinger) Calculate(price float64) {
@@ -63,7 +63,7 @@ func (b *Bollinger) getPrices() []float64 {
 func (b *Bollinger) standardDeviation(prices []float64, mean float64) float64 {
 	total := 0.0
 	for _, price := range prices {
-		total += math.Pow(price-mean, 2)
+		total += math.Pow(price-mean, float64(b.k))
 	}
 	variance := total / float64(len(prices)-1)
 	return math.Sqrt(variance)

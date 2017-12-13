@@ -4,6 +4,15 @@ import (
 	"time"
 )
 
+type MovingAverage interface {
+	Add(candle *Candlestick) float64
+	GetCandlesticks() []Candlestick
+	GetSize() int
+	GetAverage() float64
+	GetGainsAndLosses() (float64, float64)
+	PriceListener
+}
+
 type PriceListener interface {
 	OnCandlestickCreated(*Candlestick)
 	OnPriceChange(price float64)
