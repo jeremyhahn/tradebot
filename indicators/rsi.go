@@ -2,8 +2,10 @@ package indicators
 
 import (
 	"math"
+	"reflect"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/util"
 )
 
 type RelativeStrengthIndex interface {
@@ -15,7 +17,7 @@ type RelativeStrengthIndex interface {
 
 type RSI struct {
 	period     int
-	sma        SimpleMovingAverage
+	ma         common.MovingAverage
 	oscillator float64
 	overbought float64
 	oversold   float64
@@ -23,52 +25,53 @@ type RSI struct {
 	RelativeStrengthIndex
 }
 
-func NewRelativeStrengthIndex(sma SimpleMovingAverage) *RSI {
+func NewRelativeStrengthIndex(ma common.MovingAverage) *RSI {
 	return &RSI{
-		period:     sma.GetSize(),
-		sma:        sma,
+		period:     14,
+		ma:         ma,
 		oscillator: 0,
 		overbought: 70,
 		oversold:   30}
 }
 
-func CreateRelativeStrengthIndex(sma SimpleMovingAverage, period int, overbought, oversold float64) *RSI {
+func CreateRelativeStrengthIndex(ma common.MovingAverage, period int, overbought, oversold float64) *RSI {
 	return &RSI{
 		period:     period,
-		sma:        sma,
+		ma:         ma,
 		oscillator: 0,
 		overbought: overbought,
 		oversold:   oversold}
 }
 
 func (rsi *RSI) Calculate(price float64) float64 {
-	var lastClose float64
-	var gains float64
-	var losses float64
-	var avgGain float64
-	var avgLoss float64
+	var u float64
+	var d float64
 	var rs float64
-	candles := rsi.sma.GetCandlesticks()
-	candles = candles[:rsi.period-1]
+	candles := rsi.ma.GetCandlesticks()
 	candles = append(candles, common.Candlestick{Close: price})
+	lastClose := candles[0].Close
 	for _, c := range candles {
-		if lastClose == 0 {
-			lastClose = c.Close
-			continue
-		}
 		difference := (c.Close - lastClose)
 		if difference < 0 {
-			losses = losses + math.Abs(difference)
+			d = d + math.Abs(difference)
 		} else {
-			gains = gains + difference
+			u = u + difference
 		}
 		lastClose = c.Close
 	}
-	avgGain = gains / float64(rsi.period)
-	avgLoss = losses / float64(rsi.period)
-	rs = (avgGain / avgLoss)
-	rsi.oscillator = (100 - (100 / (1 + rs)))
-	return rsi.oscillator
+	if reflect.TypeOf(rsi.ma).String() == "*indicators.SMA" {
+		avgU := u / float64(rsi.period)
+		avgD := d / float64(rsi.period)
+		rs = avgU / avgD
+		rsi.oscillator = (100 - (100 / (1 + rs)))
+	} else if reflect.TypeOf(rsi.ma).String() == "*indicators.EMA" {
+		a := float64(2 / (rsi.period + 1))
+		avgUt := a*u + (1-a)*u - 1
+		avgDt := a*d + (1-a)*d - 1
+		rs = (avgUt / avgDt)
+		rsi.oscillator = (100 - (100 / (1 + rs)))
+	}
+	return util.FloatPrecision(rsi.oscillator, 2)
 }
 
 func (rsi *RSI) RecommendBuy() bool {

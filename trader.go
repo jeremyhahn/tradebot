@@ -56,36 +56,28 @@ func (trader *Trader) MakeMeRich() {
 		fmt.Printf("%+v\n", c)
 	}*/
 
-	sma := indicators.NewSimpleMovingAverage(candlesticks[:14])
-	sma2 := indicators.NewSimpleMovingAverage(candlesticks[:20])
-	rsi := indicators.NewRelativeStrengthIndex(sma)
-	bollinger := indicators.NewBollingerBand(sma2)
+	stream := NewPriceStream(period)
+
+	// RSI
+	ema := indicators.NewExponentialMovingAverage(candlesticks[:30])
+	rsi := indicators.NewRelativeStrengthIndex(ema)
+	stream.Subscribe(ema)
+
+	// SMA
+	sma := indicators.NewSimpleMovingAverage(candlesticks[:20])
+	bollinger := indicators.NewBollingerBand(sma)
+	stream.Subscribe(sma)
 
 	gdaxPriceChan := make(chan float64)
 	go trader.exchange.SubscribeToLiveFeed(gdaxPriceChan)
 
-	stream := NewPriceStream(period)
-	stream.Subscribe(sma)
-	stream.Subscribe(sma2)
-
 	for {
 		price := <-gdaxPriceChan
-
 		stream.Add(price)
-
 		bollinger.Calculate(price)
-
 		trader.logger.Debug("[GDAX] Price: ", price, ", RSI: ", rsi.Calculate(price),
 			", Bollinger Upper: ", bollinger.GetUpper(), ", Bollinger Middle: ", bollinger.GetMiddle(),
 			", Bollinger Lower: ", bollinger.GetLower())
-
-		/*
-			if rsi.RecommendBuy() {
-				fmt.Println("** RSI Recommended BUY Time! ", rsi.Calculate(price), " **")
-			}
-			if rsi.RecommendSell() {
-				fmt.Println("** RSI Recommended SELL Time! ", rsi.Calculate(price), " **")
-			}*/
 	}
 
 }

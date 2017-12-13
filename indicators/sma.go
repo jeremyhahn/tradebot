@@ -2,17 +2,10 @@ package indicators
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/jeremyhahn/tradebot/common"
 )
-
-type SimpleMovingAverage interface {
-	Add(candle *common.Candlestick) float64
-	GetCandlesticks() []common.Candlestick
-	GetSize() int
-	GetAverage() float64
-	common.PriceListener
-}
 
 type SMA struct {
 	size         int
@@ -21,7 +14,8 @@ type SMA struct {
 	count        int
 	index        int
 	average      float64
-	SimpleMovingAverage
+	sum          float64
+	common.MovingAverage
 }
 
 func NewSimpleMovingAverage(candles []common.Candlestick) *SMA {
@@ -32,9 +26,8 @@ func CreateSimpleMovingAverage(candles []common.Candlestick, size int) *SMA {
 	var prices []float64
 	var total float64
 	for _, c := range candles {
-		fmt.Println("Adding candlestick: ", c.Date, c.Close)
 		prices = append(prices, c.Close)
-		total = total + c.Close
+		total += c.Close
 	}
 	return &SMA{
 		size:         size,
@@ -42,7 +35,8 @@ func CreateSimpleMovingAverage(candles []common.Candlestick, size int) *SMA {
 		prices:       prices,
 		count:        len(candles),
 		index:        len(candles) - 1,
-		average:      total / float64(len(candles))}
+		average:      total / float64(len(candles)),
+		sum:          0}
 }
 
 func (sma *SMA) Add(candle *common.Candlestick) float64 {
@@ -73,6 +67,21 @@ func (sma *SMA) GetAverage() float64 {
 
 func (sma *SMA) GetSize() int {
 	return sma.size
+}
+
+func (sma *SMA) GetGainsAndLosses() (float64, float64) {
+	var gains, losses float64
+	var lastClose = sma.candlesticks[0].Close
+	for _, c := range sma.candlesticks {
+		difference := (c.Close - lastClose)
+		if difference < 0 {
+			losses += math.Abs(difference)
+		} else {
+			gains += difference
+		}
+		lastClose = c.Close
+	}
+	return gains, losses
 }
 
 func (sma *SMA) OnCandlestickCreated(candle *common.Candlestick) {
