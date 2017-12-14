@@ -1,38 +1,52 @@
 package indicators
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/util"
 )
 
+// http://cns.bu.edu/~gsc/CN710/fincast/Technical%20_indicators/Moving%20Averages.htm
 func TestSimpleMovingAverage(t *testing.T) {
 	var candlesticks []common.Candlestick
-	candlesticks = append(candlesticks, common.Candlestick{Close: 44.34})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 44.09})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 44.15})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 43.61})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 44.33})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 44.83})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 45.10})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 45.42})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 45.84})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 46.08})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 45.89})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 46.03})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 45.61})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 46.28})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 67.50})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 66.50})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 66.44})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 66.44})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 66.25})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 65.88})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 66.63})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 66.56})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 65.63})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 66.06})
 
 	sma := NewSimpleMovingAverage(candlesticks)
-	fmt.Println(sma.GetAverage())
-	u, d := sma.GetGainsAndLosses()
 
-	if u != 3.3399999999999963 {
-		t.Errorf("[SMA] Average gains was incorrect")
+	actual := util.RoundFloat(sma.GetAverage(), 2)
+	expected := 66.39
+	if actual != expected {
+		t.Errorf("[SMA] Got incorrect average, got %f, expected :%f", actual, expected)
 	}
 
-	if d != 1.3999999999999986 {
-		t.Errorf("[SMA] Average losses was incorrect")
+	sma.Add(&common.Candlestick{Close: 63.94})
+	actual = util.RoundFloat(sma.GetAverage(), 2)
+	expected = 66.03
+	if actual != expected {
+		t.Errorf("[SMA] Got incorrect average after Add(), got %f, expected :%f", actual, expected)
+	}
+
+	sma.Add(&common.Candlestick{Close: 64.13})
+	actual = util.RoundFloat(sma.GetAverage(), 2)
+	expected = 65.80
+	if actual != expected {
+		t.Errorf("[SMA] Got incorrect average after Add(), got %f, expected :%f", actual, expected)
+	}
+
+	sma.Add(&common.Candlestick{Close: 64.50})
+	actual = util.RoundFloat(sma.GetAverage(), 2)
+	expected = 65.60
+	if actual != expected {
+		t.Errorf("[SMA] Got incorrect average after Add(), got %f, expected :%f", actual, expected)
 	}
 }

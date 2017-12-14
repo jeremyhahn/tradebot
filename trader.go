@@ -59,7 +59,7 @@ func (trader *Trader) MakeMeRich() {
 	stream := NewPriceStream(period)
 
 	// RSI
-	ema := indicators.NewExponentialMovingAverage(candlesticks[:30])
+	ema := indicators.NewSimpleMovingAverage(candlesticks[:14])
 	rsi := indicators.NewRelativeStrengthIndex(ema)
 	stream.Subscribe(ema)
 
@@ -67,6 +67,11 @@ func (trader *Trader) MakeMeRich() {
 	sma := indicators.NewSimpleMovingAverage(candlesticks[:20])
 	bollinger := indicators.NewBollingerBand(sma)
 	stream.Subscribe(sma)
+
+	// MACD
+	//ema2 := indicators.NewExponentialMovingAverage(candlesticks[:12])
+	//ema3 := indicators.NewExponentialMovingAverage(candlesticks[:26])
+	//macd := indicators.NewMovingAverageConvergenceDivergence(ema2.GetAverage() - ema3.GetAverage())
 
 	gdaxPriceChan := make(chan float64)
 	go trader.exchange.SubscribeToLiveFeed(gdaxPriceChan)
