@@ -33,17 +33,17 @@ func CreateBollingerBand(sma common.MovingAverage, k int) *Bollinger {
 }
 
 func (b *Bollinger) GetUpper() float64 {
-	return util.FloatPrecision(
+	return util.RoundFloat(
 		b.sma.GetAverage()+b.standardDeviation(b.getPrices(), b.price),
 		2)
 }
 
 func (b *Bollinger) GetMiddle() float64 {
-	return util.FloatPrecision(b.sma.GetAverage(), 2)
+	return util.RoundFloat(b.sma.GetAverage(), 2)
 }
 
 func (b *Bollinger) GetLower() float64 {
-	return util.FloatPrecision(
+	return util.RoundFloat(
 		b.sma.GetAverage()-b.standardDeviation(b.getPrices(), b.price),
 		2)
 }

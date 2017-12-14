@@ -4,63 +4,63 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/util"
 )
 
 func TestRelativeStrengthIndexWithSMA(t *testing.T) {
 	var candlesticks []common.Candlestick
-	candlesticks = append(candlesticks, common.Candlestick{Close: 44.34})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 44.09})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 44.15})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 43.61})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 44.33})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 44.83})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 45.10})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 45.42})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 45.84})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 46.08})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 45.89})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 46.03})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 45.61})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 46.28})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 46.125})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 47.125})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 46.4375})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 46.9375})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 44.9375})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 44.2500})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 44.6250})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 45.7500})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 47.8125})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 47.5625})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 47.00})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 44.5625})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 46.3125})
+	candlesticks = append(candlesticks, common.Candlestick{Close: 47.6875})
 
 	sma := NewSimpleMovingAverage(candlesticks)
-  rsi := NewRelativeStrengthIndex(sma)
+	rsi := NewRelativeStrengthIndex(sma)
 
-  value := rsi.Calculate(46.28)
-
-  //if value != 70.53 {
-  expected := 70.46
-  if value != expected {
-		t.Errorf("[RSI] Incorrect RSI (SMA) calcuation, got: %f, want: %f.", value, expected)
+	actual := util.RoundFloat(rsi.Calculate(46.6875), 3)
+	expected := 51.779
+	if actual != expected {
+		t.Errorf("[RSI] Incorrect RSI (SMA) calcuation, got: %f, want: %f.", actual, expected)
 	}
 
-}
+	actual = util.RoundFloat(rsi.Calculate(45.6875), 3)
+	expected = 48.477
+	if actual != expected {
+		t.Errorf("[RSI] Incorrect RSI (SMA) calcuation, got: %f, want: %f.", actual, expected)
+	}
 
-func TestRelativeStrengthIndexWithEMA(t *testing.T) {
-	var candlesticks []common.Candlestick
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.27})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.19})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.08})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.17})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.18})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.13})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.23})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.43})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.24})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.29})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.15})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.39})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.38})
-	candlesticks = append(candlesticks, common.Candlestick{Close: 22.61})
+	actual = util.RoundFloat(rsi.Calculate(43.0625), 3)
+	expected = 41.073
+	if actual != expected {
+		t.Errorf("[RSI] Incorrect RSI (SMA) calcuation, got: %f, want: %f.", actual, expected)
+	}
 
-	ema := NewExponentialMovingAverage(candlesticks)
-  rsi := NewRelativeStrengthIndex(ema)
+	actual = util.RoundFloat(rsi.Calculate(43.5625), 3)
+	expected = 42.863
+	if actual != expected {
+		t.Errorf("[RSI] Incorrect RSI (SMA) calcuation, got: %f, want: %f.", actual, expected)
+	}
 
-  value := rsi.Calculate(46.28)
+	actual = util.RoundFloat(rsi.Calculate(44.8750), 3)
+	expected = 47.382
+	if actual != expected {
+		t.Errorf("[RSI] Incorrect RSI (SMA) calcuation, got: %f, want: %f.", actual, expected)
+	}
 
-  expected := 101.81
-  if value != expected {
-		t.Errorf("[RSI] Incorrect RSI (EMA) calcuation, got: %f, want: %f.", value, expected)
+	actual = util.RoundFloat(rsi.Calculate(43.6875), 3)
+	expected = 43.992
+	if actual != expected {
+		t.Errorf("[RSI] Incorrect RSI (SMA) calcuation, got: %f, want: %f.", actual, expected)
 	}
 
 }

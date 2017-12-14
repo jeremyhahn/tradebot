@@ -44,8 +44,11 @@ func CreateExponentiaMovingAverage(candles []common.Candlestick, size int) *EMA 
 func (ema *EMA) Add(candle *common.Candlestick) float64 {
 	if ema.count == ema.size {
 		ema.index = (ema.index + 1) % ema.size
-		ema.average += ((candle.Close-ema.prices[ema.index])-ema.last)*ema.multiplier + ema.last
 		ema.prices[ema.index] = candle.Close
+		step1 := candle.Close - ema.last
+		step2 := step1 * ema.multiplier
+		ema.average = step2 + ema.last
+		ema.last = ema.average
 	} else if ema.count != 0 && ema.count < ema.size {
 		ema.index = (ema.index + 1) % ema.size
 		ema.average = (candle.Close + float64(ema.count)*ema.average) / float64(ema.count+1)
@@ -69,6 +72,10 @@ func (ema *EMA) GetAverage() float64 {
 
 func (ema *EMA) GetSize() int {
 	return ema.size
+}
+
+func (ema *EMA) GetMultiplier() float64 {
+	return ema.multiplier
 }
 
 func (ema *EMA) GetGainsAndLosses() (float64, float64) {

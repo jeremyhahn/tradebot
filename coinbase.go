@@ -108,7 +108,7 @@ func (cb *Coinbase) SubscribeToLiveFeed(price chan float64) {
 
 		if err := wsConn.ReadJSON(&message); err != nil {
 			cb.logger.Error(err.Error())
-			continue
+			break
 		}
 
 		if message.Type == "match" && message.Reason == "filled" {
@@ -118,4 +118,6 @@ func (cb *Coinbase) SubscribeToLiveFeed(price chan float64) {
 			}
 		}
 	}
+
+	cb.SubscribeToLiveFeed(price)
 }
