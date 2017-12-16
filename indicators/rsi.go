@@ -48,8 +48,51 @@ func CreateRelativeStrengthIndex(ma common.MovingAverage, period int, overbought
 }
 
 func (rsi *RSI) Calculate(price float64) float64 {
+	var oscillator float64
+	curU := rsi.u
+	curD := -rsi.d
+	avgU := rsi.avgU
+	avgD := rsi.avgD
 	u, d := rsi.ma.GetGainsAndLosses()
 	difference := price - rsi.lastPrice
+	if difference < 0 {
+		d += math.Abs(difference)
+		curD = math.Abs(difference)
+		curU = 0
+	} else {
+		u += difference
+		curU = difference
+		curD = 0
+	}
+	if avgU > 0 && avgD > 0 {
+		avgU = ((avgU*float64(rsi.period-1) + curU) / float64(rsi.period))
+		avgD = ((avgD*float64(rsi.period-1) + curD) / float64(rsi.period))
+	} else {
+		avgU = u / float64(rsi.period)
+		avgD = d / float64(rsi.period)
+	}
+	rs := avgU / avgD
+	oscillator = (100 - (100 / (1 + rs)))
+	return oscillator
+}
+
+func (rsi *RSI) GetValue() float64 {
+	return rsi.oscillator
+}
+
+func (rsi *RSI) IsOverBought() bool {
+	return rsi.oscillator >= rsi.overbought
+}
+
+func (rsi *RSI) IsOverSold() bool {
+	return rsi.oscillator <= rsi.oversold
+}
+
+func (rsi *RSI) OnPeriodChange(candle *common.Candlestick) {
+	fmt.Println("[RSI] OnPeriodChange: ", candle.Date, candle.Close)
+	//rsi.ma.Add(candle)
+	u, d := rsi.ma.GetGainsAndLosses()
+	difference := candle.Close - rsi.lastPrice
 	if difference < 0 {
 		d += math.Abs(difference)
 		rsi.d = math.Abs(difference)
@@ -68,19 +111,5 @@ func (rsi *RSI) Calculate(price float64) float64 {
 	}
 	rs := rsi.avgU / rsi.avgD
 	rsi.oscillator = (100 - (100 / (1 + rs)))
-	rsi.lastPrice = price
-	return rsi.oscillator
-}
-
-func (rsi *RSI) IsOverBought() bool {
-	return rsi.oscillator >= rsi.overbought
-}
-
-func (rsi *RSI) IsOverSold() bool {
-	return rsi.oscillator <= rsi.oversold
-}
-
-func (rsi *RSI) OnPeriodChange(candle *common.Candlestick) {
-	fmt.Println("[RSI] OnCandlestickCreated: ", candle.Date, candle.Close)
-	rsi.ma.Add(candle)
+	rsi.lastPrice = candle.Close
 }

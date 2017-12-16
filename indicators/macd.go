@@ -37,20 +37,20 @@ func NewMovingAverageConvergenceDivergence(ema1, ema2 common.MovingAverage, sign
 		lastSignal: 0.0}
 }
 
-func (macd *MACD) Calculate(price float64) float64 {
+func (macd *MACD) Calculate(price float64) (float64, float64, float64) {
+	var value, signal, histogram float64
 	if (macd.ema3.GetIndex()+1) == macd.signalSize || macd.lastSignal > 0 {
-		macd.value = macd.ema1.GetAverage() - macd.ema2.GetAverage()
+		value = macd.ema1.GetAverage() - macd.ema2.GetAverage()
 		tmpEma := macd.ema3
 		tmpEma.Add(&common.Candlestick{Close: price})
 		if macd.signal == 0 {
-			macd.signal = macd.ema3.Sum() / float64(macd.ema3.GetSize())
+			signal = macd.ema3.Sum() / float64(macd.ema3.GetSize())
 		} else {
-			macd.signal = macd.value*(2/(float64(macd.ema3.GetSize()+1))) + (macd.lastSignal * (1 - (2 / (float64(macd.ema3.GetSize()) + 1))))
+			signal = macd.value*(2/(float64(macd.ema3.GetSize()+1))) + (macd.lastSignal * (1 - (2 / (float64(macd.ema3.GetSize()) + 1))))
 		}
-		macd.lastSignal = macd.signal
-		macd.histogram = macd.value - macd.signal
+		histogram = value - signal
 	}
-	return macd.value
+	return value, signal, histogram
 }
 
 func (macd *MACD) GetValue() float64 {

@@ -85,7 +85,7 @@ func (sma *SMA) GetGainsAndLosses() (float64, float64) {
 	return gains, losses
 }
 
-func (sma *SMA) OnPeriodCreated(candle *common.Candlestick) {
-	fmt.Println("[SMA] OnCandlestickCreated: ", candle.Date, candle.Close)
+func (sma *SMA) OnPeriodChange(candle *common.Candlestick) {
+	fmt.Println("[SMA] OnPeriodChange: ", candle.Date, candle.Close)
 	sma.Add(candle)
 }

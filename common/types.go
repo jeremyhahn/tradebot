@@ -25,7 +25,7 @@ type MovingAverage interface {
 	GetAverage() float64
 	Sum() float64
 	GetGainsAndLosses() (float64, float64)
-	PriceListener
+	PeriodListener
 }
 
 type PriceListener interface {
