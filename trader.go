@@ -84,21 +84,25 @@ func (trader *Trader) MakeMeRich() {
 		stream.Add(price)
 
 		bollinger.Calculate(price)
-		macd.Calculate(price)
+		macdValue, macdSignal, macdHistogram := macd.Calculate(price)
 
 		trader.chart.Price = price
 		trader.chart.MACDValue = macd.GetValue()
 		trader.chart.MACDSignal = macd.GetSignalLine()
 		trader.chart.MACDHistogram = macd.GetHistogram()
-		trader.chart.RSI = rsi.Calculate(price)
+		trader.chart.RSI = rsi.GetValue()
 		trader.chart.BollingerUpper = bollinger.GetUpper()
 		trader.chart.BollingerMiddle = bollinger.GetMiddle()
 		trader.chart.BollingerLower = bollinger.GetMiddle()
 
 		trader.logger.Debug("[GDAX] Price: ", trader.chart.Price,
 			", MACD_VALUE: ", trader.chart.MACDValue,
-			", MACD_HISTOGRAM: ", trader.chart.MACDHistogram,
+			", MACD_VALUE (live): ", macdValue,
 			", MACD_SIGNAL: ", trader.chart.MACDSignal,
+			", MACD_SIGNAL (live): ", macdSignal,
+			", MACD_HISTOGRAM: ", trader.chart.MACDHistogram,
+			", MACD_HISTOGRAM (live): ", macdHistogram,
+			", RSI (live): ", rsi.Calculate(price),
 			", RSI: ", trader.chart.RSI,
 			", Bollinger Upper: ", trader.chart.BollingerUpper,
 			", Bollinger Middle: ", trader.chart.BollingerMiddle,

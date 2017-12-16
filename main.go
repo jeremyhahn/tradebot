@@ -1,23 +1,21 @@
 package main
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/op/go-logging"
 )
 
+const (
+	APPNAME = "tradebot"
+)
+
 func main() {
 
-	backend, _ := logging.NewSyslogBackend("tradebot")
-	//format := logging.MustStringFormatter(`%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`,)
-	//formatter := logging.NewBackendFormatter(backend, format)
-	//logging.SetBackend(backend, formatter)
+	backend, _ := logging.NewSyslogBackend(APPNAME)
 	logging.SetBackend(backend)
-	logger := logging.MustGetLogger("coinbot")
+	logger := logging.MustGetLogger(APPNAME)
 
 	sqlite := InitSQLite()
 	defer sqlite.Close()
@@ -25,21 +23,12 @@ func main() {
 	mysql := InitMySQL()
 	defer mysql.Close()
 
-	fmt.Println(time.Now().UTC())
-	fmt.Println(time.Now().UTC().Hour())
-
 	config := NewConfiguration(sqlite, logger)
 	coinbase := NewCoinbase(config, logger, "ETH-USD")
 	trader := NewTrader(mysql, coinbase, logger)
 
 	traders := make([]*Trader, 0)
 	traders = append(traders, trader)
-
-	/*
-		NewWebsocketServer(traders)
-		http.HandleFunc("/", echo)
-		http.ListenAndServe(":8080", nil)
-	*/
 
 	go NewWebsocketServer(8080, traders, logger)
 
