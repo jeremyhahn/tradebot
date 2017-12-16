@@ -7,46 +7,52 @@ import (
 )
 
 type PriceStream struct {
-	period    int       // total number of seconds per candlestick
-	start     time.Time // when the first price was added to the buffer
-	volume    int
-	buffer    []float64
-	listeners []common.PriceListener
+	period          int       // total number of seconds per candlestick
+	start           time.Time // when the first price was added to the buffer
+	volume          int
+	buffer          []float64
+	priceListeners  []common.PriceListener
+	periodListeners []common.PeriodListener
 }
 
 func NewPriceStream(period int) *PriceStream {
 	return &PriceStream{
-		period:    period,
-		start:     common.NewCandlestickPeriod(period),
-		buffer:    make([]float64, 0),
-		listeners: make([]common.PriceListener, 0)}
+		period:          period,
+		start:           common.NewCandlestickPeriod(period),
+		buffer:          make([]float64, 0),
+		priceListeners:  make([]common.PriceListener, 0),
+		periodListeners: make([]common.PeriodListener, 0)}
 }
 
 func (ps *PriceStream) Add(price float64) {
 	ps.buffer = append(ps.buffer, price)
 	ps.volume = ps.volume + 1
-	ps.notifyPrice(price)
+	ps.notifyPriceListeners(price)
 	if time.Since(ps.start).Seconds() >= float64(ps.period) {
 		candlestick := common.CreateCandlestick(ps.period, ps.buffer)
-		ps.notifyCandlestick(candlestick)
+		ps.notifyPeriodListeners(candlestick)
 		ps.volume = 0
 		ps.start = common.NewCandlestickPeriod(ps.period)
 		ps.buffer = ps.buffer[:0]
 	}
 }
 
-func (ps *PriceStream) Subscribe(listener common.PriceListener) {
-	ps.listeners = append(ps.listeners, listener)
+func (ps *PriceStream) SubscribeToPrice(listener common.PriceListener) {
+	ps.priceListeners = append(ps.priceListeners, listener)
 }
 
-func (ps *PriceStream) notifyCandlestick(candlestick *common.Candlestick) {
-	for _, listener := range ps.listeners {
-		listener.OnCandlestickCreated(candlestick)
+func (ps *PriceStream) SubscribeToPeriod(listener common.PeriodListener) {
+	ps.periodListeners = append(ps.periodListeners, listener)
+}
+
+func (ps *PriceStream) notifyPeriodListeners(candlestick *common.Candlestick) {
+	for _, listener := range ps.periodListeners {
+		listener.OnPeriodChange(candlestick)
 	}
 }
 
-func (ps *PriceStream) notifyPrice(price float64) {
-	for _, listener := range ps.listeners {
+func (ps *PriceStream) notifyPriceListeners(price float64) {
+	for _, listener := range ps.priceListeners {
 		listener.OnPriceChange(price)
 	}
 }

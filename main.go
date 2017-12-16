@@ -29,8 +29,20 @@ func main() {
 	fmt.Println(time.Now().UTC().Hour())
 
 	config := NewConfiguration(sqlite, logger)
-	coinbase := NewCoinbase(config, logger)
+	coinbase := NewCoinbase(config, logger, "ETH-USD")
 	trader := NewTrader(mysql, coinbase, logger)
+
+	traders := make([]*Trader, 0)
+	traders = append(traders, trader)
+
+	/*
+		NewWebsocketServer(traders)
+		http.HandleFunc("/", echo)
+		http.ListenAndServe(":8080", nil)
+	*/
+
+	go NewWebsocketServer(8080, traders, logger)
+
 	trader.MakeMeRich()
 }
 

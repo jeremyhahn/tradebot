@@ -17,28 +17,38 @@ type EMA struct {
 	last         float64
 	multiplier   float64
 	common.MovingAverage
+	common.PeriodListener
 }
 
 func NewExponentialMovingAverage(candles []common.Candlestick) *EMA {
-	return CreateExponentiaMovingAverage(candles, len(candles))
+	return CreateExponentialMovingAverage(candles, len(candles))
 }
 
-func CreateExponentiaMovingAverage(candles []common.Candlestick, size int) *EMA {
+func CreateExponentialMovingAverage(candles []common.Candlestick, size int) *EMA {
 	var prices []float64
 	var total float64
 	for _, c := range candles {
 		prices = append(prices, c.Close)
 		total = total + c.Close
 	}
-	return &EMA{
+	ema := &EMA{
+		prices:       make([]float64, size),
 		size:         size,
 		candlesticks: candles,
-		prices:       prices,
-		count:        len(candles),
-		index:        len(candles) - 1,
-		average:      total / float64(size),
-		last:         total / float64(size),
-		multiplier:   2 / (float64(size) + 1)}
+		index:        0,
+		count:        0,
+		average:      0.0,
+		last:         0.0,
+		multiplier:   1}
+	candleLen := len(candles)
+	if candles[0].Close > 0 {
+		ema.count = candleLen
+		ema.index = candleLen - 1
+		ema.average = total / float64(size)
+		ema.last = total / float64(size)
+		ema.multiplier = 2 / (float64(size) + 1)
+	}
+	return ema
 }
 
 func (ema *EMA) Add(candle *common.Candlestick) float64 {
@@ -51,12 +61,16 @@ func (ema *EMA) Add(candle *common.Candlestick) float64 {
 		ema.last = ema.average
 	} else if ema.count != 0 && ema.count < ema.size {
 		ema.index = (ema.index + 1) % ema.size
-		ema.average = (candle.Close + float64(ema.count)*ema.average) / float64(ema.count+1)
 		ema.prices[ema.index] = candle.Close
+		step1 := candle.Close - ema.last
+		step2 := step1 * ema.multiplier
+		ema.average = step2 + ema.last
+		ema.last = ema.average
 		ema.count++
 	} else {
 		ema.average = candle.Close
 		ema.prices[0] = candle.Close
+		ema.last = candle.Close
 		ema.count = 1
 	}
 	return ema.average
@@ -72,6 +86,21 @@ func (ema *EMA) GetAverage() float64 {
 
 func (ema *EMA) GetSize() int {
 	return ema.size
+}
+
+func (ema *EMA) GetCount() int {
+	return ema.count
+}
+func (ema *EMA) GetIndex() int {
+	return ema.index
+}
+
+func (ema *EMA) Sum() float64 {
+	var i float64
+	for _, price := range ema.prices {
+		i += price
+	}
+	return i
 }
 
 func (ema *EMA) GetMultiplier() float64 {
@@ -93,11 +122,7 @@ func (ema *EMA) GetGainsAndLosses() (float64, float64) {
 	return u, d
 }
 
-func (ema *EMA) OnCandlestickCreated(candle *common.Candlestick) {
-	fmt.Println("EMA OnCandlestickCreated: ", candle.Date, candle.Close)
+func (ema *EMA) OnPeriodChange(candle *common.Candlestick) {
+	fmt.Println("[EMA] OnPeriodChange: ", candle.Date, candle.Close)
 	ema.Add(candle)
-}
-
-func (ema *EMA) OnPriceChange(price float64) {
-	//fmt.Println("SMA OnPriceChange: ", price)
 }

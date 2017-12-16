@@ -16,6 +16,7 @@ type SMA struct {
 	average      float64
 	sum          float64
 	common.MovingAverage
+	common.PeriodListener
 }
 
 func NewSimpleMovingAverage(candles []common.Candlestick) *SMA {
@@ -84,11 +85,7 @@ func (sma *SMA) GetGainsAndLosses() (float64, float64) {
 	return gains, losses
 }
 
-func (sma *SMA) OnCandlestickCreated(candle *common.Candlestick) {
-	fmt.Println("SMA OnCandlestickCreated: ", candle.Date, candle.Close)
+func (sma *SMA) OnPeriodCreated(candle *common.Candlestick) {
+	fmt.Println("[SMA] OnCandlestickCreated: ", candle.Date, candle.Close)
 	sma.Add(candle)
-}
-
-func (sma *SMA) OnPriceChange(price float64) {
-	//fmt.Println("SMA OnPriceChange: ", price)
 }
