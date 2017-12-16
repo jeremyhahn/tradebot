@@ -12,19 +12,21 @@ import (
 )
 
 type Coinbase struct {
-	gdax   *gdax.Client
-	logger *logging.Logger
+	gdax     *gdax.Client
+	logger   *logging.Logger
+	Price    float64
+	currency string
 	common.Exchange
-	Price float64
 }
 
-func NewCoinbase(config IConfiguration, logger *logging.Logger) *Coinbase {
+func NewCoinbase(config IConfiguration, logger *logging.Logger, currency string) *Coinbase {
 	apiKey := config.Get("api_key")
 	apiSecret := config.Get("api_secret")
 	apiPassphrase := config.Get("api_passphrase")
 	return &Coinbase{
-		gdax:   gdax.NewClient(apiSecret, apiKey, apiPassphrase),
-		logger: logger}
+		gdax:     gdax.NewClient(apiSecret, apiKey, apiPassphrase),
+		logger:   logger,
+		currency: currency}
 }
 
 func (cb *Coinbase) GetTradeHistory(start, end time.Time, granularity int) []common.Candlestick {
@@ -44,7 +46,7 @@ func (cb *Coinbase) GetTradeHistory(start, end time.Time, granularity int) []com
 		Start:       start,
 		End:         end,
 		Granularity: granularity}
-	rates, err := cb.gdax.GetHistoricRates("BTC-USD", params)
+	rates, err := cb.gdax.GetHistoricRates(cb.currency, params)
 	if err != nil {
 		cb.logger.Error(err)
 		time.Sleep(time.Duration(time.Second * 10))
@@ -96,7 +98,7 @@ func (cb *Coinbase) SubscribeToLiveFeed(price chan float64) {
 
 	subscribe := map[string]string{
 		"type":       "subscribe",
-		"product_id": "BTC-USD",
+		"product_id": cb.currency,
 	}
 
 	if err := wsConn.WriteJSON(subscribe); err != nil {

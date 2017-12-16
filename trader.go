@@ -19,16 +19,20 @@ type Trader struct {
 	logger    *logging.Logger
 	LivePrice float64
 	Currency  string
+	chart     *common.Chart
 	common.PriceListener
 }
 
 func NewTrader(db *gorm.DB, exchange common.Exchange, logger *logging.Logger) *Trader {
-	//	var candlesticks []common.Candlestick
-
 	return &Trader{
 		exchange: exchange,
 		db:       db,
-		logger:   logger}
+		logger:   logger,
+		chart:    &common.Chart{}}
+}
+
+func (trader *Trader) GetChart() *common.Chart {
+	return trader.chart
 }
 
 func (trader *Trader) MakeMeRich() {
@@ -52,37 +56,53 @@ func (trader *Trader) MakeMeRich() {
 		trader.logger.Fatal("Unable to load initial data set from exchange. Total records: ", len(candlesticks))
 		os.Exit(1)
 	}
-	/*for _, c := range candlesticks {
-		fmt.Printf("%+v\n", c)
-	}*/
 
 	stream := NewPriceStream(period)
 
 	// RSI
-	ema := indicators.NewSimpleMovingAverage(candlesticks[:14])
-	rsi := indicators.NewRelativeStrengthIndex(ema)
-	stream.Subscribe(ema)
+	rsiSma := indicators.NewSimpleMovingAverage(candlesticks[:14])
+	rsi := indicators.NewRelativeStrengthIndex(rsiSma)
+	stream.SubscribeToPeriod(rsi)
 
 	// SMA
-	sma := indicators.NewSimpleMovingAverage(candlesticks[:20])
-	bollinger := indicators.NewBollingerBand(sma)
-	stream.Subscribe(sma)
+	bollingerSma := indicators.NewSimpleMovingAverage(candlesticks[:20])
+	bollinger := indicators.NewBollingerBand(bollingerSma)
+	stream.SubscribeToPeriod(bollinger)
 
 	// MACD
-	//ema2 := indicators.NewExponentialMovingAverage(candlesticks[:12])
-	//ema3 := indicators.NewExponentialMovingAverage(candlesticks[:26])
-	//macd := indicators.NewMovingAverageConvergenceDivergence(ema2.GetAverage() - ema3.GetAverage())
+	macdEma1 := indicators.NewExponentialMovingAverage(candlesticks[:12])
+	macdEma2 := indicators.NewExponentialMovingAverage(candlesticks[:26])
+	macd := indicators.NewMovingAverageConvergenceDivergence(macdEma1, macdEma2, 9)
+	stream.SubscribeToPeriod(macd)
 
 	gdaxPriceChan := make(chan float64)
 	go trader.exchange.SubscribeToLiveFeed(gdaxPriceChan)
 
 	for {
+
 		price := <-gdaxPriceChan
 		stream.Add(price)
+
 		bollinger.Calculate(price)
-		trader.logger.Debug("[GDAX] Price: ", price, ", RSI: ", rsi.Calculate(price),
-			", Bollinger Upper: ", bollinger.GetUpper(), ", Bollinger Middle: ", bollinger.GetMiddle(),
-			", Bollinger Lower: ", bollinger.GetLower())
+		macd.Calculate(price)
+
+		trader.chart.Price = price
+		trader.chart.MACDValue = macd.GetValue()
+		trader.chart.MACDSignal = macd.GetSignalLine()
+		trader.chart.MACDHistogram = macd.GetHistogram()
+		trader.chart.RSI = rsi.Calculate(price)
+		trader.chart.BollingerUpper = bollinger.GetUpper()
+		trader.chart.BollingerMiddle = bollinger.GetMiddle()
+		trader.chart.BollingerLower = bollinger.GetMiddle()
+
+		trader.logger.Debug("[GDAX] Price: ", trader.chart.Price,
+			", MACD_VALUE: ", trader.chart.MACDValue,
+			", MACD_HISTOGRAM: ", trader.chart.MACDHistogram,
+			", MACD_SIGNAL: ", trader.chart.MACDSignal,
+			", RSI: ", trader.chart.RSI,
+			", Bollinger Upper: ", trader.chart.BollingerUpper,
+			", Bollinger Middle: ", trader.chart.BollingerMiddle,
+			", Bollinger Lower: ", trader.chart.BollingerLower)
 	}
 
 }

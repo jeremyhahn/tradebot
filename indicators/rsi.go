@@ -1,6 +1,7 @@
 package indicators
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -10,7 +11,6 @@ type RelativeStrengthIndex interface {
 	IsOverBought()
 	IsOverSold()
 	common.Indicator
-	common.PriceListener
 }
 
 type RSI struct {
@@ -24,7 +24,6 @@ type RSI struct {
 	avgU       float64
 	avgD       float64
 	lastPrice  float64
-	counter    int
 	common.Indicator
 	RelativeStrengthIndex
 }
@@ -45,8 +44,7 @@ func CreateRelativeStrengthIndex(ma common.MovingAverage, period int, overbought
 		d:          0.0,
 		avgU:       0.0,
 		avgD:       0.0,
-		lastPrice:  candles[len(candles)-1].Close,
-		counter:    0}
+		lastPrice:  candles[len(candles)-1].Close}
 }
 
 func (rsi *RSI) Calculate(price float64) float64 {
@@ -74,18 +72,15 @@ func (rsi *RSI) Calculate(price float64) float64 {
 	return rsi.oscillator
 }
 
-func (rsi *RSI) RecommendBuy() bool {
-	return rsi.IsOverSold()
-}
-
-func (rsi *RSI) RecommendSell() bool {
-	return rsi.IsOverBought()
-}
-
 func (rsi *RSI) IsOverBought() bool {
 	return rsi.oscillator >= rsi.overbought
 }
 
 func (rsi *RSI) IsOverSold() bool {
 	return rsi.oscillator <= rsi.oversold
+}
+
+func (rsi *RSI) OnPeriodChange(candle *common.Candlestick) {
+	fmt.Println("[RSI] OnCandlestickCreated: ", candle.Date, candle.Close)
+	rsi.ma.Add(candle)
 }

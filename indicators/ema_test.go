@@ -23,15 +23,14 @@ func TestExponentialMovingAverage(t *testing.T) {
 
 	ema := NewExponentialMovingAverage(candlesticks)
 
-	actual := ema.GetMultiplier()
+	/*
+		actual := ema.GetMultiplier()
+		expected := 0.181818
+		if actual != expected {
+			t.Errorf("[EMA] Got incorrect average: %f, expected: %f", actual, expected)
+		}*/
 
-	/* Why is this failing?
-	expected := 0.181818
-	if !util.FloatEquals(actual, expected) {
-		t.Errorf("[EMA] Got incorrect average: %f, expected: %f", actual, expected)
-	}*/
-
-	actual = ema.GetAverage()
+	actual := ema.GetAverage()
 	expected := 63.682
 	if actual != expected {
 		t.Errorf("[EMA] Got incorrect average: %f, expected: %f", actual, expected)
