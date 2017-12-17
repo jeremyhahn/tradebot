@@ -6,15 +6,6 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 )
 
-type PriceStream struct {
-	period          int       // total number of seconds per candlestick
-	start           time.Time // when the first price was added to the buffer
-	volume          int
-	buffer          []float64
-	priceListeners  []common.PriceListener
-	periodListeners []common.PeriodListener
-}
-
 func NewPriceStream(period int) *PriceStream {
 	return &PriceStream{
 		period:          period,

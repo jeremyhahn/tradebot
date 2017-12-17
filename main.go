@@ -25,14 +25,16 @@ func main() {
 
 	config := NewConfiguration(sqlite, logger)
 	coinbase := NewCoinbase(config, logger, "ETH-USD")
-	trader := NewTrader(mysql, coinbase, logger)
+	chart := NewChart(mysql, coinbase, logger)
 
-	traders := make([]*Trader, 0)
-	traders = append(traders, trader)
+	//traders := make([]*Trader, 0)
+	//traders = append(traders, trader)
 
-	go NewWebsocketServer(8080, traders, logger)
+	ws := NewWebsocketServer(8080, chart, logger)
 
-	trader.MakeMeRich()
+	go ws.Start()
+
+	chart.StreamData(ws)
 }
 
 func InitSQLite() *gorm.DB {

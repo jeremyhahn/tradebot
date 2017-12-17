@@ -29,6 +29,10 @@ func NewCoinbase(config IConfiguration, logger *logging.Logger, currency string)
 		currency: currency}
 }
 
+func (cb *Coinbase) GetCurrency() string {
+	return cb.currency
+}
+
 func (cb *Coinbase) GetTradeHistory(start, end time.Time, granularity int) []common.Candlestick {
 	cb.logger.Info("Getting Coinbase trade history")
 	/*
