@@ -4,16 +4,20 @@ import (
 	"time"
 )
 
-type Chart struct {
-	Currency        string  `json:"currency"`
-	Price           float64 `json:"Price"`
-	MACDValue       float64 `json:"macd_value"`
-	MACDHistogram   float64 `json:"macd_histogram"`
-	MACDSignal      float64 `json:"macd_signal"`
-	RSI             float64 `json:"rsi"`
-	BollingerUpper  float64 `json:"bband_upper"`
-	BollingerMiddle float64 `json:"bband_middle"`
-	BollingerLower  float64 `json:"bband_lower"`
+type ChartData struct {
+	Currency          string  `json:"currency"`
+	Price             float64 `json:"price"`
+	MACDValue         float64 `json:"macd_value"`
+	MACDHistogram     float64 `json:"macd_histogram"`
+	MACDSignal        float64 `json:"macd_signal"`
+	MACDValueLive     float64 `json:"macd_value_live"`
+	MACDHistogramLive float64 `json:"macd_histogram_live"`
+	MACDSignalLive    float64 `json:"macd_signal_live"`
+	RSI               float64 `json:"rsi"`
+	RSILive           float64 `json:"rsi_live"`
+	BollingerUpper    float64 `json:"bband_upper"`
+	BollingerMiddle   float64 `json:"bband_middle"`
+	BollingerLower    float64 `json:"bband_lower"`
 }
 
 type MovingAverage interface {
@@ -33,13 +37,14 @@ type PriceListener interface {
 }
 
 type PeriodListener interface {
-	OnPeriodChange(*Candlestick)
+	OnPeriodChange(candlestick *Candlestick)
 }
 
 type Exchange interface {
 	SubscribeToLiveFeed(price chan float64)
 	GetPrice() float64
 	GetTradeHistory(start, end time.Time, granularity int) []Candlestick
+	GetCurrency() string
 }
 
 type Indicator interface {

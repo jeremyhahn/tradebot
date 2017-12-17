@@ -1,2 +1,4 @@
 db/*
 tradebot
+node_modules/
+npm-debug.log

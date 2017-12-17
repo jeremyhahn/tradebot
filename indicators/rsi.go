@@ -1,7 +1,6 @@
 package indicators
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -89,8 +88,8 @@ func (rsi *RSI) IsOverSold() bool {
 }
 
 func (rsi *RSI) OnPeriodChange(candle *common.Candlestick) {
-	fmt.Println("[RSI] OnPeriodChange: ", candle.Date, candle.Close)
-	//rsi.ma.Add(candle)
+	//fmt.Println("[RSI] OnPeriodChange: ", candle.Date, candle.Close)
+	rsi.ma.Add(candle)
 	u, d := rsi.ma.GetGainsAndLosses()
 	difference := candle.Close - rsi.lastPrice
 	if difference < 0 {

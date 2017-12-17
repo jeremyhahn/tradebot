@@ -1,0 +1,25 @@
+{
+  "name": "tradebot",
+  "description": "Automated crypto trading w/ real-time graphing",
+  "version": "0.0.1",
+  "dependencies": {
+    "d3-dsv": "^1.0.8",
+    "d3-format": "^1.2.1",
+    "d3-scale": "^1.0.7",
+    "d3-time-format": "^2.1.1",
+    "prop-types": "^15.6.0",
+    "react": "^16.1.1",
+    "react-bootstrap": "^0.31.5",
+    "react-dom": "^16.1.1",
+    "react-stockcharts": "^0.7.0-beta.21"
+  },
+  "devDependencies": {
+    "react-scripts": "^1.0.17"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  }
+}
