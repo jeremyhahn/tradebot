@@ -4,6 +4,11 @@ import (
 	"time"
 )
 
+type WebsocketBroadcast struct {
+	Price    float64
+	Currency string
+}
+
 type ChartData struct {
 	Currency          string  `json:"currency"`
 	Price             float64 `json:"price"`

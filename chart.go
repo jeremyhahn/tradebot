@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -46,29 +44,24 @@ func (chart *Chart) GetChartData() *common.ChartData {
 	return chart.data
 }
 
-func (chart *Chart) StreamData(ws *WebsocketServer) {
+func (chart *Chart) Stream(ws *WebsocketServer) {
 
-	chart.logger.Info("Starting trading bot")
+	chart.logger.Infof("Streaming %s chart data", chart.data.Currency)
 
 	period := 900 // seconds; 15 minutes
 
 	t := time.Now()
 	year, month, day := t.Date()
 	today := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-	yesterday := time.Date(year, month, (day - 1), 0, 0, 0, 0, t.Location())
-	end := time.Now()
+	//yesterday := time.Date(year, month, (day - 1), 0, 0, 0, 0, t.Location())
+	now := time.Now()
 
-	fmt.Println(today)
-	fmt.Println(yesterday)
-	fmt.Println(end)
+	chart.logger.Debugf("Getting trade history from %s - %s ", today, now)
 
-	candlesticks := chart.exchange.GetTradeHistory(today, end, period)
+	candlesticks := chart.exchange.GetTradeHistory(today, now, period)
 	if len(candlesticks) < 20 {
 		chart.logger.Fatal("Unable to load initial data set from exchange. Total records: ", len(candlesticks))
-		os.Exit(1)
 	}
-
-	fmt.Printf("%+v\n", candlesticks)
 
 	chart.priceStream = NewPriceStream(period)
 
@@ -77,7 +70,7 @@ func (chart *Chart) StreamData(ws *WebsocketServer) {
 	rsi := indicators.NewRelativeStrengthIndex(rsiSma)
 	chart.priceStream.SubscribeToPeriod(rsi)
 
-	// SMA
+	// Bollinger Band
 	bollingerSma := indicators.NewSimpleMovingAverage(candlesticks[:20])
 	bollinger := indicators.NewBollingerBand(bollingerSma)
 	chart.priceStream.SubscribeToPeriod(bollinger)
@@ -88,13 +81,22 @@ func (chart *Chart) StreamData(ws *WebsocketServer) {
 	macd := indicators.NewMovingAverageConvergenceDivergence(macdEma1, macdEma2, 9)
 	chart.priceStream.SubscribeToPeriod(macd)
 
+	// Pre-warm indicators
+	for _, c := range candlesticks {
+		rsi.OnPeriodChange(&c)
+		bollinger.OnPeriodChange(&c)
+		macd.OnPeriodChange(&c)
+	}
+
 	gdaxPriceChan := make(chan float64)
 	go chart.exchange.SubscribeToLiveFeed(gdaxPriceChan)
 
 	for {
 		price := <-gdaxPriceChan
 		chart.priceStream.Add(price)
-		ws.Broadcast(price)
+		ws.Broadcast(&common.WebsocketBroadcast{
+			Currency: chart.data.Currency,
+			Price:    price})
 
 		bollinger.Calculate(price)
 		macdValue, macdSignal, macdHistogram := macd.Calculate(price)
