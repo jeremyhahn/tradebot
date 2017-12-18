@@ -24,17 +24,25 @@ func main() {
 	defer mysql.Close()
 
 	config := NewConfiguration(sqlite, logger)
-	coinbase := NewCoinbase(config, logger, "ETH-USD")
-	chart := NewChart(mysql, coinbase, logger)
+	btc := NewCoinbase(config, logger, "BTC-USD")
+	eth := NewCoinbase(config, logger, "ETH-USD")
+	ltc := NewCoinbase(config, logger, "LTC-USD")
 
-	//traders := make([]*Trader, 0)
-	//traders = append(traders, trader)
+	btcChart := NewChart(mysql, btc, logger)
+	ethChart := NewChart(mysql, eth, logger)
+	ltcChart := NewChart(mysql, ltc, logger)
 
-	ws := NewWebsocketServer(8080, chart, logger)
+	charts := make([]*Chart, 0)
+	charts = append(charts, btcChart)
+	charts = append(charts, ethChart)
+	charts = append(charts, ltcChart)
 
+	ws := NewWebsocketServer(8080, charts, logger)
 	go ws.Start()
 
-	chart.StreamData(ws)
+	go btcChart.Stream(ws)
+	go ethChart.Stream(ws)
+	ltcChart.Stream(ws)
 }
 
 func InitSQLite() *gorm.DB {

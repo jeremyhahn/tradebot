@@ -41,6 +41,7 @@ func CreateExponentialMovingAverage(candles []common.Candlestick, size int) *EMA
 		multiplier:   1}
 	candleLen := len(candles)
 	if candles[0].Close > 0 {
+		ema.prices = prices
 		ema.count = candleLen
 		ema.index = candleLen - 1
 		ema.average = total / float64(size)

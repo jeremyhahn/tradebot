@@ -10,26 +10,25 @@ import (
 )
 
 type WebsocketServer struct {
-	clients   map[*websocket.Conn]bool
+	clients   map[*websocket.Conn]string
 	broadcast chan *common.ChartData
 	logger    *logging.Logger
 	port      int
-	chart     *Chart
+	charts    []*Chart
 	common.PriceListener
 }
 
 type WebsocketRequest struct {
-	Message string  `json:"message"`
-	Price   float64 `json:"price"`
+	Currency string `json:"currency"`
 }
 
-func NewWebsocketServer(port int, chart *Chart, logger *logging.Logger) *WebsocketServer {
+func NewWebsocketServer(port int, charts []*Chart, logger *logging.Logger) *WebsocketServer {
 	ws := &WebsocketServer{
-		clients:   make(map[*websocket.Conn]bool),
+		clients:   make(map[*websocket.Conn]string),
 		broadcast: make(chan *common.ChartData),
 		logger:    logger,
 		port:      port,
-		chart:     chart}
+		charts:    charts}
 
 	return ws
 }
@@ -63,7 +62,6 @@ func (ws *WebsocketServer) onConnect(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 	ws.logger.Debug("[WebSocket] Accepting connection from: ", conn.RemoteAddr())
-	ws.clients[conn] = true
 	for {
 		var msg WebsocketRequest
 		err := conn.ReadJSON(&msg)
@@ -72,6 +70,7 @@ func (ws *WebsocketServer) onConnect(w http.ResponseWriter, r *http.Request) {
 			delete(ws.clients, conn)
 			break
 		}
+		ws.clients[conn] = msg.Currency
 	}
 }
 
@@ -80,18 +79,22 @@ func (ws *WebsocketServer) run() {
 		select {
 		case msg := <-ws.broadcast:
 			ws.logger.Debug("[WebSocket] Broadcasting: ", msg)
-			data := ws.chart.GetChartData()
 			for client := range ws.clients {
-				err := client.WriteJSON(data)
-				if err != nil {
-					ws.logger.Error(err)
+				if ws.clients[client] == msg.Currency {
+					err := client.WriteJSON(msg)
+					if err != nil {
+						ws.logger.Error(err)
+					}
 				}
 			}
 		}
 	}
 }
 
-func (ws *WebsocketServer) Broadcast(price float64) {
-	ws.logger.Debugf("[Websocket] OnPriceChange: %f", price)
-	ws.broadcast <- ws.chart.GetChartData()
+func (ws *WebsocketServer) Broadcast(message *common.WebsocketBroadcast) {
+	for _, chart := range ws.charts {
+		if chart.GetChartData().Currency == message.Currency {
+			ws.broadcast <- chart.GetChartData()
+		}
+	}
 }
