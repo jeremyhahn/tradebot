@@ -1,7 +1,6 @@
 package indicators
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -71,6 +70,6 @@ func (b *Bollinger) standardDeviation(prices []float64, mean float64) float64 {
 }
 
 func (b *Bollinger) OnPeriodChange(candle *common.Candlestick) {
-	fmt.Println("[Bollinger] OnPeriodChange: ", candle.Date, candle.Close)
+	//fmt.Println("[Bollinger] OnPeriodChange: ", candle.Date, candle.Close)
 	b.sma.Add(candle)
 }

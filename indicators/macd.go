@@ -1,8 +1,6 @@
 package indicators
 
 import (
-	"fmt"
-
 	"github.com/jeremyhahn/tradebot/common"
 )
 
@@ -66,7 +64,7 @@ func (macd *MACD) GetHistogram() float64 {
 }
 
 func (macd *MACD) OnPeriodChange(candle *common.Candlestick) {
-	fmt.Println("[MACD] OnPeriodChange: ", candle.Date, candle.Close)
+	//fmt.Println("[MACD] OnPeriodChange: ", candle.Date, candle.Close)
 	macd.ema1.Add(candle)
 	macd.ema2.Add(candle)
 	macd.value = macd.ema1.GetAverage() - macd.ema2.GetAverage()
