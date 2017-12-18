@@ -20,9 +20,9 @@ type Coinbase struct {
 }
 
 func NewCoinbase(config IConfiguration, logger *logging.Logger, currency string) *Coinbase {
-	apiKey := config.Get("api_key")
-	apiSecret := config.Get("api_secret")
-	apiPassphrase := config.Get("api_passphrase")
+	apiKey := config.Get("coinbase_api_key")
+	apiSecret := config.Get("coinbase_api_secret")
+	apiPassphrase := config.Get("coinbase_api_passphrase")
 	return &Coinbase{
 		gdax:     gdax.NewClient(apiSecret, apiKey, apiPassphrase),
 		logger:   logger,

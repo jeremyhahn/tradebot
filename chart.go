@@ -88,11 +88,11 @@ func (chart *Chart) Stream(ws *WebsocketServer) {
 		macd.OnPeriodChange(&c)
 	}
 
-	gdaxPriceChan := make(chan float64)
-	go chart.exchange.SubscribeToLiveFeed(gdaxPriceChan)
+	priceChan := make(chan float64)
+	go chart.exchange.SubscribeToLiveFeed(priceChan)
 
 	for {
-		price := <-gdaxPriceChan
+		price := <-priceChan
 		chart.priceStream.Add(price)
 		ws.Broadcast(&common.WebsocketBroadcast{
 			Currency: chart.data.Currency,

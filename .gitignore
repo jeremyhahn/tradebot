@@ -3,3 +3,4 @@ tradebot
 node_modules/
 npm-debug.log
 indicators/debug.test
+debug
