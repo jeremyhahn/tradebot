@@ -1,29 +1,38 @@
 package common
 
-import "time"
+import (
+	"time"
+
+	logging "github.com/op/go-logging"
+	"github.com/shopspring/decimal"
+)
 
 type Candlestick struct {
 	Period int
 	Date   time.Time
-	Open   float64
-	Close  float64
-	High   float64
-	Low    float64
-	Volume float64
+	Open   decimal.Decimal
+	Close  decimal.Decimal
+	High   decimal.Decimal
+	Low    decimal.Decimal
+	Volume decimal.Decimal
 }
 
-func CreateCandlestick(period int, prices []float64) *Candlestick {
+func CreateCandlestick(logger *logging.Logger, period int, prices []decimal.Decimal) *Candlestick {
+	volume, err := decimal.NewFromString(string(len(prices)))
+	if err != nil {
+		logger.Error(err)
+	}
 	var candle = &Candlestick{
 		Period: period,
 		Date:   time.Now(),
 		Open:   prices[0],
 		Close:  prices[len(prices)-1],
-		Volume: float64(len(prices))}
+		Volume: volume}
 	for _, price := range prices {
-		if price > candle.High {
+		if price.GreaterThan(candle.High) {
 			candle.High = price
 		}
-		if price < candle.Low {
+		if price.LessThan(candle.Low) {
 			candle.Low = price
 		}
 	}

@@ -4,69 +4,72 @@ import (
 	"math"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/util"
+	logging "github.com/op/go-logging"
+	"github.com/shopspring/decimal"
 )
 
 type BollingerBand interface {
-	GetUpper() float64
-	GetMiddle() float64
-	GetLower() float64
+	GetUpper() decimal.Decimal
+	GetMiddle() decimal.Decimal
+	GetLower() decimal.Decimal
 	common.Indicator
 }
 
 type Bollinger struct {
-	k     int
-	price float64
-	sma   common.MovingAverage
+	logger *logging.Logger
+	k      int
+	price  decimal.Decimal
+	sma    common.MovingAverage
 }
 
-func NewBollingerBand(sma common.MovingAverage) *Bollinger {
+func NewBollingerBand(logger *logging.Logger, sma common.MovingAverage) *Bollinger {
 	return &Bollinger{
-		k:   2,
-		sma: sma}
+		logger: logger,
+		k:      2,
+		sma:    sma}
 }
 
-func CreateBollingerBand(sma common.MovingAverage, k int) *Bollinger {
+func CreateBollingerBand(logger *logging.Logger, sma common.MovingAverage, k int) *Bollinger {
 	return &Bollinger{
 		k:   k,
 		sma: sma}
 }
 
-func (b *Bollinger) GetUpper() float64 {
-	return util.RoundFloat(
-		b.sma.GetAverage()+b.standardDeviation(b.getPrices(), b.price),
-		2)
+func (b *Bollinger) GetUpper() decimal.Decimal {
+	return b.sma.GetAverage().Add(b.standardDeviation(b.getPrices(), b.price))
 }
 
-func (b *Bollinger) GetMiddle() float64 {
-	return util.RoundFloat(b.sma.GetAverage(), 2)
+func (b *Bollinger) GetMiddle() decimal.Decimal {
+	return b.sma.GetAverage()
 }
 
-func (b *Bollinger) GetLower() float64 {
-	return util.RoundFloat(
-		b.sma.GetAverage()-b.standardDeviation(b.getPrices(), b.price),
-		2)
+func (b *Bollinger) GetLower() decimal.Decimal {
+	return b.sma.GetAverage().Sub(b.standardDeviation(b.getPrices(), b.price))
 }
 
-func (b *Bollinger) Calculate(price float64) {
+func (b *Bollinger) Calculate(price decimal.Decimal) {
 	b.price = price
 }
 
-func (b *Bollinger) getPrices() []float64 {
-	var prices []float64
+func (b *Bollinger) getPrices() []decimal.Decimal {
+	var prices []decimal.Decimal
 	for _, c := range b.sma.GetCandlesticks() {
 		prices = append(prices, c.Close)
 	}
 	return prices
 }
 
-func (b *Bollinger) standardDeviation(prices []float64, mean float64) float64 {
-	total := 0.0
+func (b *Bollinger) standardDeviation(prices []decimal.Decimal, mean decimal.Decimal) decimal.Decimal {
+	total := decimal.NewFromFloat(0.0)
 	for _, price := range prices {
-		total += math.Pow(price-mean, float64(b.k))
+		total = total.Add(price.Pow(decimal.NewFromFloat(float64(b.k))))
 	}
-	variance := total / float64(len(prices)-1)
-	return math.Sqrt(variance)
+	variance := total.Div(decimal.NewFromFloat(float64(len(prices) - 1)))
+	f, exact := variance.Float64()
+	if !exact {
+		b.logger.Error("Bollinger float conversion failure: ", exact)
+	}
+	return decimal.NewFromFloat(math.Sqrt(f))
 }
 
 func (b *Bollinger) OnPeriodChange(candle *common.Candlestick) {

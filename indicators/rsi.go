@@ -1,9 +1,8 @@
 package indicators
 
 import (
-	"math"
-
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
 )
 
 type RelativeStrengthIndex interface {
@@ -15,100 +14,110 @@ type RelativeStrengthIndex interface {
 type RSI struct {
 	period     int
 	ma         common.MovingAverage
-	oscillator float64
-	overbought float64
-	oversold   float64
-	u          float64
-	d          float64
-	avgU       float64
-	avgD       float64
-	lastPrice  float64
+	oscillator decimal.Decimal
+	overbought decimal.Decimal
+	oversold   decimal.Decimal
+	u          decimal.Decimal
+	d          decimal.Decimal
+	avgU       decimal.Decimal
+	avgD       decimal.Decimal
+	lastPrice  decimal.Decimal
 	common.Indicator
 	RelativeStrengthIndex
 }
 
 func NewRelativeStrengthIndex(ma common.MovingAverage) *RSI {
-	return CreateRelativeStrengthIndex(ma, len(ma.GetCandlesticks()), 70, 30)
+	seventy := decimal.NewFromFloat(float64(70.00))
+	thirty := decimal.NewFromFloat(float64(30.00))
+	return CreateRelativeStrengthIndex(ma, len(ma.GetCandlesticks()), seventy, thirty)
 }
 
-func CreateRelativeStrengthIndex(ma common.MovingAverage, period int, overbought, oversold float64) *RSI {
+func CreateRelativeStrengthIndex(ma common.MovingAverage, period int, overbought, oversold decimal.Decimal) *RSI {
+	zero := decimal.NewFromFloat(float64(0.0))
 	candles := ma.GetCandlesticks()
 	return &RSI{
 		period:     period,
 		ma:         ma,
-		oscillator: 0,
+		oscillator: zero,
 		overbought: overbought,
 		oversold:   oversold,
-		u:          0.0,
-		d:          0.0,
-		avgU:       0.0,
-		avgD:       0.0,
+		u:          zero,
+		d:          zero,
+		avgU:       zero,
+		avgD:       zero,
 		lastPrice:  candles[len(candles)-1].Close}
 }
 
-func (rsi *RSI) Calculate(price float64) float64 {
-	var oscillator float64
+func (rsi *RSI) Calculate(price decimal.Decimal) decimal.Decimal {
+	var oscillator decimal.Decimal
+	zero := decimal.NewFromFloat(float64(0.0))
 	curU := rsi.u
-	curD := -rsi.d
+	curD := rsi.d
 	avgU := rsi.avgU
 	avgD := rsi.avgD
+	one := decimal.NewFromFloat(float64(1))
+	oneHundred := decimal.NewFromFloat(float64(1))
 	u, d := rsi.ma.GetGainsAndLosses()
-	difference := price - rsi.lastPrice
-	if difference < 0 {
-		d += math.Abs(difference)
-		curD = math.Abs(difference)
-		curU = 0
+	difference := price.Sub(rsi.lastPrice)
+	if difference.LessThan(zero) {
+		dabs := difference.Abs()
+		d = d.Add(dabs)
+		curD = dabs
+		curU = zero
 	} else {
-		u += difference
+		u = u.Add(difference)
 		curU = difference
-		curD = 0
+		curD = zero
 	}
-	if avgU > 0 && avgD > 0 {
-		avgU = ((avgU*float64(rsi.period-1) + curU) / float64(rsi.period))
-		avgD = ((avgD*float64(rsi.period-1) + curD) / float64(rsi.period))
+	if avgU.GreaterThan(zero) && avgD.GreaterThan(zero) {
+		avgU = ((avgU.Mul(decimal.NewFromFloat(float64(rsi.period - 1))).Add(curU)).Div(decimal.NewFromFloat(float64(rsi.period))))
+		avgD = ((avgD.Mul(decimal.NewFromFloat(float64(rsi.period - 1))).Add(curD)).Div(decimal.NewFromFloat(float64(rsi.period))))
 	} else {
-		avgU = u / float64(rsi.period)
-		avgD = d / float64(rsi.period)
+		avgU = u.Div(decimal.NewFromFloat(float64(rsi.period)))
+		avgD = d.Div(decimal.NewFromFloat(float64(rsi.period)))
 	}
-	rs := avgU / avgD
-	oscillator = (100 - (100 / (1 + rs)))
+	rs := avgU.Div(avgD)
+	oscillator = (oneHundred.Sub(oneHundred.Div(one.Add(rs))))
 	return oscillator
 }
 
-func (rsi *RSI) GetValue() float64 {
+func (rsi *RSI) GetValue() decimal.Decimal {
 	return rsi.oscillator
 }
 
 func (rsi *RSI) IsOverBought() bool {
-	return rsi.oscillator >= rsi.overbought
+	return rsi.oscillator.GreaterThanOrEqual(rsi.overbought)
 }
 
 func (rsi *RSI) IsOverSold() bool {
-	return rsi.oscillator <= rsi.oversold
+	return rsi.oscillator.LessThanOrEqual(rsi.oversold)
 }
 
 func (rsi *RSI) OnPeriodChange(candle *common.Candlestick) {
 	//fmt.Println("[RSI] OnPeriodChange: ", candle.Date, candle.Close)
+	zero := decimal.NewFromFloat(float64(0))
+	one := decimal.NewFromFloat(float64(1))
+	hundred := decimal.NewFromFloat(float64(100))
 	rsi.ma.Add(candle)
 	u, d := rsi.ma.GetGainsAndLosses()
-	difference := candle.Close - rsi.lastPrice
-	if difference < 0 {
-		d += math.Abs(difference)
-		rsi.d = math.Abs(difference)
-		rsi.u = 0
+	difference := candle.Close.Sub(rsi.lastPrice)
+	if difference.LessThan(zero) {
+		d = d.Add(difference.Abs())
+		rsi.d = difference.Abs()
+		rsi.u = zero
 	} else {
-		u += difference
+		u = u.Add(difference)
 		rsi.u = difference
-		rsi.d = 0
+		rsi.d = zero
 	}
-	if rsi.avgU > 0 && rsi.avgD > 0 {
-		rsi.avgU = ((rsi.avgU*float64(rsi.period-1) + rsi.u) / float64(rsi.period))
-		rsi.avgD = ((rsi.avgD*float64(rsi.period-1) + rsi.d) / float64(rsi.period))
+	if rsi.avgU.GreaterThan(zero) && rsi.avgD.GreaterThan(zero) {
+		rsi.avgU = ((rsi.avgU.Mul(decimal.NewFromFloat(float64(rsi.period - 1))).Add(rsi.u)).Div(decimal.NewFromFloat(float64(rsi.period))))
+		rsi.avgD = ((rsi.avgD.Mul(decimal.NewFromFloat(float64(rsi.period - 1))).Add(rsi.d)).Div(decimal.NewFromFloat(float64(rsi.period))))
 	} else {
-		rsi.avgU = u / float64(rsi.period)
-		rsi.avgD = d / float64(rsi.period)
+		rsi.avgU = u.Div(decimal.NewFromFloat(float64(rsi.period)))
+		rsi.avgD = d.Div(decimal.NewFromFloat(float64(rsi.period)))
 	}
-	rs := rsi.avgU / rsi.avgD
-	rsi.oscillator = (100 - (100 / (1 + rs)))
+	rs := rsi.avgU.Div(rsi.avgD)
+	rsi.oscillator = (hundred.Sub((hundred.Div((one.Add(rs))))))
 	rsi.lastPrice = candle.Close
 }

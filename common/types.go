@@ -2,43 +2,45 @@ package common
 
 import (
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 type WebsocketBroadcast struct {
-	Price    float64
+	Price    decimal.Decimal
 	Currency string
 }
 
 type ChartData struct {
-	Currency          string  `json:"currency"`
-	Price             float64 `json:"price"`
-	MACDValue         float64 `json:"macd_value"`
-	MACDHistogram     float64 `json:"macd_histogram"`
-	MACDSignal        float64 `json:"macd_signal"`
-	MACDValueLive     float64 `json:"macd_value_live"`
-	MACDHistogramLive float64 `json:"macd_histogram_live"`
-	MACDSignalLive    float64 `json:"macd_signal_live"`
-	RSI               float64 `json:"rsi"`
-	RSILive           float64 `json:"rsi_live"`
-	BollingerUpper    float64 `json:"bband_upper"`
-	BollingerMiddle   float64 `json:"bband_middle"`
-	BollingerLower    float64 `json:"bband_lower"`
+	Currency          string          `json:"currency"`
+	Price             decimal.Decimal `json:"price"`
+	MACDValue         decimal.Decimal `json:"macd_value"`
+	MACDHistogram     decimal.Decimal `json:"macd_histogram"`
+	MACDSignal        decimal.Decimal `json:"macd_signal"`
+	MACDValueLive     decimal.Decimal `json:"macd_value_live"`
+	MACDHistogramLive decimal.Decimal `json:"macd_histogram_live"`
+	MACDSignalLive    decimal.Decimal `json:"macd_signal_live"`
+	RSI               decimal.Decimal `json:"rsi"`
+	RSILive           decimal.Decimal `json:"rsi_live"`
+	BollingerUpper    decimal.Decimal `json:"bband_upper"`
+	BollingerMiddle   decimal.Decimal `json:"bband_middle"`
+	BollingerLower    decimal.Decimal `json:"bband_lower"`
 }
 
 type MovingAverage interface {
-	Add(candle *Candlestick) float64
+	Add(candle *Candlestick) decimal.Decimal
 	GetCandlesticks() []Candlestick
 	GetSize() int
 	GetCount() int
 	GetIndex() int
-	GetAverage() float64
-	Sum() float64
-	GetGainsAndLosses() (float64, float64)
+	GetAverage() decimal.Decimal
+	Sum() decimal.Decimal
+	GetGainsAndLosses() (decimal.Decimal, decimal.Decimal)
 	PeriodListener
 }
 
 type PriceListener interface {
-	OnPriceChange(price float64)
+	OnPriceChange(price decimal.Decimal)
 }
 
 type PeriodListener interface {
@@ -46,25 +48,25 @@ type PeriodListener interface {
 }
 
 type Exchange interface {
-	SubscribeToLiveFeed(price chan float64)
-	GetPrice() float64
+	SubscribeToLiveFeed(price chan decimal.Decimal)
+	GetPrice() decimal.Decimal
 	GetTradeHistory(start, end time.Time, granularity int) []Candlestick
 	GetCurrency() string
 }
 
 type Indicator interface {
-	Calculate(price float64)
+	Calculate(price decimal.Decimal)
 	PeriodListener
 }
 
 type Account struct {
-	Currency float64
-	Balance  float64
+	Currency decimal.Decimal
+	Balance  decimal.Decimal
 }
 
 type Trade struct {
 	ID        int `gorm:"primary_key"`
 	Timestamp int32
-	Price     float64
-	Size      float64
+	Price     decimal.Decimal
+	Size      decimal.Decimal
 }
