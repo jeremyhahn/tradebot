@@ -88,21 +88,21 @@ func (chart *Chart) Stream(ws *WebsocketServer) {
 		macd.OnPeriodChange(&c)
 	}
 
-	priceChan := make(chan float64)
+	priceChan := make(chan common.PriceChannel)
 	go chart.exchange.SubscribeToLiveFeed(priceChan)
 
 	for {
-		price := <-priceChan
-		chart.priceStream.Add(price)
-		ws.Broadcast(&common.WebsocketBroadcast{
-			Currency: chart.data.Currency,
-			Price:    price})
+		priceChannel := <-priceChan
+		satoshis := priceChannel.Satoshis
 
-		bollinger.Calculate(price)
-		macdValue, macdSignal, macdHistogram := macd.Calculate(price)
+		chart.priceStream.Add(chart.data.Satoshis)
+
+		bollinger.Calculate(satoshis)
+		macdValue, macdSignal, macdHistogram := macd.Calculate(satoshis)
 
 		chart.data.Currency = chart.exchange.GetCurrency()
-		chart.data.Price = price
+		chart.data.Price = priceChannel.Price
+		chart.data.Satoshis = priceChannel.Satoshis
 		chart.data.MACDValue = macd.GetValue()
 		chart.data.MACDSignal = macd.GetSignalLine()
 		chart.data.MACDHistogram = macd.GetHistogram()
@@ -110,9 +110,11 @@ func (chart *Chart) Stream(ws *WebsocketServer) {
 		chart.data.MACDSignalLive = macdSignal
 		chart.data.MACDHistogramLive = macdHistogram
 		chart.data.RSI = rsi.GetValue()
-		chart.data.RSILive = rsi.Calculate(price)
+		chart.data.RSILive = rsi.Calculate(satoshis)
 		chart.data.BollingerUpper = bollinger.GetUpper()
 		chart.data.BollingerMiddle = bollinger.GetMiddle()
 		chart.data.BollingerLower = bollinger.GetLower()
+
+		ws.Broadcast(chart.data)
 	}
 }

@@ -1,24 +1,19 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"time"
 
-	"github.com/btcsuite/btcutil"
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/util"
 	logging "github.com/op/go-logging"
 	bittrex "github.com/toorop/go-bittrex"
 )
 
-type BittrexPrice struct {
-	Price string `json:"price"`
-}
-
 type Bittrex struct {
 	client   *bittrex.Bittrex
 	logger   *logging.Logger
-	Price    float64
+	price    float64
+	satoshis float64
 	currency string
 	ticker   *BlockchainTicker
 	common.Exchange
@@ -36,7 +31,7 @@ func NewBittrex(config IConfiguration, logger *logging.Logger,
 		ticker:   ticker}
 }
 
-func (b *Bittrex) SubscribeToLiveFeed(price chan float64) {
+func (b *Bittrex) SubscribeToLiveFeed(price chan common.PriceChannel) {
 	for {
 		time.Sleep(10 * time.Second)
 		ticker, err := b.client.GetTicker(b.currency)
@@ -44,33 +39,26 @@ func (b *Bittrex) SubscribeToLiveFeed(price chan float64) {
 			b.logger.Error(err)
 			continue
 		}
-
 		f, _ := ticker.Last.Float64()
-
-		//fmt.Printf("f: %f", f)
-		os.Exit(1)
-
 		if f <= 0 {
 			b.logger.Errorf("Unable to get ticker data for %s", b.currency)
 			continue
 		}
-
-		b.ticker.logger.Infof("Subscribe to feed, f: %f", f)
-
-		amount, err := btcutil.NewAmount(f)
-		if err != nil {
-			b.logger.Error(err)
-			continue
-		}
-
-		b.Price = amount.ToBTC()
-
-		price <- b.Price
+		b.logger.Debugf("[Bittrex] Sending live price: %.8f", f)
+		b.satoshis = f
+		price <- common.PriceChannel{
+			Currency: b.currency,
+			Satoshis: b.satoshis,
+			Price:    util.RoundFloat(b.ticker.ConvertToUSD(b.currency, b.satoshis), 2)}
 	}
 }
 
 func (b *Bittrex) GetPrice() float64 {
-	return b.Price
+	return b.price
+}
+
+func (b *Bittrex) GetSatoshis() float64 {
+	return b.satoshis
 }
 
 func (b *Bittrex) GetTradeHistory(start, end time.Time, granularity int) []common.Candlestick {
@@ -87,25 +75,24 @@ func (b *Bittrex) GetTradeHistory(start, end time.Time, granularity int) []commo
 			candlesticks = append(candlesticks, common.Candlestick{Close: f})
 		}
 	*/
-
 	marketHistory, err := b.client.GetMarketHistory(b.currency)
 	if err != nil {
 		b.logger.Error(err)
 	}
-
 	for _, m := range marketHistory {
 		f, _ := m.Price.Float64()
-
+		if err != nil {
+			b.logger.Error(err)
+		}
 		candlesticks = append(candlesticks, common.Candlestick{Close: f})
 	}
-
-	for _, c := range candlesticks {
-		fmt.Printf("%+v\n", c)
-	}
-
 	return candlesticks
 }
 
 func (b *Bittrex) GetCurrency() string {
 	return b.currency
+}
+
+func (b *Bittrex) ConvertToUSD(btc float64) float64 {
+	return b.ticker.ConvertToUSD(b.currency, b.satoshis)
 }

@@ -78,6 +78,8 @@ func (ws *WebsocketServer) run() {
 	for {
 		select {
 		case msg := <-ws.broadcast:
+			logMsg := fmt.Sprintf("[Candlestick] Close: %.8f", msg.Price)
+			ws.logger.Debug(logMsg)
 			ws.logger.Debug("[WebSocket] Broadcasting: ", msg)
 			for client := range ws.clients {
 				if ws.clients[client] == msg.Currency {
@@ -91,7 +93,7 @@ func (ws *WebsocketServer) run() {
 	}
 }
 
-func (ws *WebsocketServer) Broadcast(message *common.WebsocketBroadcast) {
+func (ws *WebsocketServer) Broadcast(message *common.ChartData) {
 	for _, chart := range ws.charts {
 		if chart.GetChartData().Currency == message.Currency {
 			ws.broadcast <- chart.GetChartData()
