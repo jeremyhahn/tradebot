@@ -70,11 +70,11 @@ func (ticker *BlockchainTicker) GetPrice() float64 {
 		ticker.lastLookup = time.Now()
 		ticker.lastPrice = t.USD.Last
 	}
-
 	return ticker.lastPrice
 }
 
 func (ticker *BlockchainTicker) ConvertToUSD(currency string, btc float64) float64 {
-	ticker.logger.Infof("currency: %s, btc: %f", btc)
-	return ticker.GetPrice() / btc
+	price := ticker.GetPrice()
+	ticker.logger.Debugf("[BlockchainTicker] currency: %s, btc: %.8f, price: %f", currency, btc, price)
+	return btc * price
 }

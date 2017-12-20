@@ -4,14 +4,16 @@ import (
 	"time"
 )
 
-type WebsocketBroadcast struct {
-	Price    float64
+type PriceChannel struct {
 	Currency string
+	Satoshis float64
+	Price    float64
 }
 
 type ChartData struct {
 	Currency          string  `json:"currency"`
 	Price             float64 `json:"price"`
+	Satoshis          float64 `json:"satoshis"`
 	MACDValue         float64 `json:"macd_value"`
 	MACDHistogram     float64 `json:"macd_histogram"`
 	MACDSignal        float64 `json:"macd_signal"`
@@ -46,8 +48,9 @@ type PeriodListener interface {
 }
 
 type Exchange interface {
-	SubscribeToLiveFeed(price chan float64)
+	SubscribeToLiveFeed(price chan PriceChannel)
 	GetPrice() float64
+	GetSatoshis() float64
 	GetTradeHistory(start, end time.Time, granularity int) []Candlestick
 	GetCurrency() string
 }
