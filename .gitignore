@@ -4,3 +4,4 @@ node_modules/
 npm-debug.log
 indicators/debug.test
 debug
+frontend/yarn-error.log

@@ -1,39 +1,32 @@
 package main
 
 import (
-	"strconv"
+	"fmt"
 	"time"
 
 	ws "github.com/gorilla/websocket"
 	gdax "github.com/preichenberger/go-gdax"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/util"
 	"github.com/op/go-logging"
 )
 
 type Coinbase struct {
-	gdax     *gdax.Client
-	logger   *logging.Logger
-	Price    float64
-	currency string
+	gdax        *gdax.Client
+	logger      *logging.Logger
+	PriceStream *PriceStream
 	common.Exchange
 }
 
-func NewCoinbase(config IConfiguration, logger *logging.Logger, currency string) *Coinbase {
-	apiKey := config.Get("coinbase_api_key")
-	apiSecret := config.Get("coinbase_api_secret")
-	apiPassphrase := config.Get("coinbase_api_passphrase")
+func NewCoinbase(coinbase *CoinExchange, logger *logging.Logger, priceStream *PriceStream) *Coinbase {
 	return &Coinbase{
-		gdax:     gdax.NewClient(apiSecret, apiKey, apiPassphrase),
-		logger:   logger,
-		currency: currency}
+		gdax:        gdax.NewClient(coinbase.Secret, coinbase.Key, coinbase.Passphrase),
+		logger:      logger,
+		PriceStream: priceStream}
 }
 
-func (cb *Coinbase) GetCurrency() string {
-	return cb.currency
-}
-
-func (cb *Coinbase) GetTradeHistory(start, end time.Time, granularity int) []common.Candlestick {
+func (cb *Coinbase) GetTradeHistory(currency string, start, end time.Time, granularity int) []common.Candlestick {
 	cb.logger.Info("Getting Coinbase trade history")
 	/*
 		var products []gdax.Product
@@ -50,11 +43,11 @@ func (cb *Coinbase) GetTradeHistory(start, end time.Time, granularity int) []com
 		Start:       start,
 		End:         end,
 		Granularity: granularity}
-	rates, err := cb.gdax.GetHistoricRates(cb.currency, params)
+	rates, err := cb.gdax.GetHistoricRates(currency, params)
 	if err != nil {
 		cb.logger.Error(err)
 		time.Sleep(time.Duration(time.Second * 10))
-		return cb.GetTradeHistory(start, end, granularity)
+		return cb.GetTradeHistory(currency, start, end, granularity)
 	}
 	for _, r := range rates {
 		candlesticks = append(candlesticks, common.Candlestick{
@@ -68,29 +61,32 @@ func (cb *Coinbase) GetTradeHistory(start, end time.Time, granularity int) []com
 	return candlesticks
 }
 
-func (cb *Coinbase) GetAccounts() []common.Account {
-	var accts []common.Account
+func (cb *Coinbase) GetBalances() []common.Coin {
+	var coins []common.Coin
 	accounts, err := cb.gdax.GetAccounts()
 	if err != nil {
 		cb.logger.Error(err.Error())
 	}
 	for _, a := range accounts {
-		currency, err := strconv.ParseFloat(a.Currency, 64)
+		ticker, err := cb.gdax.GetTicker(fmt.Sprintf("%s-USD", a.Currency))
 		if err != nil {
-			cb.logger.Error(err.Error())
+			cb.logger.Error(err)
 		}
-		accts = append(accts, common.Account{
-			Currency: currency,
-			Balance:  a.Balance})
+		if a.Balance <= 0 {
+			continue
+		}
+		coins = append(coins, common.Coin{
+			Currency:  a.Currency,
+			Balance:   a.Balance,
+			Available: a.Available,
+			Pending:   a.Hold,
+			Price:     ticker.Price,
+			Total:     util.RoundFloat(a.Balance*ticker.Price, 2)})
 	}
-	return accts
+	return coins
 }
 
-func (cb *Coinbase) GetPrice() float64 {
-	return cb.Price
-}
-
-func (cb *Coinbase) SubscribeToLiveFeed(price chan float64) {
+func (cb *Coinbase) SubscribeToLiveFeed(currency string, priceChannel chan common.PriceChange) {
 
 	cb.logger.Info("Subscribing to Coinbase WebSocket feed")
 
@@ -102,7 +98,7 @@ func (cb *Coinbase) SubscribeToLiveFeed(price chan float64) {
 
 	subscribe := map[string]string{
 		"type":       "subscribe",
-		"product_id": cb.currency,
+		"product_id": currency,
 	}
 
 	if err := wsConn.WriteJSON(subscribe); err != nil {
@@ -118,12 +114,18 @@ func (cb *Coinbase) SubscribeToLiveFeed(price chan float64) {
 		}
 
 		if message.Type == "match" && message.Reason == "filled" {
-			if message.Price != cb.Price {
-				cb.Price = message.Price
-				price <- message.Price
-			}
+			cb.PriceStream.Add(message.Price)
+			/*
+				priceChannel <- common.PriceChannel{
+					Currency: cb.currency,
+					Satoshis: message.Price,
+					Price:    util.RoundFloat(cb.GetPriceUSD(), 2)}*/
 		}
 	}
 
-	cb.SubscribeToLiveFeed(price)
+	cb.SubscribeToLiveFeed(currency, priceChannel)
+}
+
+func (cb *Coinbase) ToUSD(price, satoshis float64) float64 {
+	return satoshis * price
 }

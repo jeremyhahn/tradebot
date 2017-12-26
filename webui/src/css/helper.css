@@ -1,0 +1,58 @@
+
+/* Loading indicator styles: start */
+.component-loading {
+	display: flex;
+	width: 100%;
+	position: absolute;
+	max-height: 100%;
+	margin: 100px 0;
+	justify-content: center;
+}
+.component-loading .loading-bar-container {
+	border: 3px solid rgb(106, 209, 255);
+	padding: 2px;
+}
+.component-loading .loading-bar-container .bar {
+	width: 100%;
+	min-width: 240px;
+	margin: 0 auto;
+	height: 18px;
+	background-image: 
+	repeating-linear-gradient(
+		-45deg,
+		#DDD,
+		#DDD 11px,
+		#FFF 10px,
+		#FFF 20px
+	);
+	background-size: 28px 28px;
+	animation: move 1s linear infinite;
+}
+.component-loading .loading-text {
+	font-size: 13px;
+	color: #777;
+	line-height: 20px;
+	margin-top: 5px;
+}
+@keyframes move {
+	0% { background-position: 0 0; }
+	100% { background-position: 28px 0; }
+}
+/* Loading indicator styles: end */
+
+
+
+
+
+
+
+
+
+.full-height-wrapper {
+	display: flex;
+	justify-content: center;
+	height: calc( 100vh - 64px );
+}
+
+
+

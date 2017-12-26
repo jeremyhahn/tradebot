@@ -1,6 +1,9 @@
 package main
 
 import (
+	"time"
+
+	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
@@ -11,6 +14,36 @@ const (
 	APPNAME    = "tradebot"
 	APPVERSION = "0.0.1"
 )
+
+func getExchangeList(exchanges *CoinExchanges, coinbase *Coinbase, bittrex *Bittrex) []common.CoinExchange {
+	var exchangeList []common.CoinExchange
+	for _, ex := range exchanges.Exchanges {
+		if ex.Name == "coinbase" {
+			total := 0.0
+			balances := coinbase.GetBalances()
+			for _, c := range balances {
+				total += c.Total
+			}
+			exchangeList = append(exchangeList, common.CoinExchange{
+				Name:  ex.Name,
+				URL:   ex.URL,
+				Total: total,
+				Coins: balances})
+		} else if ex.Name == "bittrex" {
+			total := 0.0
+			balances := bittrex.GetBalances()
+			for _, c := range balances {
+				total += c.Total
+			}
+			exchangeList = append(exchangeList, common.CoinExchange{
+				Name:  ex.Name,
+				URL:   ex.URL,
+				Total: total,
+				Coins: balances})
+		}
+	}
+	return exchangeList
+}
 
 func main() {
 
@@ -24,11 +57,40 @@ func main() {
 	//mysql := InitMySQL()
 	//defer mysql.Close()
 
-	config := NewConfiguration(sqlite, logger)
+	//config := NewConfiguration(sqlite, logger)
 
-	btcTicker := NewBlockchainTicker(logger)
+	period := 900 // seconds; 15 minutes
+	priceStream := NewPriceStream(period)
 
-	ada := NewBittrex(config, logger, "BTC-ADA", btcTicker)
+	exchanges := NewCoinExchanges(sqlite, logger)
+
+	coinbase := NewCoinbase(exchanges.Get("coinbase"), logger, priceStream)
+	bittrex := NewBittrex(exchanges.Get("bittrex"), logger, priceStream)
+
+	//btcChart := NewChart(sqlite, coinbase, logger, priceStream)
+	charts := make([]*Chart, 0)
+	//charts = append(charts, btcChart)
+	ws := NewWebsocketServer(8080, charts, logger)
+	go ws.Start()
+
+	for {
+		logger.Info("Looping...")
+		exchangeList := getExchangeList(exchanges, coinbase, bittrex)
+		ws.BroadcastPortfolio(exchangeList)
+		time.Sleep(5 * time.Second)
+	}
+
+	//btcChart.Stream(ws)
+
+	/*
+		bittrex := exchanges.Get("bittrex")
+
+		ada := NewBittrex(&bittrex, logger, "BTC-ADA", btcTicker)
+
+		ada.GetBalances()
+
+		os.Exit(1)
+	*/
 
 	/*
 			markets, err := ada.client.GetCurrencies()
@@ -41,9 +103,12 @@ func main() {
 		data, _ := json.Marshal(marketSummary)
 		fmt.Print(string(data))
 	*/
-	adaChart := NewChart(sqlite, ada, logger)
-	charts := make([]*Chart, 0)
-	charts = append(charts, adaChart)
+
+	/*
+		adaChart := NewChart(sqlite, ada, logger)
+		charts := make([]*Chart, 0)
+		charts = append(charts, adaChart)
+	*/
 
 	/*
 		btc := NewCoinbase(config, logger, "BTC-USD")
@@ -63,13 +128,15 @@ func main() {
 		charts = append(charts, ethChart)
 		charts = append(charts, ltcChart)
 	*/
-	ws := NewWebsocketServer(8080, charts, logger)
-	go ws.Start()
+	//ws := NewWebsocketServer(8080, charts, logger)
+	//priceStream.SubscribeToPrice(ws)
+
+	//go ws.Start()
 
 	//	go btcChart.Stream(ws)
 	//	go ethChart.Stream(ws)
 	//	go ltcChart.Stream(ws)
-	adaChart.Stream(ws)
+	//btcChart.Stream(ws)
 }
 
 func InitSQLite() *gorm.DB {
