@@ -1,0 +1,145 @@
+@import url(https://fonts.googleapis.com/css?family=Roboto:300,400,500);/* http://meyerweb.com/eric/tools/css/reset/ 
+   v2.0 | 20110126
+   License: none (public domain)
+*/
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 100%;
+	font: inherit;
+	vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, 
+footer, header, hgroup, menu, nav, section {
+	display: block;
+}
+body {
+	line-height: 1;
+}
+ol, ul {
+	list-style: none;
+}
+blockquote, q {
+	quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+	content: '';
+	content: none;
+}
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}/*
+	Our Main Stylesheet.
+ */
+
+body {
+	font-family: "Roboto", sans-serif;
+	background: #F7F8FA;
+	margin: 0;
+	padding: 0;
+}
+
+#root {
+	min-height: 100vh;
+}
+
+.component--appbar {
+	position: fixed;
+	width: 100%;
+	z-index: 10;
+}
+
+.component--content {
+	padding-top: 64px;
+}
+
+
+
+/* Loading indicator styles: start */
+.component-loading {
+	display: flex;
+	width: 100%;
+	position: absolute;
+	max-height: 100%;
+	margin: 100px 0;
+	justify-content: center;
+}
+.component-loading .loading-bar-container {
+	border: 3px solid rgb(106, 209, 255);
+	padding: 2px;
+}
+.component-loading .loading-bar-container .bar {
+	width: 100%;
+	min-width: 240px;
+	margin: 0 auto;
+	height: 18px;
+	background-image: 
+	repeating-linear-gradient(
+		-45deg,
+		#DDD,
+		#DDD 11px,
+		#FFF 10px,
+		#FFF 20px
+	);
+	background-size: 28px 28px;
+	animation: move 1s linear infinite;
+}
+.component-loading .loading-text {
+	font-size: 13px;
+	color: #777;
+	line-height: 20px;
+	margin-top: 5px;
+}
+@keyframes move {
+	0% { background-position: 0 0; }
+	100% { background-position: 28px 0; }
+}
+/* Loading indicator styles: end */
+
+
+
+
+
+
+
+
+
+.full-height-wrapper {
+	display: flex;
+	justify-content: center;
+	height: calc( 100vh - 64px );
+}
+
+
+
+
+h1 {
+	font-size: 26px;
+	line-height: 28px;
+	font-weight: normal;
+}
+
+
+h2 {
+	font-size: 20px;
+	line-height: 23px;
+	font-weight: normal;
+}
+

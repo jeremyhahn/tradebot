@@ -8,8 +8,8 @@ import (
 
 func NewPriceStream(period int) *PriceStream {
 	return &PriceStream{
-		period:          period,
-		start:           common.NewCandlestickPeriod(period),
+		Period:          period,
+		Start:           common.NewCandlestickPeriod(period),
 		buffer:          make([]float64, 0),
 		priceListeners:  make([]common.PriceListener, 0),
 		periodListeners: make([]common.PeriodListener, 0)}
@@ -17,13 +17,13 @@ func NewPriceStream(period int) *PriceStream {
 
 func (ps *PriceStream) Add(price float64) {
 	ps.buffer = append(ps.buffer, price)
-	ps.volume = ps.volume + 1
+	ps.Volume = ps.Volume + 1
 	ps.notifyPriceListeners(price)
-	if time.Since(ps.start).Seconds() >= float64(ps.period) {
-		candlestick := common.CreateCandlestick(ps.period, ps.buffer)
+	if time.Since(ps.Start).Seconds() >= float64(ps.Period) {
+		candlestick := common.CreateCandlestick(ps.Period, ps.buffer)
 		ps.notifyPeriodListeners(candlestick)
-		ps.volume = 0
-		ps.start = common.NewCandlestickPeriod(ps.period)
+		ps.Volume = 0
+		ps.Start = common.NewCandlestickPeriod(ps.Period)
 		ps.buffer = ps.buffer[:0]
 	}
 }

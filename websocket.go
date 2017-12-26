@@ -10,11 +10,13 @@ import (
 )
 
 type WebsocketServer struct {
-	clients   map[*websocket.Conn]string
-	broadcast chan *common.ChartData
-	logger    *logging.Logger
-	port      int
-	charts    []*Chart
+	chartClients     map[*websocket.Conn]string
+	portfolioClients map[*websocket.Conn]string
+	broadcast        chan *common.ChartData
+	logger           *logging.Logger
+	port             int
+	charts           []*Chart
+	running          bool
 	common.PriceListener
 }
 
@@ -23,36 +25,46 @@ type WebsocketRequest struct {
 }
 
 func NewWebsocketServer(port int, charts []*Chart, logger *logging.Logger) *WebsocketServer {
-	ws := &WebsocketServer{
-		clients:   make(map[*websocket.Conn]string),
-		broadcast: make(chan *common.ChartData),
-		logger:    logger,
-		port:      port,
-		charts:    charts}
-
-	return ws
+	return &WebsocketServer{
+		chartClients:     make(map[*websocket.Conn]string),
+		portfolioClients: make(map[*websocket.Conn]string),
+		broadcast:        make(chan *common.ChartData),
+		logger:           logger,
+		port:             port,
+		charts:           charts}
 }
 
 func (ws *WebsocketServer) Start() {
 
-	ws.logger.Debug("[WebSocket] Starting file server on port: ", ws.port)
+	ws.logger.Debug("[WebSocket] Starting file service on port: ", ws.port)
 	http.Handle("/", http.FileServer(http.Dir("frontend/public")))
 
-	http.HandleFunc("/chart", ws.onConnect)
-	ws.logger.Debug("[WebSocket] Starting server on port: ", ws.port)
+	ws.logger.Debug("[WebSocket] Starting websocket service on port: ", ws.port)
 
-	go ws.run()
+	http.HandleFunc("/chart", ws.onChartConnect)
+	http.HandleFunc("/portfolio", ws.onPortfolioConnect)
 
 	err := http.ListenAndServe(fmt.Sprintf(":%d", ws.port), nil)
 	if err != nil {
 		ws.logger.Error("[WebSocket] Unable to start server: ", err)
 	}
+
+	ws.running = true
+
+	go ws.run()
 }
 
-func (ws *WebsocketServer) onConnect(w http.ResponseWriter, r *http.Request) {
+func (ws *WebsocketServer) Stop() {
+	ws.running = false
+}
+
+func (ws *WebsocketServer) onChartConnect(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
-		WriteBufferSize: 1024}
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		}}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		ws.logger.Error(err)
@@ -61,28 +73,56 @@ func (ws *WebsocketServer) onConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
-	ws.logger.Debug("[WebSocket] Accepting connection from: ", conn.RemoteAddr())
+	ws.logger.Debug("[WebSocket.onChartConnect] Accepting connection from: ", conn.RemoteAddr())
 	for {
 		var msg WebsocketRequest
 		err := conn.ReadJSON(&msg)
 		if err != nil {
-			ws.logger.Errorf("[WebSocket] Websocket Read Error: %v", err)
-			delete(ws.clients, conn)
+			ws.logger.Errorf("[WebSocket.onChartConnect] Websocket Read Error: %v", err)
+			delete(ws.chartClients, conn)
 			break
 		}
-		ws.clients[conn] = msg.Currency
+		ws.chartClients[conn] = msg.Currency
+	}
+}
+
+func (ws *WebsocketServer) onPortfolioConnect(w http.ResponseWriter, r *http.Request) {
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		}}
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		ws.logger.Error(err)
+	}
+	if conn == nil {
+		return
+	}
+	defer conn.Close()
+	ws.logger.Debug("[WebSocket.OnPriceConnect] Accepting connection from: ", conn.RemoteAddr())
+	for {
+		var msg WebsocketRequest
+		err := conn.ReadJSON(&msg)
+		if err != nil {
+			ws.logger.Errorf("[WebSocket.OnPriceConnect] Websocket Read Error: %v", err)
+			delete(ws.portfolioClients, conn)
+			break
+		}
+		ws.portfolioClients[conn] = msg.Currency
 	}
 }
 
 func (ws *WebsocketServer) run() {
-	for {
+	for ws.running {
 		select {
 		case msg := <-ws.broadcast:
 			logMsg := fmt.Sprintf("[Candlestick] Close: %.8f", msg.Price)
 			ws.logger.Debug(logMsg)
 			ws.logger.Debug("[WebSocket] Broadcasting: ", msg)
-			for client := range ws.clients {
-				if ws.clients[client] == msg.Currency {
+			for client := range ws.chartClients {
+				if ws.chartClients[client] == msg.Currency {
 					err := client.WriteJSON(msg)
 					if err != nil {
 						ws.logger.Error(err)
@@ -91,12 +131,23 @@ func (ws *WebsocketServer) run() {
 			}
 		}
 	}
+	ws.logger.Debug("[WebSocket] Shutting down")
 }
 
-func (ws *WebsocketServer) Broadcast(message *common.ChartData) {
+func (ws *WebsocketServer) BroadcastChart(message *common.ChartData) {
 	for _, chart := range ws.charts {
 		if chart.GetChartData().Currency == message.Currency {
 			ws.broadcast <- chart.GetChartData()
+		}
+	}
+}
+
+func (ws *WebsocketServer) BroadcastPortfolio(exchangeList []common.CoinExchange) {
+	fmt.Printf("[WebsocketServer.BroadcastPortfolio] ExchangeList: %+v\n", exchangeList)
+	for client := range ws.portfolioClients {
+		err := client.WriteJSON(exchangeList)
+		if err != nil {
+			ws.logger.Error(err)
 		}
 	}
 }

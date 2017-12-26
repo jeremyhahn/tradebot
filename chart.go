@@ -17,12 +17,13 @@ type Chart struct {
 	logger      *logging.Logger
 	priceStream *PriceStream
 	data        *common.ChartData
+	period      int
 }
 
 type PriceStream struct {
-	period          int       // total number of seconds per candlestick
-	start           time.Time // when the first price was added to the buffer
-	volume          int
+	Period          int       // total number of seconds per candlestick
+	Start           time.Time // when the first price was added to the buffer
+	Volume          int
 	buffer          []float64
 	priceListeners  []common.PriceListener
 	periodListeners []common.PeriodListener
@@ -32,12 +33,14 @@ func NewChartMock() *Chart {
 	return &Chart{}
 }
 
-func NewChart(db *gorm.DB, exchange common.Exchange, logger *logging.Logger) *Chart {
+func NewChart(db *gorm.DB, exchange common.Exchange, logger *logging.Logger, priceStream *PriceStream) *Chart {
 	return &Chart{
-		exchange: exchange,
-		db:       db,
-		logger:   logger,
-		data:     &common.ChartData{}}
+		exchange:    exchange,
+		db:          db,
+		logger:      logger,
+		data:        &common.ChartData{},
+		period:      priceStream.Period,
+		priceStream: priceStream}
 }
 
 func (chart *Chart) GetChartData() *common.ChartData {
@@ -48,8 +51,6 @@ func (chart *Chart) Stream(ws *WebsocketServer) {
 
 	chart.logger.Infof("Streaming %s chart data", chart.data.Currency)
 
-	period := 900 // seconds; 15 minutes
-
 	t := time.Now()
 	year, month, day := t.Date()
 	today := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
@@ -58,12 +59,12 @@ func (chart *Chart) Stream(ws *WebsocketServer) {
 
 	chart.logger.Debugf("Getting trade history from %s - %s ", today, now)
 
-	candlesticks := chart.exchange.GetTradeHistory(today, now, period)
+	candlesticks := chart.exchange.GetTradeHistory(today, now, chart.period)
 	if len(candlesticks) < 20 {
 		chart.logger.Fatal("Unable to load initial data set from exchange. Total records: ", len(candlesticks))
 	}
 
-	chart.priceStream = NewPriceStream(period)
+	//chart.priceStream = NewPriceStream(chart.period)
 
 	// RSI
 	rsiSma := indicators.NewSimpleMovingAverage(candlesticks[:14])
@@ -88,14 +89,14 @@ func (chart *Chart) Stream(ws *WebsocketServer) {
 		macd.OnPeriodChange(&c)
 	}
 
-	priceChan := make(chan common.PriceChannel)
+	priceChan := make(chan common.PriceChange)
 	go chart.exchange.SubscribeToLiveFeed(priceChan)
 
 	for {
 		priceChannel := <-priceChan
 		satoshis := priceChannel.Satoshis
 
-		chart.priceStream.Add(chart.data.Satoshis)
+		chart.priceStream.Add(priceChannel.Price)
 
 		bollinger.Calculate(satoshis)
 		macdValue, macdSignal, macdHistogram := macd.Calculate(satoshis)
@@ -115,6 +116,6 @@ func (chart *Chart) Stream(ws *WebsocketServer) {
 		chart.data.BollingerMiddle = bollinger.GetMiddle()
 		chart.data.BollingerLower = bollinger.GetLower()
 
-		ws.Broadcast(chart.data)
+		//ws.Broadcast(chart.data)
 	}
 }

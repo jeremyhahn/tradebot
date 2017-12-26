@@ -4,10 +4,27 @@ import (
 	"time"
 )
 
-type PriceChannel struct {
-	Currency string
-	Satoshis float64
-	Price    float64
+type PriceChange struct {
+	Currency string  `json:"currency"`
+	Satoshis float64 `json:"satoshis"`
+	Price    float64 `json:"price"`
+}
+
+type CoinExchange struct {
+	Name  string  `json:"name"`
+	URL   string  `json:"url"`
+	Total float64 `json:"total"`
+	Coins []Coin  `json:"coins"`
+}
+
+type Coin struct {
+	Currency  string  `json:"currency"`
+	Balance   float64 `json:"balance"`
+	Available float64 `json:"available"`
+	Pending   float64 `json:"pending"`
+	Price     float64 `json:"price"`
+	Address   string  `json:"address"`
+	Total     float64 `json:"total"`
 }
 
 type ChartData struct {
@@ -48,26 +65,16 @@ type PeriodListener interface {
 }
 
 type Exchange interface {
-	SubscribeToLiveFeed(price chan PriceChannel)
+	SubscribeToLiveFeed(price chan PriceChange)
+	GetPriceUSD() float64
 	GetPrice() float64
 	GetSatoshis() float64
 	GetTradeHistory(start, end time.Time, granularity int) []Candlestick
 	GetCurrency() string
+	GetBalances() []Coin
 }
 
 type Indicator interface {
 	Calculate(price float64)
 	PeriodListener
-}
-
-type Account struct {
-	Currency float64
-	Balance  float64
-}
-
-type Trade struct {
-	ID        int `gorm:"primary_key"`
-	Timestamp int32
-	Price     float64
-	Size      float64
 }
