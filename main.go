@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -15,31 +17,65 @@ const (
 	APPVERSION = "0.0.1"
 )
 
-func getExchangeList(exchanges *CoinExchanges, coinbase *Coinbase, bittrex *Bittrex) []common.CoinExchange {
+func getExchangeList(exchanges *CoinExchanges, coinbase *Coinbase, bittrex *Bittrex, binance *Binance) []common.CoinExchange {
 	var exchangeList []common.CoinExchange
 	for _, ex := range exchanges.Exchanges {
-		if ex.Name == "coinbase" {
+		if ex.Name == "gdax" {
 			total := 0.0
+			satoshis := 0.0
 			balances := coinbase.GetBalances()
 			for _, c := range balances {
-				total += c.Total
+				if c.Currency == "USD" {
+					total += c.Total
+				} else {
+					satoshis += c.Balance
+					total += c.Total
+				}
 			}
+			f, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
+			t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
 			exchangeList = append(exchangeList, common.CoinExchange{
-				Name:  ex.Name,
-				URL:   ex.URL,
-				Total: total,
-				Coins: balances})
+				Name:     ex.Name,
+				URL:      ex.URL,
+				Total:    t,
+				Satoshis: f,
+				Coins:    balances})
 		} else if ex.Name == "bittrex" {
 			total := 0.0
+			satoshis := 0.0
 			balances := bittrex.GetBalances()
 			for _, c := range balances {
+				satoshis += c.Price * c.Balance
 				total += c.Total
 			}
+			f, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
+			t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
 			exchangeList = append(exchangeList, common.CoinExchange{
-				Name:  ex.Name,
-				URL:   ex.URL,
-				Total: total,
-				Coins: balances})
+				Name:     ex.Name,
+				URL:      ex.URL,
+				Total:    t,
+				Satoshis: f,
+				Coins:    balances})
+		} else if ex.Name == "binance" {
+			total := 0.0
+			satoshis := 0.0
+			balances := binance.GetBalances()
+			for _, c := range balances {
+				if c.Currency == "BTC" {
+					total += c.Total
+				} else {
+					satoshis += c.Price * c.Balance
+					total += c.Total
+				}
+			}
+			f, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
+			t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
+			exchangeList = append(exchangeList, common.CoinExchange{
+				Name:     ex.Name,
+				URL:      ex.URL,
+				Total:    t,
+				Satoshis: f,
+				Coins:    balances})
 		}
 	}
 	return exchangeList
@@ -64,8 +100,9 @@ func main() {
 
 	exchanges := NewCoinExchanges(sqlite, logger)
 
-	coinbase := NewCoinbase(exchanges.Get("coinbase"), logger, priceStream)
+	coinbase := NewCoinbase(exchanges.Get("gdax"), logger, priceStream)
 	bittrex := NewBittrex(exchanges.Get("bittrex"), logger, priceStream)
+	binance := NewBinance(exchanges.Get("binance"), logger, priceStream)
 
 	//btcChart := NewChart(sqlite, coinbase, logger, priceStream)
 	charts := make([]*Chart, 0)
@@ -74,8 +111,7 @@ func main() {
 	go ws.Start()
 
 	for {
-		logger.Info("Looping...")
-		exchangeList := getExchangeList(exchanges, coinbase, bittrex)
+		exchangeList := getExchangeList(exchanges, coinbase, bittrex, binance)
 		ws.BroadcastPortfolio(exchangeList)
 		time.Sleep(5 * time.Second)
 	}

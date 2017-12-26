@@ -11,20 +11,11 @@ type PriceChange struct {
 }
 
 type CoinExchange struct {
-	Name  string  `json:"name"`
-	URL   string  `json:"url"`
-	Total float64 `json:"total"`
-	Coins []Coin  `json:"coins"`
-}
-
-type Coin struct {
-	Currency  string  `json:"currency"`
-	Balance   float64 `json:"balance"`
-	Available float64 `json:"available"`
-	Pending   float64 `json:"pending"`
-	Price     float64 `json:"price"`
-	Address   string  `json:"address"`
-	Total     float64 `json:"total"`
+	Name     string  `json:"name"`
+	URL      string  `json:"url"`
+	Total    float64 `json:"total"`
+	Satoshis float64 `json:"satoshis"`
+	Coins    []Coin  `json:"coins"`
 }
 
 type ChartData struct {
