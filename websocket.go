@@ -37,7 +37,7 @@ func NewWebsocketServer(port int, charts []*Chart, logger *logging.Logger) *Webs
 func (ws *WebsocketServer) Start() {
 
 	ws.logger.Debug("[WebSocket] Starting file service on port: ", ws.port)
-	http.Handle("/", http.FileServer(http.Dir("frontend/public")))
+	http.Handle("/", http.FileServer(http.Dir("webui/public")))
 
 	ws.logger.Debug("[WebSocket] Starting websocket service on port: ", ws.port)
 
@@ -143,7 +143,7 @@ func (ws *WebsocketServer) BroadcastChart(message *common.ChartData) {
 }
 
 func (ws *WebsocketServer) BroadcastPortfolio(exchangeList []common.CoinExchange) {
-	fmt.Printf("[WebsocketServer.BroadcastPortfolio] ExchangeList: %+v\n", exchangeList)
+	ws.logger.Debugf("[WebsocketServer.BroadcastPortfolio] ExchangeList: %+v\n", exchangeList)
 	for client := range ws.portfolioClients {
 		err := client.WriteJSON(exchangeList)
 		if err != nil {
