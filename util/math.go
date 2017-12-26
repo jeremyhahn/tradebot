@@ -44,3 +44,8 @@ func FloatEquals(a, b float64) bool {
 	}
 	return false
 }
+
+func TruncateFloat(num float64, precision int) float64 {
+	output := math.Pow(10, float64(precision))
+	return float64(Round(num*output)) / output
+}

@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/util"
 	logging "github.com/op/go-logging"
 	bittrex "github.com/toorop/go-bittrex"
 )
@@ -109,16 +109,20 @@ func (b *Bittrex) GetBalances() []common.Coin {
 		if balance <= 0 {
 			continue
 		}
+		total := balance * (price * b.getBitcoinPrice())
+		t, err := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
+		if err != nil {
+			b.logger.Error(err)
+		}
 		coins = append(coins, common.Coin{
 			Address:   bal.CryptoAddress,
 			Available: avail,
 			Balance:   balance,
 			Currency:  bal.Currency,
 			Pending:   pending,
-			Price:     price * b.getBitcoinPrice(), // BTC satoshis, not actual USD price
-			Total:     util.RoundFloat(balance*(price*b.getBitcoinPrice()), 2)})
+			Price:     price, // BTC satoshis, not actual USD price
+			Total:     t})
 	}
-	b.getBitcoinPrice()
 	return coins
 }
 

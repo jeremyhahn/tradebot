@@ -10,7 +10,6 @@ import IconButton from 'material-ui/IconButton';
 import MoreVertIcon from 'material-ui/svg-icons/navigation/more-vert';
 import Avatar from 'material-ui/Avatar';
 
-
 const Coin = (props) => {
 
 	const { data, history } = props;

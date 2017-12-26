@@ -38,13 +38,20 @@
     "react-dom": "^15.6.2",
     "react-router": "^4.1.1",
     "react-router-dom": "^4.1.1",
+    "react-bootstrap": "^0.31.5",
     "react-tap-event-plugin": "^2.0.1",
     "rimraf": "^2.6.2",
     "webpack": "^3.10.0",
     "webpack-dev-server": "^2.9.7",
     "webpack-livereload-plugin": "^1.0.0",
-    "react-websocket": "^2.0.0",
-    "react-collapsible": "^2.0.3"
+    "d3-dsv": "^1.0.8",
+    "d3-format": "^1.2.1",
+    "d3-scale": "^1.0.7",
+    "d3-time-format": "^2.1.1",
+    "prop-types": "^15.6.0",
+    "react-stockcharts": "^0.7.0-beta.20"
   },
-  "dependencies": {}
+  "dependencies": {
+    "react-number-format": "^3.1.2"
+  }
 }

@@ -19,13 +19,11 @@ class Header extends React.Component {
 		this.handleTitleTap = this.handleTitleTap.bind(this);
 	}
 
-	// when the drawer is toggled.
 	handleDrawerToggle() {
 		this.setState({ drawer: ! this.state.drawer });
 	}
 
-	// this will handle closing the drawer from the drawer component itself.
-	handleDrawerChange( status ) {
+	handleDrawerChange(status) {
 		this.setState({ drawer: status });
 	}
 
@@ -33,7 +31,7 @@ class Header extends React.Component {
 		this.props.history.push('/');
 	}
 
-	// render the component
+
 	render() {
 
 		return (

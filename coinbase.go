@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	ws "github.com/gorilla/websocket"
 	gdax "github.com/preichenberger/go-gdax"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/util"
 	"github.com/op/go-logging"
 )
 
@@ -75,13 +75,18 @@ func (cb *Coinbase) GetBalances() []common.Coin {
 		if a.Balance <= 0 {
 			continue
 		}
+		total := a.Balance * ticker.Price
+		t, err := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
+		if err != nil {
+			cb.logger.Error(err)
+		}
 		coins = append(coins, common.Coin{
 			Currency:  a.Currency,
 			Balance:   a.Balance,
 			Available: a.Available,
 			Pending:   a.Hold,
 			Price:     ticker.Price,
-			Total:     util.RoundFloat(a.Balance*ticker.Price, 2)})
+			Total:     t})
 	}
 	return coins
 }

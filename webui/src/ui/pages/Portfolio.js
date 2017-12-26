@@ -10,8 +10,16 @@ import ContentAdd from 'material-ui/svg-icons/content/add';
 import Avatar from 'material-ui/Avatar'
 import EmptyExchangeList from 'app/components/EmptyExchangeList';
 import ExchangeModal from 'app/components/modal/Exchange';
-import DB from 'app/utils/DB';
 import Loading from 'app/components/Loading';
+
+const netWorthDiv = {
+	float: 'right',
+	marginRight: '35px'
+}
+
+const netWorthHeader = {
+	fontWeight: 'bold'
+}
 
 class Portfolio extends React.Component {
 
@@ -25,37 +33,34 @@ class Portfolio extends React.Component {
 		this.handleModalOpen = this.handleModalOpen.bind(this);
 		this.handleModalClose = this.handleModalClose.bind(this);
 		this.handleModalUpdate = this.handleModalUpdate.bind(this);
-//		this.loadExchanges = this.loadExchanges.bind(this);
+		this.loadExchanges = this.loadExchanges.bind(this);
 	}
 
 	componentDidMount() {
 		this.loadExchanges();
 	}
 
+	componentWillUnmount() {
+	 this.ws.close();
+  }
+
 	loadExchanges() {
-		/*
-		DB.findAllSubReddits()
-		.then( (res) => {
-			if ( res ) {
-				this.setState({ loading: false, exchanges: res });
-				console.log(res)
-			} else {
-				this.setState({ loading: false });
-			}
-		});
-		*/
-		var ws = new WebSocket("ws://localhost:8080/portfolio");
-		ws.onopen = function() {
+		if(this.ws == null) {
+		  this.ws = new WebSocket("ws://localhost:8080/portfolio");
+	  }
+		var ws = this.ws
+		this.ws.onopen = function() {
 			 ws.send(JSON.stringify({currency: "BTC-USD"}));
 		};
-		ws.onmessage = evt => {
+		this.ws.onmessage = evt => {
 			 var exchangeList = JSON.parse(evt.data);
-			 console.log(exchangeList);
+			 //console.log(exchangeList);
 			 this.setState({
 				 loading: false,
 				 exchanges: exchangeList
 			 })
 		};
+
 	}
 
 	handleModalOpen() {
@@ -92,25 +97,38 @@ class Portfolio extends React.Component {
 		}
 
 		return (
-			<Paper style={{ padding: 20, }} zDepth={1} rounded={false}>
 
-        { this.state.exchanges.map( exchange =>
-					<List key={exchange.name}>
-					  <Subheader style={{ textTransform: 'uppercase' }}>{exchange.name + " - $" + exchange.total}</Subheader>
-					  { exchange.coins.map( coin => <Coin key={ coin.currency } data={ coin } /> ) }
-				  </List>
-				)}
+			<div>
 
-				<FloatingActionButton style={{ position: 'fixed', bottom: 50, right: 50 }} onTouchTap={ this.handleModalOpen }>
-					<ContentAdd />
-				</FloatingActionButton>
+				<div style={netWorthDiv}>
+			    <Subheader style={netWorthHeader}>Net worth: { this.state.exchanges.sum("total").formatMoney() }</Subheader>
+			  </div>
 
-				<ExchangeModal
-					open={ this.state.modal }
-					close={ this.handleModalClose }
-					update={ this.handleModalUpdate } />
 
-			</Paper>
+				<Paper style={{ padding: 20, }} zDepth={1} rounded={false}>
+
+	        { this.state.exchanges.map( exchange =>
+
+						<List key={exchange.name}>
+						  <Subheader style={{ textTransform: 'uppercase' }}>{
+								exchange.name + " - " + exchange.satoshis + " BTC - " + exchange.total.formatMoney() }
+							</Subheader>
+						  { exchange.coins.map( coin => <Coin key={ coin.currency } data={ coin } /> ) }
+					  </List>
+					)}
+
+					<FloatingActionButton style={{ position: 'fixed', bottom: 50, right: 50 }} onTouchTap={ this.handleModalOpen }>
+						<ContentAdd />
+					</FloatingActionButton>
+
+					<ExchangeModal
+						open={ this.state.modal }
+						close={ this.handleModalClose }
+						update={ this.handleModalUpdate } />
+
+				</Paper>
+
+			</div>
 		)
 	}
 

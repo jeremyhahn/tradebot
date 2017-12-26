@@ -4,8 +4,6 @@ import React from 'react';
 import Dialog from 'material-ui/Dialog';
 import FlatButton from 'material-ui/FlatButton';
 import TextField from 'material-ui/TextField';
-
-import DB from 'app/utils/DB';
 import Loading from 'app/components/Loading';
 
 
@@ -23,7 +21,6 @@ class ExchangeModal extends React.Component {
 		this.updateField = this.updateField.bind(this);
 		this.submit = this.submit.bind(this);
 	}
-
 
 	updateField( field, value ) {
 		if ( field != 'url' ) {
@@ -51,7 +48,6 @@ class ExchangeModal extends React.Component {
 
 	}
 
-
 	render() {
 
 		const actions = [
@@ -68,17 +64,14 @@ class ExchangeModal extends React.Component {
 			/>,
 		];
 
-
-
 		return (
 			<Dialog
 				title="Add Exchange"
 				actions={ actions }
 				modal={ true }
-				open={ this.props.open }
-			>
+				open={ this.props.open }>
 
-				<p>Please enter the details below.</p>
+				<p>Please enter your exchange details below.</p>
 
 				{ this.state.processing &&
 					<div>
@@ -90,20 +83,20 @@ class ExchangeModal extends React.Component {
 				<div>
 					<TextField
 						floatingLabelText="API Key"
-						hintText="JavaScript"
+						hintText="Key"
 						fullWidth={true}
 						defaultValue={ this.state.title }
 						onChange={ (event,newValue) => { this.updateField('title', newValue) } }
 						autoFocus={true} />
 					<TextField
 						floatingLabelText="API Secret"
-						hintText="JavaScript"
+						hintText="Secret"
 						fullWidth={true}
 						defaultValue={ this.state.description }
 						onChange={ (event,newValue) => { this.updateField('description', newValue) } } />
 					<TextField
-						floatingLabelText="URL"
-						hintText="javascript"
+						floatingLabelText="Passphrase"
+						hintText="Passphrase"
 						fullWidth={true}
 						onChange={ (event, newValue) => { this.updateField('url', newValue) } }
 						errorText={ this.state.invalid_url && 'Please enter a valid URL.' }
