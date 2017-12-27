@@ -3,7 +3,6 @@
 import React from 'react';
 import Paper from 'material-ui/Paper';
 import muiThemeable from 'material-ui/styles/muiThemeable';
-
 import RaisedButton from 'material-ui/RaisedButton';
 
 const container_style = {

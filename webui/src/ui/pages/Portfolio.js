@@ -11,6 +11,8 @@ import Avatar from 'material-ui/Avatar'
 import EmptyExchangeList from 'app/components/EmptyExchangeList';
 import ExchangeModal from 'app/components/modal/Exchange';
 import Loading from 'app/components/Loading';
+import AutoTradeModal from 'app/components/modal/AutoTrade'
+import BuySellModal from 'app/components/modal/BuySell'
 
 const netWorthDiv = {
 	float: 'right',
@@ -26,13 +28,21 @@ class Portfolio extends React.Component {
 	constructor(props) {
 		super(props);
 		this.state = {
-			modal: false,
+			addExchangeModal: false,
+			autoTradeModal: false,
+			sellModal: false,
 			loading: true,
-			exchanges: [],
+			exchanges: []
 		};
-		this.handleModalOpen = this.handleModalOpen.bind(this);
-		this.handleModalClose = this.handleModalClose.bind(this);
-		this.handleModalUpdate = this.handleModalUpdate.bind(this);
+		this.handleAddExchangeModalOpen = this.handleAddExchangeModalOpen.bind(this);
+		this.handleAddExchangeModalClose = this.handleAddExchangeModalClose.bind(this);
+		this.handleAddExchangeModalUpdate = this.handleAddExchangeModalUpdate.bind(this);
+		this.handleAutoTradeModalOpen = this.handleAutoTradeModalOpen.bind(this);
+		this.handleAutoTradeModalClose = this.handleAutoTradeModalClose.bind(this);
+		this.handleAutoTradeModalUpdate = this.handleAutoTradeModalUpdate.bind(this);
+		this.handleBuySellModalOpen = this.handleBuySellModalOpen.bind(this);
+		this.handleBuySellModalClose = this.handleBuySellModalClose.bind(this);
+		this.handleBuySellModalUpdate = this.handleBuySellModalUpdate.bind(this);
 		this.loadExchanges = this.loadExchanges.bind(this);
 	}
 
@@ -63,16 +73,36 @@ class Portfolio extends React.Component {
 
 	}
 
-	handleModalOpen() {
-		this.setState({ modal: true });
+	handleAddExchangeModalOpen() {
+		this.setState({ addExchangeModal: true });
+	}
+	handleAddExchangeModalClose() {
+		this.setState({ addExchangeModal: false });
+	}
+	handleAddExchangeModalUpdate() {
+		console.log("handleAddExchangeModalUpdate() fired")
 	}
 
-	handleModalClose() {
-		this.setState({ modal: false });
+	handleAutoTradeModalOpen(e) {
+		e.preventDefault();
+		this.setState({ autoTradeModal: true });
+	}
+	handleAutoTradeModalClose() {
+		this.setState({ autoTradeModal: false });
+	}
+	handleAutoTradeModalUpdate() {
+		console.log("handleAutoTradeModalUpdate() fired")
 	}
 
-	handleModalUpdate() {
-		this.loadExchanges();
+	handleBuySellModalOpen(e) {
+		e.preventDefault()
+		this.setState({ sellModal: true });
+	}
+	handleBuySellModalClose() {
+		this.setState({ sellModal: false });
+	}
+	handleBuySellModalUpdate() {
+		console.log("handleBuySellModalModalUpdate() fired")
 	}
 
 	render() {
@@ -85,12 +115,12 @@ class Portfolio extends React.Component {
 			return (
 				<div>
 
-					<EmptyExchangeList openModal={ this.handleModalOpen } />
+					<EmptyExchangeList openModal={ this.handleAddExchangeModalOpen } />
 
 					<ExchangeModal
-						open={ this.state.modal }
-						close={ this.handleModalClose }
-						update={ this.handleModalUpdate } />
+						open={ this.state.addExchangeModal }
+						close={ this.handleAddExchangeModalClose }
+						update={ this.handleAddExchangeModalUpdate } />
 
 				</div>
 			)
@@ -104,7 +134,6 @@ class Portfolio extends React.Component {
 			    <Subheader style={netWorthHeader}>Net worth: { this.state.exchanges.sum("total").formatMoney() }</Subheader>
 			  </div>
 
-
 				<Paper style={{ padding: 20, }} zDepth={1} rounded={false}>
 
 	        { this.state.exchanges.map( exchange =>
@@ -113,18 +142,28 @@ class Portfolio extends React.Component {
 						  <Subheader style={{ textTransform: 'uppercase' }}>{
 								exchange.name + " - " + exchange.satoshis + " BTC - " + exchange.total.formatMoney() }
 							</Subheader>
-						  { exchange.coins.map( coin => <Coin key={ coin.currency } data={ coin } /> ) }
+						  { exchange.coins.map( coin =>
+								  <Coin buySellHandler={this.handleBuySellModalOpen}
+									      autoTradeHandler={this.handleAutoTradeModalOpen}
+												key={ coin.currency } data={ coin } /> )
+							}
 					  </List>
 					)}
 
-					<FloatingActionButton style={{ position: 'fixed', bottom: 50, right: 50 }} onTouchTap={ this.handleModalOpen }>
-						<ContentAdd />
-					</FloatingActionButton>
-
 					<ExchangeModal
-						open={ this.state.modal }
-						close={ this.handleModalClose }
-						update={ this.handleModalUpdate } />
+						open={ this.state.addExchangeModal }
+						close={ this.handleAddExchangeModalClose }
+						update={ this.handleAddExchangeModalUpdate } />
+
+					<AutoTradeModal
+						open={ this.state.autoTradeModal }
+						close={ this.handleAutoTradeModalClose }
+						update={ this.handleAutoTradeModalUpdate } />
+
+					<BuySellModal
+						open={ this.state.sellModal }
+						close={ this.handleBuySellModalClose }
+						update={ this.handleBuySellModalUpdate } />
 
 				</Paper>
 

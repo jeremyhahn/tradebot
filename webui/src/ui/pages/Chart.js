@@ -7,19 +7,29 @@ import Paper from 'material-ui/Paper';
 
 import { TypeChooser } from "react-stockcharts/lib/helper";
 
-class ChartComponent extends React.Component {
+class Chart extends React.Component {
+
+  constructor(props) {
+		super(props);
+		this.setState({
+			data: []
+		})
+	}
+
 	componentDidMount() {
-    /*
 		getData().then(data => {
 			this.setState({ data })
-		})*/
+		})
 	}
+
 	render() {
-		if (this.state == null) {
-			return <div>Loading...</div>
-		}
 		return (
-			<ChartComponent />
+			<Paper style={{ padding: 20, }} zDepth={1} rounded={false}>
+				<h2>Chart</h2>
+				<TypeChooser>
+				{type => <TradeChart type={type} data={this.state.data} />}
+				</TypeChooser>
+			</Paper>
 		)
 	}
 }

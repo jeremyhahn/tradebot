@@ -70,12 +70,6 @@ const WebpackConfig = {
 	},
 
 	plugins: [
-		/*
-		new LiveReloadPlugin({
-			hostname: 'localhost',
-			port: 8088,
-			appendScriptTag: true
-		}),*/
 		new ExtractTextPlugin({
 			filename: 'styles.css',
 			allChunks: true

@@ -6,7 +6,6 @@ import FlatButton from 'material-ui/FlatButton';
 import TextField from 'material-ui/TextField';
 import Loading from 'app/components/Loading';
 
-
 class ExchangeModal extends React.Component {
 
 	constructor(props) {
