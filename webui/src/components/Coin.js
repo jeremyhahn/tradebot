@@ -19,22 +19,21 @@ const Coin = (props) => {
 	}
 
 	return (
-    <ListItem key={data.currency}
-				primaryText={ data.currency }
-				secondaryText={data.available  + " ($" + data.total +")" }
-				onTouchTap={ handleTap }
-				leftAvatar={<Avatar src={"images/crypto/128/" + data.currency.toLowerCase() + ".png"} />}
-				rightIcon={<IconMenu
-			      iconButtonElement={<IconButton><MoreVertIcon /></IconButton>}
-			      anchorOrigin={{horizontal: 'left', vertical: 'top'}}
-			      targetOrigin={{horizontal: 'left', vertical: 'top'}}>
-							<MenuItem primaryText="Auto Trade" />
-							<MenuItem primaryText="Buy" />
-				      <MenuItem primaryText="Sell" />
-				      <MenuItem primaryText="View Chart" />
-							<MenuItem primaryText="View Details" />
-		    	</IconMenu>}/>
+	    <ListItem key={data.currency}
+					primaryText={ data.currency }
+					secondaryText={data.available  + " ($" + data.total +")" }
+					onTouchTap={ handleTap }
+					leftAvatar={<Avatar src={"images/crypto/128/" + data.currency.toLowerCase() + ".png"} />}
+					rightIcon={<IconMenu
+				      iconButtonElement={<IconButton><MoreVertIcon /></IconButton>}
+				      anchorOrigin={{horizontal: 'left', vertical: 'top'}}
+				      targetOrigin={{horizontal: 'left', vertical: 'top'}}>
+								<MenuItem onClick={props.autoTradeHandler} primaryText="Auto Trade" disabled={data.currency == 'USD'} />
+					      <MenuItem onClick={props.buySellHandler} primaryText="Buy / Sell" />
+					      <MenuItem disabled={true} primaryText="View Chart" />
+								<MenuItem primaryText="View Details" />
+			    	</IconMenu>}/>
 	)
 }
 
-export default withRouter( Coin );
+export default withRouter(Coin);

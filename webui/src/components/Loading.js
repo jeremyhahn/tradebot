@@ -3,7 +3,6 @@
 import React from 'react';
 import RefreshIndicator from 'material-ui/RefreshIndicator';
 
-
 const Loading = (props) => {
 
 	const style = {
@@ -19,7 +18,6 @@ const Loading = (props) => {
 			marginTop: 10
 		}
 	};
-
 
 	return (
 		<div style={ style.container }>
