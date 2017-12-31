@@ -1,17 +1,17 @@
-package main
+package exchange
 
 import (
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )
 
-type ICoinExchanges interface {
+type IExchangeDAO interface {
 	Get(key string) string
 }
 
-type CoinExchanges struct {
+type ExchangeDAO struct {
 	Exchanges []CoinExchange
-	ICoinExchanges
+	IExchangeDAO
 }
 
 type CoinExchange struct {
@@ -22,18 +22,18 @@ type CoinExchange struct {
 	Passphrase string `gorm:"not null" sql:"type:varchar(255)"`
 }
 
-func NewCoinExchanges(db *gorm.DB, logger *logging.Logger) *CoinExchanges {
+func NewExchangeDAO(db *gorm.DB, logger *logging.Logger) *ExchangeDAO {
 	var exchanges []CoinExchange
 	db.AutoMigrate(&CoinExchange{})
 	if err := db.Find(&exchanges).Error; err != nil {
 		logger.Error(err)
 	}
-	return &CoinExchanges{Exchanges: exchanges}
+	return &ExchangeDAO{Exchanges: exchanges}
 }
 
-func (ce *CoinExchanges) Get(name string) *CoinExchange {
+func (el *ExchangeDAO) Get(name string) *CoinExchange {
 	var exchange CoinExchange
-	for _, ex := range ce.Exchanges {
+	for _, ex := range el.Exchanges {
 		if ex.Name == name {
 			return &ex
 		}

@@ -64,7 +64,13 @@ class Portfolio extends React.Component {
 		};
 		this.ws.onmessage = evt => {
 			 var exchangeList = JSON.parse(evt.data);
-			 //console.log(exchangeList);
+			 console.log(exchangeList);
+			 // Server-side JSON marshalling turns empty array into null
+			 for(var i=0; i<exchangeList.length; i++) {
+				 if(exchangeList[i].coins == null) {
+					 exchangeList[i].coins = [];
+				 }
+			 }
 			 this.setState({
 				 loading: false,
 				 exchanges: exchangeList
@@ -142,10 +148,12 @@ class Portfolio extends React.Component {
 						  <Subheader style={{ textTransform: 'uppercase' }}>{
 								exchange.name + " - " + exchange.satoshis + " BTC - " + exchange.total.formatMoney() }
 							</Subheader>
-						  { exchange.coins.map( coin =>
-								  <Coin buySellHandler={this.handleBuySellModalOpen}
-									      autoTradeHandler={this.handleAutoTradeModalOpen}
-												key={ coin.currency } data={ coin } /> )
+						  {
+									exchange.coins.map( coin =>
+									  <Coin buySellHandler={this.handleBuySellModalOpen}
+										      autoTradeHandler={this.handleAutoTradeModalOpen}
+													key={ coin.currency } data={ coin } /> )
+
 							}
 					  </List>
 					)}

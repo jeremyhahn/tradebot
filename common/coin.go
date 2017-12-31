@@ -12,6 +12,7 @@ type Coin struct {
 	Price     float64 `json:"price"`
 	Address   string  `json:"address"`
 	Total     float64 `json:"total"`
+	BTC       float64 `json:"btc"`
 }
 
 func NewCoin() *Coin {
