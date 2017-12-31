@@ -1,10 +1,19 @@
-package main
+package service
 
 import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
 )
+
+type PriceStream struct {
+	Period          int       // total number of seconds per candlestick
+	Start           time.Time // when the first price was added to the buffer
+	Volume          int
+	buffer          []float64
+	priceListeners  []common.PriceListener
+	periodListeners []common.PeriodListener
+}
 
 func NewPriceStream(period int) *PriceStream {
 	return &PriceStream{
@@ -15,12 +24,13 @@ func NewPriceStream(period int) *PriceStream {
 		periodListeners: make([]common.PeriodListener, 0)}
 }
 
-func (ps *PriceStream) Add(price float64) {
-	ps.buffer = append(ps.buffer, price)
+func (ps *PriceStream) Listen(priceChange chan common.PriceChange) {
+	newPrice := <-priceChange
+	ps.buffer = append(ps.buffer, newPrice.Price)
 	ps.Volume = ps.Volume + 1
-	ps.notifyPriceListeners(price)
+	ps.notifyPriceListeners(&newPrice)
 	if time.Since(ps.Start).Seconds() >= float64(ps.Period) {
-		candlestick := common.CreateCandlestick(ps.Period, ps.buffer)
+		candlestick := common.CreateCandlestick(newPrice.Exchange, newPrice.CurrencyPair, ps.Period, ps.buffer)
 		ps.notifyPeriodListeners(candlestick)
 		ps.Volume = 0
 		ps.Start = common.NewCandlestickPeriod(ps.Period)
@@ -38,12 +48,12 @@ func (ps *PriceStream) SubscribeToPeriod(listener common.PeriodListener) {
 
 func (ps *PriceStream) notifyPeriodListeners(candlestick *common.Candlestick) {
 	for _, listener := range ps.periodListeners {
-		listener.OnPeriodChange(candlestick)
+		go listener.OnPeriodChange(candlestick)
 	}
 }
 
-func (ps *PriceStream) notifyPriceListeners(price float64) {
+func (ps *PriceStream) notifyPriceListeners(priceChange *common.PriceChange) {
 	for _, listener := range ps.priceListeners {
-		listener.OnPriceChange(price)
+		go listener.OnPriceChange(priceChange)
 	}
 }

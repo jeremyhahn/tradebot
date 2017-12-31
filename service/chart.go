@@ -1,4 +1,4 @@
-package main
+package service
 
 import (
 	"time"
@@ -11,45 +11,40 @@ import (
 )
 
 type Chart struct {
-	exchange    common.Exchange
-	db          *gorm.DB
-	rsi         *indicators.RSI
-	logger      *logging.Logger
-	priceStream *PriceStream
-	data        *common.ChartData
-	period      int
-}
-
-type PriceStream struct {
-	Period          int       // total number of seconds per candlestick
-	Start           time.Time // when the first price was added to the buffer
-	Volume          int
-	buffer          []float64
-	priceListeners  []common.PriceListener
-	periodListeners []common.PeriodListener
+	exchange      common.Exchange
+	db            *gorm.DB
+	rsi           *indicators.RSI
+	logger        *logging.Logger
+	priceStream   *PriceStream
+	priceChannel  chan common.PriceChange
+	candleChannel chan common.Candlestick
+	chartChannel  chan *common.ChartData
+	data          *common.ChartData
+	period        int
 }
 
 func NewChartMock() *Chart {
 	return &Chart{}
 }
 
-func NewChart(db *gorm.DB, exchange common.Exchange, logger *logging.Logger, priceStream *PriceStream) *Chart {
+func NewChart(db *gorm.DB, exchange common.Exchange, logger *logging.Logger, period int) *Chart {
 	return &Chart{
 		exchange:    exchange,
 		db:          db,
 		logger:      logger,
 		data:        &common.ChartData{},
-		period:      priceStream.Period,
-		priceStream: priceStream}
+		period:      period,
+		priceStream: NewPriceStream(period)}
 }
 
 func (chart *Chart) GetChartData() *common.ChartData {
 	return chart.data
 }
 
-func (chart *Chart) Stream(ws *WebsocketServer) {
+func (chart *Chart) Stream() {
 
-	chart.logger.Infof("Streaming %s chart data", chart.data.Currency)
+	chart.logger.Infof("[Chart.Stream] Streaming %s %s chart data.",
+		chart.exchange.GetName(), chart.exchange.FormattedCurrencyPair())
 
 	t := time.Now()
 	year, month, day := t.Date()
@@ -57,14 +52,15 @@ func (chart *Chart) Stream(ws *WebsocketServer) {
 	//yesterday := time.Date(year, month, (day - 1), 0, 0, 0, 0, t.Location())
 	now := time.Now()
 
-	chart.logger.Debugf("Getting trade history from %s - %s ", today, now)
+	chart.logger.Debugf("[Chart.Stream] Getting %s %s trade history from %s - %s ",
+		chart.exchange.GetName(), chart.exchange.FormattedCurrencyPair(), today, now)
 
 	candlesticks := chart.exchange.GetTradeHistory(today, now, chart.period)
 	if len(candlesticks) < 20 {
-		chart.logger.Fatal("Unable to load initial data set from exchange. Total records: ", len(candlesticks))
+		chart.logger.Errorf("[Chart.Stream] Failed to load initial candlesticks from %s. Total records: %d",
+			chart.exchange.GetName(), len(candlesticks))
+		return
 	}
-
-	//chart.priceStream = NewPriceStream(chart.period)
 
 	// RSI
 	rsiSma := indicators.NewSimpleMovingAverage(candlesticks[:14])
@@ -89,21 +85,19 @@ func (chart *Chart) Stream(ws *WebsocketServer) {
 		macd.OnPeriodChange(&c)
 	}
 
-	priceChan := make(chan common.PriceChange)
-	go chart.exchange.SubscribeToLiveFeed(priceChan)
+	priceChange := make(chan common.PriceChange)
+	go chart.exchange.SubscribeToLiveFeed(priceChange)
 
 	for {
-		priceChannel := <-priceChan
-		satoshis := priceChannel.Satoshis
-
-		chart.priceStream.Add(priceChannel.Price)
+		newPrice := <-priceChange
+		satoshis := newPrice.Satoshis
 
 		bollinger.Calculate(satoshis)
 		macdValue, macdSignal, macdHistogram := macd.Calculate(satoshis)
 
-		chart.data.Currency = chart.exchange.GetCurrency()
-		chart.data.Price = priceChannel.Price
-		chart.data.Satoshis = priceChannel.Satoshis
+		chart.data.CurrencyPair = chart.exchange.GetCurrencyPair()
+		chart.data.Price = newPrice.Price
+		chart.data.Satoshis = newPrice.Satoshis
 		chart.data.MACDValue = macd.GetValue()
 		chart.data.MACDSignal = macd.GetSignalLine()
 		chart.data.MACDHistogram = macd.GetHistogram()
@@ -116,6 +110,14 @@ func (chart *Chart) Stream(ws *WebsocketServer) {
 		chart.data.BollingerMiddle = bollinger.GetMiddle()
 		chart.data.BollingerLower = bollinger.GetLower()
 
-		//ws.Broadcast(chart.data)
+		chart.logger.Debugf("[Chart.Stream] ChartData: %+v\n", chart.data)
 	}
+}
+
+func (chart *Chart) OnPeriodChange(candlestick *common.Candlestick) {
+	chart.logger.Debugf("[Chart.OnPriceChange] candlestick: %+v\n", candlestick)
+}
+
+func (chart *Chart) OnPriceChange(priceChange common.PriceChange) {
+	chart.logger.Debugf("[Chart.OnPriceChange] priceChange: %+v\n", priceChange)
 }

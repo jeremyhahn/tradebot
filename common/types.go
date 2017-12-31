@@ -4,10 +4,27 @@ import (
 	"time"
 )
 
-type PriceChange struct {
-	Currency string  `json:"currency"`
-	Satoshis float64 `json:"satoshis"`
-	Price    float64 `json:"price"`
+const (
+	APPNAME     = "tradebot"
+	APPVERSION  = "0.0.1"
+	TIME_FORMAT = time.RFC3339
+)
+
+type User struct {
+	Id       int64  `json:"id"`
+	Username string `json:"username"`
+}
+
+type CurrencyPair struct {
+	Base          string `json:"base"`
+	Quote         string `json:"quote"`
+	LocalCurrency string `json:"local_currency"`
+}
+
+type Portfolio struct {
+	User      *User
+	NetWorth  float64        `json:"netWorth"`
+	Exchanges []CoinExchange `json:"exchanges"`
 }
 
 type CoinExchange struct {
@@ -18,21 +35,29 @@ type CoinExchange struct {
 	Coins    []Coin  `json:"coins"`
 }
 
+type PriceChange struct {
+	Exchange     string        `json:"exchange"`
+	CurrencyPair *CurrencyPair `json:"currencyPair"`
+	Satoshis     float64       `json:"satoshis"`
+	Price        float64       `json:"price"`
+}
+
 type ChartData struct {
-	Currency          string  `json:"currency"`
-	Price             float64 `json:"price"`
-	Satoshis          float64 `json:"satoshis"`
-	MACDValue         float64 `json:"macd_value"`
-	MACDHistogram     float64 `json:"macd_histogram"`
-	MACDSignal        float64 `json:"macd_signal"`
-	MACDValueLive     float64 `json:"macd_value_live"`
-	MACDHistogramLive float64 `json:"macd_histogram_live"`
-	MACDSignalLive    float64 `json:"macd_signal_live"`
-	RSI               float64 `json:"rsi"`
-	RSILive           float64 `json:"rsi_live"`
-	BollingerUpper    float64 `json:"bband_upper"`
-	BollingerMiddle   float64 `json:"bband_middle"`
-	BollingerLower    float64 `json:"bband_lower"`
+	CurrencyPair      CurrencyPair `json:"currency"`
+	Exchange          string       `json:"exchange"`
+	Price             float64      `json:"price"`
+	Satoshis          float64      `json:"satoshis"`
+	MACDValue         float64      `json:"macd_value"`
+	MACDHistogram     float64      `json:"macd_histogram"`
+	MACDSignal        float64      `json:"macd_signal"`
+	MACDValueLive     float64      `json:"macd_value_live"`
+	MACDHistogramLive float64      `json:"macd_histogram_live"`
+	MACDSignalLive    float64      `json:"macd_signal_live"`
+	RSI               float64      `json:"rsi"`
+	RSILive           float64      `json:"rsi_live"`
+	BollingerUpper    float64      `json:"bband_upper"`
+	BollingerMiddle   float64      `json:"bband_middle"`
+	BollingerLower    float64      `json:"bband_lower"`
 }
 
 type MovingAverage interface {
@@ -48,7 +73,7 @@ type MovingAverage interface {
 }
 
 type PriceListener interface {
-	OnPriceChange(price float64)
+	OnPriceChange(priceChange *PriceChange)
 }
 
 type PeriodListener interface {
@@ -61,8 +86,12 @@ type Exchange interface {
 	GetPrice() float64
 	GetSatoshis() float64
 	GetTradeHistory(start, end time.Time, granularity int) []Candlestick
-	GetCurrency() string
-	GetBalances() []Coin
+	GetCurrencyPair() CurrencyPair
+	FormattedCurrencyPair() string
+	GetBalances() ([]Coin, float64)
+	GetName() string
+	GetExchange() (CoinExchange, float64)
+	GetNetWorth() float64
 }
 
 type Indicator interface {

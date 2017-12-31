@@ -1,4 +1,4 @@
-package main
+package service
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jeremyhahn/tradebot/common"
 	logging "github.com/op/go-logging"
 )
 
@@ -49,7 +50,7 @@ func (ticker *BlockchainInfo) GetPrice() float64 {
 			ticker.logger.Fatal(err)
 		}
 
-		req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", APPNAME, APPVERSION))
+		req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
 
 		res, getErr := ticker.client.Do(req)
 		if getErr != nil {

@@ -1,17 +1,17 @@
-package main
+package dao
 
 import (
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )
 
-type IConfiguration interface {
+type Configuration interface {
 	Get(key string) string
 }
 
-type Configuration struct {
+type ConfigurationDAO struct {
 	Items []Config
-	IConfiguration
+	Configuration
 }
 
 type Config struct {
@@ -19,18 +19,18 @@ type Config struct {
 	Value string `gorm:"not null"`
 }
 
-func NewConfiguration(db *gorm.DB, logger *logging.Logger) *Configuration {
+func NewConfigurationDAO(db *gorm.DB, logger *logging.Logger) *ConfigurationDAO {
 	var configs []Config
 	db.AutoMigrate(&Config{})
 	if err := db.Find(&configs).Error; err != nil {
 		logger.Error(err)
 	}
-	return &Configuration{Items: configs}
+	return &ConfigurationDAO{Items: configs}
 }
 
-func (config *Configuration) Get(key string) string {
+func (dao *ConfigurationDAO) Get(key string) string {
 	value := ""
-	for _, config := range config.Items {
+	for _, config := range dao.Items {
 		if config.Key == key {
 			return config.Value
 		}
