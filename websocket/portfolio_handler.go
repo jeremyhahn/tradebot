@@ -52,10 +52,10 @@ func (ph *PortfolioHandler) onConnect(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ph *PortfolioHandler) Broadcast(exchangeList []common.CoinExchange) {
-	ph.logger.Debugf("[PortfolioHandler.Broadcast] ExchangeList: %+v\n", exchangeList)
+func (ph *PortfolioHandler) Broadcast(portfolio *common.Portfolio) {
+	ph.logger.Debugf("[PortfolioHandler.Broadcast] Portfolio: %+v\n", portfolio)
 	for client := range ph.clients {
-		err := client.WriteJSON(exchangeList)
+		err := client.WriteJSON(portfolio)
 		if err != nil {
 			ph.logger.Error(err)
 		}

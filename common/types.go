@@ -2,6 +2,9 @@ package common
 
 import (
 	"time"
+
+	"github.com/jinzhu/gorm"
+	logging "github.com/op/go-logging"
 )
 
 const (
@@ -10,8 +13,25 @@ const (
 	TIME_FORMAT = time.RFC3339
 )
 
+type Context struct {
+	Logger *logging.Logger
+	DB     *gorm.DB
+	User   *User
+}
+
+type Wallet interface {
+	GetBalance() CryptoWallet
+}
+
+type CryptoWallet struct {
+	Address  string  `json:"address"`
+	Balance  float64 `json:"balance"`
+	Currency string  `json:"currency"`
+	NetWorth float64 `json:"net_worth"`
+}
+
 type User struct {
-	Id       int64  `json:"id"`
+	Id       uint   `json:"id"`
 	Username string `json:"username"`
 }
 
@@ -22,9 +42,10 @@ type CurrencyPair struct {
 }
 
 type Portfolio struct {
-	User      *User
-	NetWorth  float64        `json:"netWorth"`
+	User      *User          `json:"user"`
+	NetWorth  float64        `json:"net_worth"`
 	Exchanges []CoinExchange `json:"exchanges"`
+	Wallets   []CryptoWallet `json:"wallets"`
 }
 
 type CoinExchange struct {

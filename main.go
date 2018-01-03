@@ -27,8 +27,12 @@ func main() {
 	//mysql := InitMySQL()
 	//defer mysql.Close()
 
-	userDAO := dao.NewUserDAO(sqlite, logger)
-	user := userDAO.Get(1)
+	ctx := &common.Context{
+		DB:     sqlite,
+		Logger: logger}
+
+	userDAO := dao.NewUserDAO(ctx)
+	ctx.User = userDAO.Get(1)
 	/*if user.Username == "" {
 		userDAO.Create(&dao.User{
 			Username: "test"})
@@ -36,6 +40,8 @@ func main() {
 
 	//config := NewConfiguration(sqlite, logger)
 	//period := 900 // seconds; 15 minutes
+
+	wallets := userDAO.GetWallets(ctx.User)
 
 	gdaxCurrencyPair := &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"}
 	bittrexCurrencyPair := &common.CurrencyPair{Base: "USDT", Quote: "BTC", LocalCurrency: "USDT"}
@@ -47,9 +53,9 @@ func main() {
 	bittrex := exchange.NewBittrex(exchangeDAO.Get("bittrex"), logger, bittrexCurrencyPair) // USDT-BTC
 	binance := exchange.NewBinance(exchangeDAO.Get("binance"), logger, binanceCurrencyPair) // BTCUSDT
 
-	//btcGDAXChart := service.NewChart(sqlite, gdax, logger, period)
-	//btcBittrexChart := service.NewChart(sqlite, bittrex, logger, period)
-	//btcBinanceChart := service.NewChart(sqlite, binance, logger, period)
+	//btcGDAXChart := service.NewChart(ctx, gdax, period)
+	//btcBittrexChart := service.NewChart(ctx, bittrex, period)
+	//btcBinanceChart := service.NewChart(ctx, binance, period)
 
 	//go btcGDAXChart.Stream()
 	//go btcBittrexChart.Stream()
@@ -65,10 +71,9 @@ func main() {
 	exchangeMap["binance"] = binance
 
 	for {
-		//ws.PortfolioChan <- service.NewPortfolio(sqlite, logger, exchangeMap)
 		//ws.ChartChan <- btcBinanceChart.GetChartData()
 
-		portfolio := service.NewPortfolio(sqlite, logger, user, exchangeMap)
+		portfolio := service.NewPortfolio(ctx, exchangeMap, wallets)
 		ws.PortfolioChan <- portfolio
 
 		fmt.Println("[Main] tick...")
