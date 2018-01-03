@@ -11,6 +11,12 @@ import (
 	logging "github.com/op/go-logging"
 )
 
+type BlockchainWallet struct {
+	Address  string  `json:"address"`
+	Balance  float64 `json:"final_balance"`
+	Currency string  `json:"currency"`
+}
+
 type BlockchainTickerSubItem struct {
 	Last float64 `json:"last"`
 }
@@ -21,61 +27,92 @@ type BlockchainTickerItem struct {
 
 type BlockchainInfo struct {
 	logger     *logging.Logger
-	url        string
 	client     http.Client
 	items      BlockchainTickerItem
 	lastPrice  float64
 	lastLookup time.Time
+	common.Wallet
 }
 
-func NewBlockchainInfo(logger *logging.Logger) *BlockchainInfo {
-	url := "https://blockchain.info/ticker"
+func NewBlockchainInfo(ctx *common.Context) *BlockchainInfo {
 	client := http.Client{
 		Timeout: time.Second * 2}
 	return &BlockchainInfo{
-		logger:     logger,
-		url:        url,
+		logger:     ctx.Logger,
 		client:     client,
 		lastPrice:  0.0,
 		lastLookup: time.Now().Add(-20 * time.Minute)}
 }
 
-func (ticker *BlockchainInfo) GetPrice() float64 {
+func (b *BlockchainInfo) GetPrice() float64 {
 
-	elapsed := float64(time.Since(ticker.lastLookup))
+	url := "https://blockchain.info/ticker"
+	elapsed := float64(time.Since(b.lastLookup))
+
 	if elapsed/float64(time.Second) >= 900 {
-
-		req, err := http.NewRequest(http.MethodGet, ticker.url, nil)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
-			ticker.logger.Fatal(err)
+			b.logger.Errorf("[BlockchainInfo.GetPrice] %s", err.Error())
 		}
 
 		req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
 
-		res, getErr := ticker.client.Do(req)
+		res, getErr := b.client.Do(req)
 		if getErr != nil {
-			ticker.logger.Fatal(getErr)
+			b.logger.Errorf("[BlockchainInfo.GetPrice] %s", getErr.Error())
 		}
 
 		body, readErr := ioutil.ReadAll(res.Body)
 		if readErr != nil {
-			ticker.logger.Fatal(readErr)
+			b.logger.Errorf("[BlockchainInfo.GetPrice] %s", readErr.Error())
 		}
 
 		t := BlockchainTickerItem{}
 		jsonErr := json.Unmarshal(body, &t)
 		if jsonErr != nil {
-			ticker.logger.Fatal(jsonErr)
+			b.logger.Errorf("[BlockchainInfo.GetPrice] %s", jsonErr.Error())
 		}
 
-		ticker.lastLookup = time.Now()
-		ticker.lastPrice = t.USD.Last
+		b.lastLookup = time.Now()
+		b.lastPrice = t.USD.Last
 	}
-	return ticker.lastPrice
+	return b.lastPrice
 }
 
-func (ticker *BlockchainInfo) ConvertToUSD(currency string, btc float64) float64 {
-	price := ticker.GetPrice()
-	ticker.logger.Debugf("[BlockchainTicker] currency: %s, btc: %.8f, price: %f", currency, btc, price)
+func (b *BlockchainInfo) GetBalance(address string) *common.CryptoWallet {
+
+	url := fmt.Sprintf("https://blockchain.info/address/%s?format=json", address)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		b.logger.Errorf("[BlockchainInfo.GetBalance] %s", err.Error())
+	}
+
+	req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
+
+	res, getErr := b.client.Do(req)
+	if getErr != nil {
+		b.logger.Errorf("[BlockchainInfo.GetBalance] %s", getErr.Error())
+	}
+
+	body, readErr := ioutil.ReadAll(res.Body)
+	if readErr != nil {
+		b.logger.Errorf("[BlockchainInfo.GetBalance] %s", readErr.Error())
+	}
+
+	wallet := BlockchainWallet{}
+	jsonErr := json.Unmarshal(body, &wallet)
+	if jsonErr != nil {
+		b.logger.Errorf("[BlockchainInfo.GetBalance] %s", jsonErr.Error())
+	}
+	return &common.CryptoWallet{
+		Address:  address,
+		Balance:  wallet.Balance / 100000000,
+		Currency: "BTC"}
+}
+
+func (b *BlockchainInfo) ConvertToUSD(currency string, btc float64) float64 {
+	price := b.GetPrice()
+	b.logger.Debugf("[BlockchainTicker] currency: %s, btc: %.8f, price: %f", currency, btc, price)
 	return btc * price
 }

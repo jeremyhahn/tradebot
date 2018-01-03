@@ -68,7 +68,7 @@ func (ws *WebsocketServer) Run() {
 			ws.logger.Debugf("[WebsocketServer.run] Broadcasting chart: %+v\n", chart)
 		case portfolio := <-ws.PortfolioChan:
 			ws.logger.Debugf("[WebsocketServer.run] Broadcasting portfolio: %+v\n", portfolio)
-			ws.portfolioHandler.Broadcast(portfolio.Exchanges)
+			ws.portfolioHandler.Broadcast(portfolio)
 		case close := <-ws.CloseChan:
 			if close {
 				ws.logger.Debug("[WebsocketServer.run] Stopping websocket server")

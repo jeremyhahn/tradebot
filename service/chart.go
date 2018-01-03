@@ -27,11 +27,11 @@ func NewChartMock() *Chart {
 	return &Chart{}
 }
 
-func NewChart(db *gorm.DB, exchange common.Exchange, logger *logging.Logger, period int) *Chart {
+func NewChart(ctx *common.Context, exchange common.Exchange, period int) *Chart {
 	return &Chart{
 		exchange:    exchange,
-		db:          db,
-		logger:      logger,
+		db:          ctx.DB,
+		logger:      ctx.Logger,
 		data:        &common.ChartData{},
 		period:      period,
 		priceStream: NewPriceStream(period)}

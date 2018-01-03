@@ -32,7 +32,8 @@ class Portfolio extends React.Component {
 			autoTradeModal: false,
 			sellModal: false,
 			loading: true,
-			exchanges: []
+			portfolio: {},
+			netWorth: 0.0
 		};
 		this.handleAddExchangeModalOpen = this.handleAddExchangeModalOpen.bind(this);
 		this.handleAddExchangeModalClose = this.handleAddExchangeModalClose.bind(this);
@@ -63,20 +64,20 @@ class Portfolio extends React.Component {
 			 ws.send(JSON.stringify({currency: "BTC-USD"}));
 		};
 		this.ws.onmessage = evt => {
-			 var exchangeList = JSON.parse(evt.data);
-			 console.log(exchangeList);
+			 var portfolio = JSON.parse(evt.data);
+			 console.log(portfolio);
 			 // Server-side JSON marshalling turns empty array into null
-			 for(var i=0; i<exchangeList.length; i++) {
-				 if(exchangeList[i].coins == null) {
-					 exchangeList[i].coins = [];
+			 for(var i=0; i<portfolio.exchanges.length; i++) {
+				 if(portfolio.exchanges[i].coins == null) {
+					 portfolio.exchanges[i].coins = [];
 				 }
 			 }
 			 this.setState({
 				 loading: false,
-				 exchanges: exchangeList
+				 portfolio: portfolio,
+				 netWorth: portfolio.exchanges.sum("total") + portfolio.wallets.sum("net_worth")
 			 })
 		};
-
 	}
 
 	handleAddExchangeModalOpen() {
@@ -117,7 +118,7 @@ class Portfolio extends React.Component {
 			return <Loading text="Loading coins..." />
 		}
 
-		if ( this.state.exchanges.length < 1 ) {
+		if ( this.state.portfolio.exchanges.length < 1 ) {
 			return (
 				<div>
 
@@ -137,12 +138,12 @@ class Portfolio extends React.Component {
 			<div>
 
 				<div style={netWorthDiv}>
-			    <Subheader style={netWorthHeader}>Net worth: { this.state.exchanges.sum("total").formatMoney() }</Subheader>
+			    <Subheader style={netWorthHeader}>Net worth: { this.state.netWorth.formatMoney() }</Subheader>
 			  </div>
 
 				<Paper style={{ padding: 20, }} zDepth={1} rounded={false}>
 
-	        { this.state.exchanges.map( exchange =>
+	        { this.state.portfolio.exchanges.map( exchange =>
 
 						<List key={exchange.name}>
 						  <Subheader style={{ textTransform: 'uppercase' }}>{
@@ -153,8 +154,16 @@ class Portfolio extends React.Component {
 									  <Coin buySellHandler={this.handleBuySellModalOpen}
 										      autoTradeHandler={this.handleAutoTradeModalOpen}
 													key={ coin.currency } data={ coin } /> )
-
 							}
+					  </List>
+					)}
+
+					{ this.state.portfolio.wallets.map( wallet =>
+
+						<List key={wallet.currency}>
+						  <Subheader style={{ textTransform: 'uppercase' }}>{
+								wallet.currency + " Wallet - " + wallet.balance + " - " + wallet.net_worth.formatMoney() }
+							</Subheader>
 					  </List>
 					)}
 
