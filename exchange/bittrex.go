@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
 	logging "github.com/op/go-logging"
 	bittrex "github.com/toorop/go-bittrex"
 )
@@ -20,7 +21,7 @@ type Bittrex struct {
 	common.Exchange
 }
 
-func NewBittrex(btx *CoinExchange, logger *logging.Logger, currencyPair *common.CurrencyPair) *Bittrex {
+func NewBittrex(btx *dao.UserCoinExchange, logger *logging.Logger, currencyPair *common.CurrencyPair) common.Exchange {
 	return &Bittrex{
 		client:       bittrex.New(btx.Key, btx.Secret),
 		logger:       logger,
@@ -107,20 +108,40 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 		if balance <= 0 {
 			continue
 		}
-		total := balance * (price * b.getBitcoinPrice())
-		t, err := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-		if err != nil {
-			b.logger.Errorf("[Bittrex.GetBalances] %s", err.Error())
+
+		bitcoinPrice := b.getBitcoinPrice()
+
+		if bal.Currency == "BTC" {
+			total := balance * bitcoinPrice
+			t, err := strconv.ParseFloat(strconv.FormatFloat(total, 'f', 2, 64), 64)
+			if err != nil {
+				b.logger.Errorf("[Binance.GetBalances] %s", err.Error())
+			}
+			sum += t
+			coins = append(coins, common.Coin{
+				Currency:  bal.Currency,
+				Available: balance,
+				Balance:   balance,
+				Price:     bitcoinPrice,
+				Total:     t})
+			continue
+		} else {
+			total := balance * (price * bitcoinPrice)
+			t, err := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
+			if err != nil {
+				b.logger.Errorf("[Bittrex.GetBalances] %s", err.Error())
+			}
+			sum += t
+			coins = append(coins, common.Coin{
+				Address:   bal.CryptoAddress,
+				Available: avail,
+				Balance:   balance,
+				Currency:  bal.Currency,
+				Pending:   pending,
+				Price:     price, // BTC satoshis, not actual USD price
+				Total:     t})
 		}
-		sum += t
-		coins = append(coins, common.Coin{
-			Address:   bal.CryptoAddress,
-			Available: avail,
-			Balance:   balance,
-			Currency:  bal.Currency,
-			Pending:   pending,
-			Price:     price, // BTC satoshis, not actual USD price
-			Total:     t})
+
 	}
 	return coins, sum
 }
@@ -141,13 +162,23 @@ func (b *Bittrex) getBitcoinPrice() float64 {
 	return price
 }
 
-func (b *Bittrex) GetExchange() (common.CoinExchange, float64) {
+func (b *Bittrex) GetExchangeAsync() chan common.CoinExchange {
+	channel := make(chan common.CoinExchange)
+	go func() { channel <- b.GetExchange() }()
+	return channel
+}
+
+func (b *Bittrex) GetExchange() common.CoinExchange {
 	total := 0.0
 	satoshis := 0.0
-	balances, netWorth := b.GetBalances()
+	balances, _ := b.GetBalances()
 	for _, c := range balances {
-		satoshis += c.Price * c.Balance
-		total += c.Total
+		if c.Currency == "BTC" { // TODO
+			total += c.Total
+		} else {
+			satoshis += c.Price * c.Balance
+			total += c.Total
+		}
 	}
 	f, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
 	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
@@ -157,7 +188,7 @@ func (b *Bittrex) GetExchange() (common.CoinExchange, float64) {
 		Total:    t,
 		Satoshis: f,
 		Coins:    balances}
-	return exchange, netWorth
+	return exchange
 }
 
 func (b *Bittrex) GetCurrencyPair() common.CurrencyPair {

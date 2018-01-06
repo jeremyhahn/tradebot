@@ -2,8 +2,6 @@ package dao
 
 import (
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/service"
-	"github.com/jeremyhahn/tradebot/util"
 )
 
 type IUser interface {
@@ -17,30 +15,64 @@ type UserDAO struct {
 }
 
 type User struct {
-	Id       uint   `gorm:"primary_key;AUTO_INCREMENT"`
-	Username string `gorm:"type:varchar(100);unique_index"`
-	Wallets  []Wallet
+	Id        uint   `gorm:"primary_key;AUTO_INCREMENT"`
+	Username  string `gorm:"type:varchar(100);unique_index"`
+	Wallets   []UserWallet
+	Exchanges []UserCoinExchange
 }
 
-type Wallet struct {
+type UserWallet struct {
 	UserID   uint
 	Currency string `gorm:"primary_key"`
 	Address  string `gorm:"unique_index"`
 }
 
+type UserCoinExchange struct {
+	UserID     uint
+	Name       string `gorm:"primary_key"`
+	URL        string `gorm:"not null" sql:"type:varchar(255)"`
+	Key        string `gorm:"not null" sql:"type:varchar(255)"`
+	Secret     string `gorm:"not null" sql:"type:text"`
+	Passphrase string `gorm:"not null" sql:"type:varchar(255)"`
+}
+
 func NewUserDAO(ctx *common.Context) *UserDAO {
 	ctx.DB.AutoMigrate(&User{})
-	ctx.DB.AutoMigrate(&Wallet{})
+	ctx.DB.AutoMigrate(&UserWallet{})
+	ctx.DB.AutoMigrate(&User{})
+	ctx.DB.AutoMigrate(&UserCoinExchange{})
 	return &UserDAO{
 		ctx:   ctx,
 		Users: make([]User, 0)}
 }
 
-func (dao *UserDAO) Get(userId uint) *common.User {
+func CreateUserDAO(ctx *common.Context, user *common.User) *UserDAO {
+	ctx.DB.AutoMigrate(&User{})
+	ctx.DB.AutoMigrate(&UserWallet{})
+	ctx.DB.AutoMigrate(&User{})
+	ctx.DB.AutoMigrate(&UserCoinExchange{})
+	ctx.User = user
+	return &UserDAO{
+		ctx:   ctx,
+		Users: make([]User, 0)}
+}
+
+func (dao *UserDAO) GetById(userId uint) *common.User {
 	var user User
 	user.Id = userId
-	if err := dao.ctx.DB.First(&user).Error; err != nil {
-		dao.ctx.Logger.Errorf("[UserDAO.Get] Error: %s", err.Error())
+	if err := dao.ctx.DB.First(&user, userId).Error; err != nil {
+		dao.ctx.Logger.Errorf("[UserDAO.GetById] Error: %s", err.Error())
+	}
+	return &common.User{
+		Id:       user.Id,
+		Username: user.Username}
+}
+
+func (dao *UserDAO) GetByName(username string) *common.User {
+	var user User
+	user.Username = username
+	if err := dao.ctx.DB.Where("username = ?", username).First(&user).Error; err != nil {
+		dao.ctx.Logger.Errorf("[UserDAO.GetByName] Error: %s", err.Error())
 	}
 	return &common.User{
 		Id:       user.Id,
@@ -53,55 +85,30 @@ func (dao *UserDAO) Create(user *User) {
 	}
 }
 
-func (dao *UserDAO) GetWallets(user *common.User) []common.CryptoWallet {
-	var wallets []Wallet
-	var walletList []common.CryptoWallet
-	if err := dao.ctx.DB.Preload("Users").Find(&wallets).Error; err != nil {
+func (dao *UserDAO) GetWallets(user *common.User) []UserWallet {
+	var wallets []UserWallet
+	daoUser := &User{Id: user.Id, Username: user.Username}
+	if err := dao.ctx.DB.Model(daoUser).Related(&wallets).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.GetWallets] Error: %s", err.Error())
 	}
-	for _, wallet := range wallets {
-		balance := dao.getBalance(wallet.Currency, wallet.Address)
-		walletList = append(walletList, common.CryptoWallet{
-			Address:  wallet.Address,
-			Currency: wallet.Currency,
-			Balance:  balance,
-			NetWorth: dao.getPrice(wallet.Currency, balance)})
-	}
-	return walletList
+	return wallets
 }
 
-func (dao *UserDAO) GetWallet(user *common.User, currency string) *common.CryptoWallet {
-	var wallets []Wallet
-	if err := dao.ctx.DB.Preload("Users").Find(&wallets).Error; err != nil {
-		dao.ctx.Logger.Errorf("[UserDAO.GetWallet] Error: %s", err.Error())
-	}
+func (dao *UserDAO) GetWallet(user *common.User, currency string) *UserWallet {
+	wallets := dao.GetWallets(user)
 	for _, w := range wallets {
 		if w.Currency == currency {
-			balance := dao.getBalance(currency, w.Address)
-			return &common.CryptoWallet{
-				Address:  w.Address,
-				Currency: w.Currency,
-				Balance:  balance,
-				NetWorth: dao.getPrice(currency, balance)}
+			return &w
 		}
 	}
-	return &common.CryptoWallet{}
+	return &UserWallet{}
 }
 
-func (dao *UserDAO) getBalance(currency, address string) float64 {
-	dao.ctx.Logger.Debugf("[UserDAO.getBalance] currency=%s, address=%s", currency, address)
-	if currency == "XRP" {
-		return service.NewRipple(dao.ctx).GetBalance(address).Balance
-	} else if currency == "BTC" {
-		return service.NewBlockchainInfo(dao.ctx).GetBalance(address).Balance
+func (dao *UserDAO) GetExchanges(user *common.User) []UserCoinExchange {
+	var exchanges []UserCoinExchange
+	daoUser := &User{Id: user.Id}
+	if err := dao.ctx.DB.Model(daoUser).Related(&exchanges).Error; err != nil {
+		dao.ctx.Logger.Errorf("[UserDAO.GetExchanges] Error: %s", err.Error())
 	}
-	return 0.0
-}
-
-func (dao *UserDAO) getPrice(currency string, amt float64) float64 {
-	dao.ctx.Logger.Debugf("[UserDAO.getPrice] currency=%s, amt=%.8f", currency, amt)
-	if currency == "BTC" {
-		return util.TruncateFloat(service.NewBlockchainInfo(dao.ctx).GetPrice()*amt, 8)
-	}
-	return 0.0
+	return exchanges
 }

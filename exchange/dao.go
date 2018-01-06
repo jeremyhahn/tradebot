@@ -1,8 +1,8 @@
 package exchange
 
 import (
-	"github.com/jinzhu/gorm"
-	logging "github.com/op/go-logging"
+	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
 )
 
 type IExchangeDAO interface {
@@ -10,11 +10,13 @@ type IExchangeDAO interface {
 }
 
 type ExchangeDAO struct {
+	ctx       *common.Context
 	Exchanges []CoinExchange
 	IExchangeDAO
 }
 
 type CoinExchange struct {
+	UserId     dao.User
 	Name       string `gorm:"primary_key" sql:"type:varchar(255)"`
 	URL        string `gorm:"not null" sql:"type:varchar(255)"`
 	Key        string `gorm:"not null" sql:"type:varchar(255)"`
@@ -22,18 +24,26 @@ type CoinExchange struct {
 	Passphrase string `gorm:"not null" sql:"type:varchar(255)"`
 }
 
-func NewExchangeDAO(db *gorm.DB, logger *logging.Logger) *ExchangeDAO {
+func NewExchangeDAO(ctx *common.Context) *ExchangeDAO {
 	var exchanges []CoinExchange
-	db.AutoMigrate(&CoinExchange{})
-	if err := db.Find(&exchanges).Error; err != nil {
-		logger.Error(err)
+	ctx.DB.AutoMigrate(&CoinExchange{})
+	if err := ctx.DB.Find(&exchanges).Error; err != nil {
+		ctx.Logger.Error(err)
 	}
-	return &ExchangeDAO{Exchanges: exchanges}
+	return &ExchangeDAO{
+		ctx:       ctx,
+		Exchanges: exchanges}
 }
 
-func (el *ExchangeDAO) Get(name string) *CoinExchange {
+func (dao *ExchangeDAO) Create(exchange *CoinExchange) {
+	if err := dao.ctx.DB.Create(exchange).Error; err != nil {
+		dao.ctx.Logger.Errorf("[ExchangeDAO.Create] Error:%s", err.Error())
+	}
+}
+
+func (dao *ExchangeDAO) Get(name string) *CoinExchange {
 	var exchange CoinExchange
-	for _, ex := range el.Exchanges {
+	for _, ex := range dao.Exchanges {
 		if ex.Name == name {
 			return &ex
 		}

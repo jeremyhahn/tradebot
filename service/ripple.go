@@ -72,8 +72,12 @@ func (r *Ripple) GetBalance(address string) *common.CryptoWallet {
 		f, _ := strconv.ParseFloat(rb.Balances[0].Balance, 64)
 		balance = f
 	}
+
+	//marketcap := NewMarketCapService(ctx, )
+
 	return &common.CryptoWallet{
 		Address:  address,
 		Balance:  balance,
 		Currency: "XRP"}
+	// NetWorth: }
 }

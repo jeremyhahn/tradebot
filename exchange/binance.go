@@ -11,6 +11,7 @@ import (
 	ws "github.com/gorilla/websocket"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/op/go-logging"
 )
 
@@ -61,9 +62,9 @@ type Binance struct {
 	common.Exchange
 }
 
-func NewBinance(config *CoinExchange, logger *logging.Logger, currencyPair *common.CurrencyPair) *Binance {
+func NewBinance(exchange *dao.UserCoinExchange, logger *logging.Logger, currencyPair *common.CurrencyPair) common.Exchange {
 	return &Binance{
-		client:       binance.NewClient(config.Key, config.Secret),
+		client:       binance.NewClient(exchange.Key, exchange.Secret),
 		logger:       logger,
 		name:         "binance",
 		currencyPair: currencyPair}
@@ -88,6 +89,8 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 		}
 
 		if bal > 0 {
+
+			b.logger.Debugf("[Binance.GetBalances] Getting ticker for %s", balance.Asset)
 
 			bitcoin := b.getBitcoin()
 			bitcoinPrice := b.parseBitcoinPrice(bitcoin)
@@ -233,12 +236,18 @@ func (b *Binance) parseBitcoinPrice(bitcoin *binance.PriceChangeStats) float64 {
 	return f
 }
 
-func (b *Binance) GetExchange() (common.CoinExchange, float64) {
+func (b *Binance) GetExchangeAsync() chan common.CoinExchange {
+	channel := make(chan common.CoinExchange)
+	go func() { channel <- b.GetExchange() }()
+	return channel
+}
+
+func (b *Binance) GetExchange() common.CoinExchange {
 	total := 0.0
 	satoshis := 0.0
-	balances, netWorth := b.GetBalances()
+	balances, _ := b.GetBalances()
 	for _, c := range balances {
-		if c.Currency == "BTC" { // TODO: or any fiat currency
+		if c.Currency == "BTC" { // TODO
 			total += c.Total
 		} else {
 			satoshis += c.Price * c.Balance
@@ -253,7 +262,7 @@ func (b *Binance) GetExchange() (common.CoinExchange, float64) {
 		Total:    t,
 		Satoshis: f,
 		Coins:    balances}
-	return exchange, netWorth
+	return exchange
 }
 
 func (b *Binance) GetCurrencyPair() common.CurrencyPair {

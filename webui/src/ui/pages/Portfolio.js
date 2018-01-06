@@ -61,21 +61,26 @@ class Portfolio extends React.Component {
 	  }
 		var ws = this.ws
 		this.ws.onopen = function() {
-			 ws.send(JSON.stringify({currency: "BTC-USD"}));
+			 ws.send(JSON.stringify({user: {id: 1, username: "jhahn"}}));
 		};
 		this.ws.onmessage = evt => {
 			 var portfolio = JSON.parse(evt.data);
 			 console.log(portfolio);
+
 			 // Server-side JSON marshalling turns empty array into null
+			 if(portfolio.exchanges == null) {
+				 portfolio.exchanges = [];
+			 }
 			 for(var i=0; i<portfolio.exchanges.length; i++) {
 				 if(portfolio.exchanges[i].coins == null) {
 					 portfolio.exchanges[i].coins = [];
 				 }
 			 }
+
 			 this.setState({
 				 loading: false,
 				 portfolio: portfolio,
-				 netWorth: portfolio.exchanges.sum("total") + portfolio.wallets.sum("net_worth")
+				 netWorth: portfolio.net_worth
 			 })
 		};
 	}

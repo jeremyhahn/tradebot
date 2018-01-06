@@ -1,13 +1,7 @@
 package main
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dao"
-	"github.com/jeremyhahn/tradebot/exchange"
-	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/websocket"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -31,8 +25,8 @@ func main() {
 		DB:     sqlite,
 		Logger: logger}
 
-	userDAO := dao.NewUserDAO(ctx)
-	ctx.User = userDAO.Get(1)
+	//userDAO := dao.NewUserDAO(ctx)
+	//ctx.User = userDAO.GetById(1)
 	/*if user.Username == "" {
 		userDAO.Create(&dao.User{
 			Username: "test"})
@@ -41,17 +35,21 @@ func main() {
 	//config := NewConfiguration(sqlite, logger)
 	//period := 900 // seconds; 15 minutes
 
-	wallets := userDAO.GetWallets(ctx.User)
+	//marketcap := service.NewMarketCapService(ctx, dao.NewMarketCapDAO(ctx))
+	//marketcap.GetMarkets()
+	//marketcap.GetGlobalMarket("BTC")
 
-	gdaxCurrencyPair := &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"}
-	bittrexCurrencyPair := &common.CurrencyPair{Base: "USDT", Quote: "BTC", LocalCurrency: "USDT"}
-	binanceCurrencyPair := &common.CurrencyPair{Base: "BTC", Quote: "USDT", LocalCurrency: "USDT"}
+	//wallets := userDAO.GetWallets(ctx.User)
 
-	exchangeDAO := exchange.NewExchangeDAO(sqlite, logger)
+	///gdaxCurrencyPair := &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"}
+	///bittrexCurrencyPair := &common.CurrencyPair{Base: "USDT", Quote: "BTC", LocalCurrency: "USDT"}
+	///binanceCurrencyPair := &common.CurrencyPair{Base: "BTC", Quote: "USDT", LocalCurrency: "USDT"}
 
-	gdax := exchange.NewGDAX(exchangeDAO.Get("gdax"), logger, gdaxCurrencyPair)             // BTC-USD
-	bittrex := exchange.NewBittrex(exchangeDAO.Get("bittrex"), logger, bittrexCurrencyPair) // USDT-BTC
-	binance := exchange.NewBinance(exchangeDAO.Get("binance"), logger, binanceCurrencyPair) // BTCUSDT
+	///exchangeDAO := exchange.NewExchangeDAO(ctx)
+
+	///gdax := exchange.NewGDAX(exchangeDAO.Get("gdax"), logger, gdaxCurrencyPair)             // BTC-USD
+	///bittrex := exchange.NewBittrex(exchangeDAO.Get("bittrex"), logger, bittrexCurrencyPair) // USDT-BTC
+	///binance := exchange.NewBinance(exchangeDAO.Get("binance"), logger, binanceCurrencyPair) // BTCUSDT
 
 	//btcGDAXChart := service.NewChart(ctx, gdax, period)
 	//btcBittrexChart := service.NewChart(ctx, bittrex, period)
@@ -61,25 +59,30 @@ func main() {
 	//go btcBittrexChart.Stream()
 	//go btcBinanceChart.Stream()
 
-	ws := websocket.NewWebsocketServer(8080, logger)
-	go ws.Start()
-	go ws.Run()
+	portfolioHub := websocket.NewPortfolioHub()
+	go portfolioHub.Run()
 
-	exchangeMap := make(map[string]common.Exchange)
-	exchangeMap["gdax"] = gdax
-	exchangeMap["bittrex"] = bittrex
-	exchangeMap["binance"] = binance
+	ws := websocket.NewWebsocketServer(ctx, 8080)
+	go ws.Start(portfolioHub)
+	ws.Run()
 
-	for {
-		//ws.ChartChan <- btcBinanceChart.GetChartData()
+	/*
+		exchangeMap := make(map[string]common.Exchange)
+		exchangeMap["gdax"] = gdax
+		exchangeMap["bittrex"] = bittrex
+		exchangeMap["binance"] = binance
+	*/
 
-		portfolio := service.NewPortfolio(ctx, exchangeMap, wallets)
-		ws.PortfolioChan <- portfolio
+	/*
+		for {
 
-		fmt.Println("[Main] tick...")
-		time.Sleep(1 * time.Second)
-	}
+			fmt.Println("[Main] tick...")
+			time.Sleep(1 * time.Second)
 
+			//ws.PortfolioChan <- service.NewPortfolio(ctx, exchangeMap, wallets)
+			//ws.ChartChan <- btcBinanceChart.GetChartData()
+		}
+	*/
 }
 
 func InitSQLite() *gorm.DB {
