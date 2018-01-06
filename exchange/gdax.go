@@ -73,6 +73,7 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
 		price := 1.0
 		if a.Currency != _gdax.currencyPair.LocalCurrency {
 			currency := fmt.Sprintf("%s-%s", a.Currency, _gdax.currencyPair.Quote)
+			_gdax.logger.Debugf("[GDAX.GetBalances] Getting balances for %s", currency)
 			ticker, err := _gdax.gdax.GetTicker(currency)
 			if err != nil {
 				_gdax.logger.Errorf("[GDAX.GetBalances] %s", err.Error())
@@ -139,10 +140,8 @@ func (_gdax *GDAX) SubscribeToLiveFeed(priceChannel chan common.PriceChange) {
 	_gdax.SubscribeToLiveFeed(priceChannel)
 }
 
-func (_gdax *GDAX) GetExchangeAsync() chan common.CoinExchange {
-	channel := make(chan common.CoinExchange)
-	go func() { channel <- _gdax.GetExchange() }()
-	return channel
+func (_gdax *GDAX) GetExchangeAsync(exchangeChan *chan common.CoinExchange) {
+	go func() { *exchangeChan <- _gdax.GetExchange() }()
 }
 
 func (_gdax *GDAX) GetExchange() common.CoinExchange {

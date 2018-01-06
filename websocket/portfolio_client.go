@@ -89,6 +89,7 @@ func (c *PortfolioClient) writePump() {
 				c.ctx.Logger.Errorf("[PortfolioClient.writePump] Error: %s", err.Error())
 				return
 			}
+
 			time.Sleep(5 * time.Second)
 		}
 	}

@@ -144,7 +144,7 @@ type Exchange interface {
 	FormattedCurrencyPair() string
 	GetBalances() ([]Coin, float64)
 	GetName() string
-	GetExchangeAsync() chan CoinExchange
+	GetExchangeAsync(*chan CoinExchange)
 	GetExchange() CoinExchange
 	GetNetWorth() float64
 }

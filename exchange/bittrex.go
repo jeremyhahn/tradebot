@@ -162,10 +162,8 @@ func (b *Bittrex) getBitcoinPrice() float64 {
 	return price
 }
 
-func (b *Bittrex) GetExchangeAsync() chan common.CoinExchange {
-	channel := make(chan common.CoinExchange)
-	go func() { channel <- b.GetExchange() }()
-	return channel
+func (b *Bittrex) GetExchangeAsync(exchangeChan *chan common.CoinExchange) {
+	go func() { *exchangeChan <- b.GetExchange() }()
 }
 
 func (b *Bittrex) GetExchange() common.CoinExchange {

@@ -71,6 +71,9 @@ class Portfolio extends React.Component {
 			 if(portfolio.exchanges == null) {
 				 portfolio.exchanges = [];
 			 }
+			 if(portfolio.wallets == null) {
+				 portfolio.wallets = [];
+			 }
 			 for(var i=0; i<portfolio.exchanges.length; i++) {
 				 if(portfolio.exchanges[i].coins == null) {
 					 portfolio.exchanges[i].coins = [];
