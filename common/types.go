@@ -8,15 +8,43 @@ import (
 )
 
 const (
-	APPNAME     = "tradebot"
-	APPVERSION  = "0.0.1"
-	TIME_FORMAT = time.RFC3339
+	APPNAME               = "tradebot"
+	APPVERSION            = "0.0.1"
+	TIME_FORMAT           = time.RFC3339
+	BUFFERED_CHANNEL_SIZE = 256
 )
 
 type Context struct {
 	Logger *logging.Logger
 	DB     *gorm.DB
 	User   *User
+}
+
+type MarketCap struct {
+	Id               string `json:"id"`
+	Name             string `json:"name"`
+	Symbol           string `json:"symbol"`
+	Rank             string `json:"rank"`
+	PriceUSD         string `json:"price_usd"`
+	PriceBTC         string `json:"price_btc"`
+	VolumeUSD24h     string `json:"24h_volume_usd"`
+	MarketCapUSD     string `json:"market_cap_usd"`
+	AvailableSupply  string `json:"available_supply"`
+	TotalSupply      string `json:"total_supply"`
+	MaxSupply        string `json:"max_supply"`
+	PercentChange1h  string `json:"percent_change_1h"`
+	PercentChange24h string `json:"percent_change_24h"`
+	PercentChange7d  string `json:"percent_change_7d"`
+	LastUpdated      string `json:"last_updated"`
+}
+
+type GlobalMarketCap struct {
+	TotalMarketCapUSD float64 `json:"total_market_cap_usd"`
+	Total24HVolumeUSD float64 `json:"total_24h_volume_usd"`
+	BitcoinDominance  float64 `json:"bitcoin_percentage_of_market_cap"`
+	ActiveCurrencies  float64 `json:"active_currencies"`
+	ActiveMarkets     float64 `json:"active_markets"`
+	LastUpdated       int64   `json:"last_updated"`
 }
 
 type Wallet interface {
@@ -54,6 +82,11 @@ type CoinExchange struct {
 	Total    float64 `json:"total"`
 	Satoshis float64 `json:"satoshis"`
 	Coins    []Coin  `json:"coins"`
+}
+
+type CoinExchangeList struct {
+	Exchanges []CoinExchange `json:"exchange"`
+	NetWorth  float64        `json:"net_worth"`
 }
 
 type PriceChange struct {
@@ -111,7 +144,8 @@ type Exchange interface {
 	FormattedCurrencyPair() string
 	GetBalances() ([]Coin, float64)
 	GetName() string
-	GetExchange() (CoinExchange, float64)
+	GetExchangeAsync() chan CoinExchange
+	GetExchange() CoinExchange
 	GetNetWorth() float64
 }
 

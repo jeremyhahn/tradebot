@@ -9,6 +9,7 @@ import (
 	gdax "github.com/preichenberger/go-gdax"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/op/go-logging"
 )
 
@@ -22,7 +23,7 @@ type GDAX struct {
 	common.Exchange
 }
 
-func NewGDAX(_gdax *CoinExchange, logger *logging.Logger, currencyPair *common.CurrencyPair) *GDAX {
+func NewGDAX(_gdax *dao.UserCoinExchange, logger *logging.Logger, currencyPair *common.CurrencyPair) common.Exchange {
 	return &GDAX{
 		gdax:         gdax.NewClient(_gdax.Secret, _gdax.Key, _gdax.Passphrase),
 		logger:       logger,
@@ -138,10 +139,16 @@ func (_gdax *GDAX) SubscribeToLiveFeed(priceChannel chan common.PriceChange) {
 	_gdax.SubscribeToLiveFeed(priceChannel)
 }
 
-func (_gdax *GDAX) GetExchange() (common.CoinExchange, float64) {
+func (_gdax *GDAX) GetExchangeAsync() chan common.CoinExchange {
+	channel := make(chan common.CoinExchange)
+	go func() { channel <- _gdax.GetExchange() }()
+	return channel
+}
+
+func (_gdax *GDAX) GetExchange() common.CoinExchange {
 	total := 0.0
 	satoshis := 0.0
-	balances, netWorth := _gdax.GetBalances()
+	balances, _ := _gdax.GetBalances()
 	for _, c := range balances {
 		if c.Currency == _gdax.currencyPair.LocalCurrency {
 			total += c.Total
@@ -168,7 +175,7 @@ func (_gdax *GDAX) GetExchange() (common.CoinExchange, float64) {
 		Total:    t,
 		Satoshis: s,
 		Coins:    balances}
-	return exchange, netWorth
+	return exchange
 }
 
 func (_gdax *GDAX) ToUSD(price, satoshis float64) float64 {
