@@ -236,10 +236,8 @@ func (b *Binance) parseBitcoinPrice(bitcoin *binance.PriceChangeStats) float64 {
 	return f
 }
 
-func (b *Binance) GetExchangeAsync() chan common.CoinExchange {
-	channel := make(chan common.CoinExchange)
-	go func() { channel <- b.GetExchange() }()
-	return channel
+func (b *Binance) GetExchangeAsync(exchangeChan *chan common.CoinExchange) {
+	go func() { *exchangeChan <- b.GetExchange() }()
 }
 
 func (b *Binance) GetExchange() common.CoinExchange {

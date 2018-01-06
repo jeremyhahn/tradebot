@@ -35,69 +35,56 @@ func (service *UserService) GetUserByName(username string) *common.User {
 	return service.dao.GetByName(username)
 }
 
+func (service *UserService) GetExchange(user *common.User, name string) common.Exchange {
+	exchanges := service.dao.GetExchanges(user)
+	for _, ex := range exchanges {
+		if ex.Name == name {
+			currencyPair := exchange.CurrencyPairMap[name]
+			return exchange.SupportedExchangeMap[name](&ex, service.ctx.Logger, currencyPair)
+		}
+	}
+	return nil
+}
+
 func (service *UserService) GetExchanges(user *common.User) []common.CoinExchange {
 	var exchangeList []common.CoinExchange
-	for _, ex := range service.dao.GetExchanges(user) {
+	var chans []chan common.CoinExchange
+	exchanges := service.dao.GetExchanges(user)
+	for _, ex := range exchanges {
+		c := make(chan common.CoinExchange, 1)
+		chans = append(chans, c)
 		currencyPair := exchange.CurrencyPairMap[ex.Name]
 		exchange := exchange.SupportedExchangeMap[ex.Name](&ex, service.ctx.Logger, currencyPair)
-		exchangeList = append(exchangeList, exchange.GetExchange())
+		go func() { c <- exchange.GetExchange() }()
+	}
+	for i := 0; i < len(exchanges); i++ {
+		exchangeList = append(exchangeList, <-chans[i])
 	}
 	return exchangeList
 }
 
-func (service *UserService) GetExchangesAsync(user *common.User) chan []common.CoinExchange {
-	exchangeChan := make(chan []common.CoinExchange)
-	go func() {
-		var exchangeList []common.CoinExchange
-		var queued []chan common.CoinExchange
-		for _, ex := range service.dao.GetExchanges(user) {
-			currencyPair := exchange.CurrencyPairMap[ex.Name]
-			exchange := exchange.SupportedExchangeMap[ex.Name](&ex, service.ctx.Logger, currencyPair)
-			queued = append(queued, exchange.GetExchangeAsync())
-		}
-		for _, q := range queued {
-			exchangeList = append(exchangeList, <-q)
-		}
-		exchangeChan <- exchangeList
-	}()
-	return exchangeChan
-}
-
 func (service *UserService) GetWallets(user *common.User) []common.CryptoWallet {
-	var cryptoWallets []common.CryptoWallet
-	wallets := service.dao.GetWallets(user)
-	for _, wallet := range wallets {
-		balance := service.getBalance(wallet.Currency, wallet.Address)
-		netWorth := service.getPrice(wallet.Currency, balance)
-		cryptoWallets = append(cryptoWallets, common.CryptoWallet{
-			Address:  wallet.Address,
-			Currency: wallet.Currency,
-			Balance:  service.getBalance(wallet.Currency, wallet.Address),
-			NetWorth: netWorth})
-	}
-	return cryptoWallets
-}
-
-func (service *UserService) GetWalletsAsync(user *common.User) chan []common.CryptoWallet {
 	var walletList []common.CryptoWallet
-	walletListChan := make(chan []common.CryptoWallet)
-	walletChan := make(chan common.CryptoWallet)
 	wallets := service.dao.GetWallets(user)
+	var chans []chan common.CryptoWallet
 	for _, _wallet := range wallets {
 		wallet := _wallet
+		c := make(chan common.CryptoWallet, 1)
+		chans = append(chans, c)
+		balance := service.getBalance(wallet.Currency, wallet.Address)
+		netWorth := service.getPrice(wallet.Currency, balance)
 		go func() {
-			balance := service.getBalance(wallet.Currency, wallet.Address)
-			netWorth := service.getPrice(wallet.Currency, balance)
-			walletChan <- common.CryptoWallet{
+			c <- common.CryptoWallet{
 				Address:  wallet.Address,
 				Currency: wallet.Currency,
 				Balance:  service.getBalance(wallet.Currency, wallet.Address),
 				NetWorth: netWorth}
 		}()
-		walletList = append(walletList, <-walletChan)
 	}
-	go func() { walletListChan <- walletList }()
-	return walletListChan
+	for i := 0; i < len(wallets); i++ {
+		walletList = append(walletList, <-chans[i])
+	}
+	return walletList
 }
 
 func (service *UserService) GetWallet(user *common.User, currency string) *common.CryptoWallet {
@@ -108,20 +95,6 @@ func (service *UserService) GetWallet(user *common.User, currency string) *commo
 		Currency: wallet.Currency,
 		Balance:  balance,
 		NetWorth: service.getPrice(wallet.Currency, balance)}
-}
-
-func (service *UserService) GetWalletAsync(user *common.User, currency string) chan common.CryptoWallet {
-	walletChan := make(chan common.CryptoWallet, 1)
-	go func() {
-		wallet := service.dao.GetWallet(user, currency)
-		balance := service.getBalance(wallet.Currency, wallet.Address)
-		walletChan <- common.CryptoWallet{
-			Address:  wallet.Address,
-			Currency: wallet.Currency,
-			Balance:  balance,
-			NetWorth: service.getPrice(wallet.Currency, balance)}
-	}()
-	return walletChan
 }
 
 func (service *UserService) getBalance(currency, address string) float64 {

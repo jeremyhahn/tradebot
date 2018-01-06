@@ -53,6 +53,5 @@ func (h *PortfolioHub) Run() {
 				}
 			}
 		}
-
 	}
 }

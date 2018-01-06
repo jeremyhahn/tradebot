@@ -23,8 +23,8 @@ func (ps *PortfolioService) Build(user *common.User) *common.Portfolio {
 	var netWorth float64
 	userDAO := dao.CreateUserDAO(ps.ctx, user)
 	userService := NewUserService(ps.ctx, userDAO)
-	exchangeList := <-userService.GetExchangesAsync(ps.ctx.User)
-	walletList := <-userService.GetWalletsAsync(ps.ctx.User)
+	exchangeList := userService.GetExchanges(ps.ctx.User)
+	walletList := userService.GetWallets(ps.ctx.User)
 	for _, ex := range exchangeList {
 		netWorth += ex.Total
 	}
