@@ -59,7 +59,7 @@ func main() {
 	//go btcBittrexChart.Stream()
 	//go btcBinanceChart.Stream()
 
-	portfolioHub := websocket.NewPortfolioHub()
+	portfolioHub := websocket.NewPortfolioHub(logger)
 	go portfolioHub.Run()
 
 	ws := websocket.NewWebsocketServer(ctx, 8080)

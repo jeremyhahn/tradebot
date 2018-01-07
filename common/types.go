@@ -12,6 +12,7 @@ const (
 	APPVERSION            = "0.0.1"
 	TIME_FORMAT           = time.RFC3339
 	BUFFERED_CHANNEL_SIZE = 256
+	WEBSOCKET_KEEPALIVE   = 10 * time.Second
 )
 
 type Context struct {
