@@ -61,8 +61,13 @@ class Portfolio extends React.Component {
 	  }
 		var ws = this.ws
 		this.ws.onopen = function() {
-			 ws.send(JSON.stringify({user: {id: 1, username: "jhahn"}}));
+			 ws.send(JSON.stringify({
+				 user: {id: 1, username: "jhahn"}
+			 }));
 		};
+		this.ws.onclose = function() {
+			console.log("Websocket connection closed")
+		}
 		this.ws.onmessage = evt => {
 			 var portfolio = JSON.parse(evt.data);
 			 console.log(portfolio);
