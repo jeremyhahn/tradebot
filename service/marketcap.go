@@ -8,87 +8,105 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dao"
+	logging "github.com/op/go-logging"
 )
 
-type MarketCap struct {
-	ctx        *common.Context
+type MarketCapService struct {
+	logger     *logging.Logger
 	client     http.Client
-	dao        *dao.MarketCapDAO
 	Markets    []common.MarketCap
-	lastUpdate time.Time
+	lastUpdate int64
 }
 
-func NewMarketCapService(ctx *common.Context, dao *dao.MarketCapDAO) *MarketCap {
+func NewMarketCapService(logger *logging.Logger) *MarketCapService {
 	client := http.Client{Timeout: time.Second * 2}
-	return &MarketCap{
-		ctx:        ctx,
-		dao:        dao,
+	return &MarketCapService{
+		logger:     logger,
 		client:     client,
-		lastUpdate: time.Now().Add(-1)}
+		lastUpdate: time.Now().Unix() - 10000}
 }
 
-func (m *MarketCap) GetMarkets() []common.MarketCap {
+func (m *MarketCapService) GetMarkets() []common.MarketCap {
 
-	if m.Markets == nil || time.Since(m.lastUpdate).Minutes() > 5 {
+	now := time.Now().Unix()
+	diff := now - m.lastUpdate
+
+	if len(m.Markets) == 0 || diff >= 300 {
 
 		limit := 10000
-		m.ctx.Logger.Debugf("[NewMarketCap.GetMarkets] Fetching %d markets", limit)
+		m.logger.Debugf("[NewMarketCap.GetMarkets] Fetching %d markets", limit)
 
 		url := fmt.Sprintf("https://api.coinmarketcap.com/v1/ticker/?limit=%d", limit)
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
-			m.ctx.Logger.Errorf("[NewMarketCap.GetMarkets] %s", err.Error())
+			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", err.Error())
 		}
 
 		req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
 
 		res, getErr := m.client.Do(req)
 		if getErr != nil {
-			m.ctx.Logger.Errorf("[NewMarketCap.GetMarkets] %s", getErr.Error())
+			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", getErr.Error())
 		}
 
 		body, readErr := ioutil.ReadAll(res.Body)
 		if readErr != nil {
-			m.ctx.Logger.Errorf("[NewMarketCap.GetMarkets] %s", readErr.Error())
+			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", readErr.Error())
 		}
 
 		jsonErr := json.Unmarshal(body, &m.Markets)
 		if jsonErr != nil {
-			m.ctx.Logger.Errorf("[NewMarketCap.GetMarkets] %s", jsonErr.Error())
+			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", jsonErr.Error())
 		}
+
+		fmt.Printf("%+v\n", m.Markets)
+
+		fmt.Printf("Now: %d", now)
+		fmt.Printf("Last: %d", m.lastUpdate)
+		fmt.Printf("Diff: %d", diff)
+
+		m.lastUpdate = now
 	}
-	fmt.Printf("%+v\n", m.Markets)
 
 	return m.Markets
 }
 
-func (m *MarketCap) GetGlobalMarket(currency string) *common.GlobalMarketCap {
+func (m *MarketCapService) GetMarket(symbol string) common.MarketCap {
+	markets := m.GetMarkets()
+	for _, m := range markets {
+		if m.Symbol == symbol {
+			return m
+		}
+	}
+	return common.MarketCap{}
+}
 
-	m.ctx.Logger.Debugf("[NewMarketCap.GetMarkets] Fetching global market data in %s currency", currency)
+func (m *MarketCapService) GetGlobalMarket(currency string) *common.GlobalMarketCap {
+
+	m.logger.Debugf("[NewMarketCap.GetMarkets] Fetching global market data in %s currency", currency)
 
 	url := fmt.Sprintf("https://api.coinmarketcap.com/v1/global/?convert=%s", currency)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		m.ctx.Logger.Errorf("[NewMarketCap.GetMarkets] %s", err.Error())
+		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", err.Error())
 	}
 
 	req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
 
 	res, getErr := m.client.Do(req)
 	if getErr != nil {
-		m.ctx.Logger.Errorf("[NewMarketCap.GetMarkets] %s", getErr.Error())
+		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", getErr.Error())
 	}
 
 	body, readErr := ioutil.ReadAll(res.Body)
 	if readErr != nil {
-		m.ctx.Logger.Errorf("[NewMarketCap.GetMarkets] %s", readErr.Error())
+		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", readErr.Error())
 	}
 
 	gmarket := common.GlobalMarketCap{}
 	jsonErr := json.Unmarshal(body, &gmarket)
 	if jsonErr != nil {
-		m.ctx.Logger.Errorf("[NewMarketCap.GetMarkets] %s", jsonErr.Error())
+		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", jsonErr.Error())
 	}
 
 	fmt.Printf("%+v\n", gmarket)

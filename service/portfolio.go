@@ -8,21 +8,23 @@ import (
 )
 
 type PortfolioService struct {
-	ctx      *common.Context
-	stopChan chan bool
+	ctx              *common.Context
+	stopChan         chan bool
+	marketcapService *MarketCapService
 }
 
-func NewPortfolioService(ctx *common.Context) *PortfolioService {
+func NewPortfolioService(ctx *common.Context, marketcapService *MarketCapService) *PortfolioService {
 	return &PortfolioService{
-		ctx:      ctx,
-		stopChan: make(chan bool)}
+		ctx:              ctx,
+		stopChan:         make(chan bool),
+		marketcapService: marketcapService}
 }
 
 func (ps *PortfolioService) Build(user *common.User) *common.Portfolio {
 	ps.ctx.Logger.Debugf("[PortfolioService.Build] Building portfolio for %s", user.Username)
 	var netWorth float64
 	userDAO := dao.CreateUserDAO(ps.ctx, user)
-	userService := NewUserService(ps.ctx, userDAO)
+	userService := NewUserService(ps.ctx, userDAO, ps.marketcapService)
 	exchangeList := userService.GetExchanges(ps.ctx.User)
 	walletList := userService.GetWallets(ps.ctx.User)
 	for _, ex := range exchangeList {

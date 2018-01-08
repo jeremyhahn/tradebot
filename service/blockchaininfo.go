@@ -35,8 +35,7 @@ type BlockchainInfo struct {
 }
 
 func NewBlockchainInfo(ctx *common.Context) *BlockchainInfo {
-	client := http.Client{
-		Timeout: time.Second * 2}
+	client := http.Client{Timeout: common.HTTP_CLIENT_TIMEOUT}
 	return &BlockchainInfo{
 		logger:     ctx.Logger,
 		client:     client,

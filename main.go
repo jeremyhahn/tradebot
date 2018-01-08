@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/websocket"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -59,11 +60,8 @@ func main() {
 	//go btcBittrexChart.Stream()
 	//go btcBinanceChart.Stream()
 
-	portfolioHub := websocket.NewPortfolioHub(logger)
-	go portfolioHub.Run()
-
-	ws := websocket.NewWebsocketServer(ctx, 8080)
-	go ws.Start(portfolioHub)
+	ws := websocket.NewWebsocketServer(ctx, 8080, service.NewMarketCapService(logger))
+	go ws.Start()
 	ws.Run()
 
 	/*
