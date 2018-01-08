@@ -10,11 +10,12 @@ import (
 )
 
 type PortfolioClient struct {
-	ctx     *common.Context
-	service *service.PortfolioService
-	hub     *PortfolioHub
-	conn    *websocket.Conn
-	send    chan *common.Portfolio
+	ctx              *common.Context
+	service          *service.PortfolioService
+	hub              *PortfolioHub
+	conn             *websocket.Conn
+	send             chan *common.Portfolio
+	marketcapService *service.MarketCapService
 }
 
 func (c *PortfolioClient) disconnect() {
@@ -41,7 +42,7 @@ func (c *PortfolioClient) readPump() {
 }
 
 func (c *PortfolioClient) writePump() {
-	c.service = service.NewPortfolioService(c.ctx)
+	c.service = service.NewPortfolioService(c.ctx, c.marketcapService)
 	defer func() {
 		c.service.Stop()
 		c.conn.Close()

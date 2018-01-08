@@ -13,6 +13,7 @@ const (
 	TIME_FORMAT           = time.RFC3339
 	BUFFERED_CHANNEL_SIZE = 256
 	WEBSOCKET_KEEPALIVE   = 10 * time.Second
+	HTTP_CLIENT_TIMEOUT   = 10 * time.Second
 )
 
 type Context struct {

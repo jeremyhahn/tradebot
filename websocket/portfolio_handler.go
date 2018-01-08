@@ -5,17 +5,20 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/service"
 )
 
 type PortfolioHandler struct {
-	ctx *common.Context
-	hub *PortfolioHub
+	ctx              *common.Context
+	hub              *PortfolioHub
+	marketcapService *service.MarketCapService
 }
 
-func NewPortfolioHandler(ctx *common.Context, hub *PortfolioHub) *PortfolioHandler {
+func NewPortfolioHandler(ctx *common.Context, hub *PortfolioHub, marketcapService *service.MarketCapService) *PortfolioHandler {
 	return &PortfolioHandler{
-		ctx: ctx,
-		hub: hub}
+		ctx:              ctx,
+		hub:              hub,
+		marketcapService: marketcapService}
 }
 
 func (ph *PortfolioHandler) onConnect(w http.ResponseWriter, r *http.Request) {
@@ -45,10 +48,11 @@ func (ph *PortfolioHandler) onConnect(w http.ResponseWriter, r *http.Request) {
 	ph.ctx.Logger.Debug("[PortfolioHandler.onConnect] Accepting connection from ", conn.RemoteAddr())
 	ph.ctx.User = portfolio.User
 	client := &PortfolioClient{
-		hub:  ph.hub,
-		conn: conn,
-		send: make(chan *common.Portfolio, common.BUFFERED_CHANNEL_SIZE),
-		ctx:  ph.ctx}
+		hub:              ph.hub,
+		conn:             conn,
+		send:             make(chan *common.Portfolio, common.BUFFERED_CHANNEL_SIZE),
+		ctx:              ph.ctx,
+		marketcapService: ph.marketcapService}
 
 	client.hub.register <- client
 	go client.writePump()

@@ -1,21 +1,24 @@
 package service
 
 import (
+	"strconv"
+
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/exchange"
-	"github.com/jeremyhahn/tradebot/util"
 )
 
 type UserService struct {
-	ctx *common.Context
-	dao *dao.UserDAO
+	ctx              *common.Context
+	dao              *dao.UserDAO
+	marketcapService *MarketCapService
 }
 
-func NewUserService(ctx *common.Context, dao *dao.UserDAO) *UserService {
+func NewUserService(ctx *common.Context, dao *dao.UserDAO, marketcapService *MarketCapService) *UserService {
 	return &UserService{
-		ctx: ctx,
-		dao: dao}
+		ctx:              ctx,
+		dao:              dao,
+		marketcapService: marketcapService}
 }
 
 func (service *UserService) CreateUser(user *common.User) {
@@ -71,14 +74,13 @@ func (service *UserService) GetWallets(user *common.User) []common.CryptoWallet 
 		wallet := _wallet
 		c := make(chan common.CryptoWallet, 1)
 		chans = append(chans, c)
-		balance := service.getBalance(wallet.Currency, wallet.Address)
-		netWorth := service.getPrice(wallet.Currency, balance)
 		go func() {
+			balance := service.getBalance(wallet.Currency, wallet.Address)
 			c <- common.CryptoWallet{
 				Address:  wallet.Address,
 				Currency: wallet.Currency,
-				Balance:  service.getBalance(wallet.Currency, wallet.Address),
-				NetWorth: netWorth}
+				Balance:  balance, //service.getBalance(wallet.Currency, wallet.Address),
+				NetWorth: balance * service.getPrice(wallet.Currency, balance)}
 		}()
 	}
 	for i := 0; i < len(wallets); i++ {
@@ -100,7 +102,7 @@ func (service *UserService) GetWallet(user *common.User, currency string) *commo
 func (service *UserService) getBalance(currency, address string) float64 {
 	service.ctx.Logger.Debugf("[UserService.getBalance] currency=%s, address=%s", currency, address)
 	if currency == "XRP" {
-		return NewRipple(service.ctx).GetBalance(address).Balance
+		return NewRipple(service.ctx, service.marketcapService).GetBalance(address).Balance
 	} else if currency == "BTC" {
 		return NewBlockchainInfo(service.ctx).GetBalance(address).Balance
 	}
@@ -109,8 +111,10 @@ func (service *UserService) getBalance(currency, address string) float64 {
 
 func (service *UserService) getPrice(currency string, amt float64) float64 {
 	service.ctx.Logger.Debugf("[UserService.getPrice] currency=%s, amt=%.8f", currency, amt)
-	if currency == "BTC" {
-		return util.TruncateFloat(NewBlockchainInfo(service.ctx).GetPrice()*amt, 8)
-	}
-	return 0.0
+	/*
+		if currency == "BTC" {
+			return util.TruncateFloat(NewBlockchainInfo(service.ctx).GetPrice()*amt, 8)
+		}*/
+	f, _ := strconv.ParseFloat(service.marketcapService.GetMarket(currency).PriceUSD, 64)
+	return f
 }

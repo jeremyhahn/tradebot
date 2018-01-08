@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/service"
 )
 
 type WebsocketRequest struct {
@@ -15,33 +16,21 @@ type WebsocketRequest struct {
 type WebsocketServer struct {
 	ctx              *common.Context
 	port             int
-	running          bool
+	closeChan        chan bool
 	chartHandler     *ChartHandler
 	portfolioHandler *PortfolioHandler
 	marketcapHandler *MarketCapHandler
-	PriceChangeChan  chan common.PriceChange
-	CandlestickChan  chan common.Candlestick
-	ChartChan        chan *common.ChartData
-	CloseChan        chan bool
-	PortfolioChan    chan *common.Portfolio
-	MarketCapChan    chan *common.MarketCap
+	marketcapService *service.MarketCapService
 }
 
-func NewWebsocketServer(ctx *common.Context, port int) *WebsocketServer {
-	portfolioChan := make(chan *common.Portfolio)
+func NewWebsocketServer(ctx *common.Context, port int, marketcapService *service.MarketCapService) *WebsocketServer {
 	return &WebsocketServer{
 		ctx:              ctx,
 		port:             port,
-		chartHandler:     NewChartHandler(ctx.Logger),
-		marketcapHandler: NewMarketCapHandler(ctx.Logger),
-		PriceChangeChan:  make(chan common.PriceChange),
-		CandlestickChan:  make(chan common.Candlestick),
-		ChartChan:        make(chan *common.ChartData),
-		PortfolioChan:    portfolioChan,
-		MarketCapChan:    make(chan *common.MarketCap)}
+		marketcapService: marketcapService}
 }
 
-func (ws *WebsocketServer) Start(portfolioHub *PortfolioHub) {
+func (ws *WebsocketServer) Start() {
 
 	ws.ctx.Logger.Debug("[WebSocket] Starting file service on port: ", ws.port)
 	http.Handle("/", http.FileServer(http.Dir("webui/public")))
@@ -51,7 +40,9 @@ func (ws *WebsocketServer) Start(portfolioHub *PortfolioHub) {
 	http.HandleFunc("/chart", ws.chartHandler.onConnect)
 
 	http.HandleFunc("/portfolio", func(w http.ResponseWriter, r *http.Request) {
-		ph := NewPortfolioHandler(ws.ctx, portfolioHub)
+		portfolioHub := NewPortfolioHub(ws.ctx.Logger)
+		go portfolioHub.Run()
+		ph := NewPortfolioHandler(ws.ctx, portfolioHub, ws.marketcapService)
 		ph.onConnect(w, r)
 	})
 
@@ -66,28 +57,17 @@ func (ws *WebsocketServer) Start(portfolioHub *PortfolioHub) {
 func (ws *WebsocketServer) Run() {
 	ws.ctx.Logger.Debug("[WebsocketServer.run] Starting loop")
 	for {
-
 		ws.ctx.Logger.Debug("[WebsocketServer.run] Main loop...")
 		select {
-
-		case price := <-ws.PriceChangeChan:
-			ws.ctx.Logger.Debugf("[WebsocketServer.run] Broadcasting price: %+v\n: ", price)
-
-		case candle := <-ws.CandlestickChan:
-			ws.ctx.Logger.Debugf("[WebsocketServer.run] Broadcasting candlestick: %+v\n", candle)
-
-		case chart := <-ws.ChartChan:
-			ws.ctx.Logger.Debugf("[WebsocketServer.run] Broadcasting chart: %+v\n", chart)
-
-		case marketcap := <-ws.MarketCapChan:
-			ws.ctx.Logger.Debugf("[WebsocketServer.run] Broadcasting market cap: %+v\n", marketcap)
-			ws.marketcapHandler.Broadcast(marketcap)
-
-		case close := <-ws.CloseChan:
+		case close := <-ws.closeChan:
 			if close {
 				ws.ctx.Logger.Debug("[WebsocketServer.run] Stopping websocket server")
 				break
 			}
 		}
 	}
+}
+
+func (ws *WebsocketServer) Stop() {
+	ws.closeChan <- true
 }
