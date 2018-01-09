@@ -3,6 +3,7 @@ package exchange
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	ws "github.com/gorilla/websocket"
@@ -13,11 +14,13 @@ import (
 	"github.com/op/go-logging"
 )
 
+var GDAXLastApiCall = time.Now().AddDate(0, 0, -1).Unix()
+
 type GDAX struct {
 	gdax         *gdax.Client
 	logger       *logging.Logger
 	name         string
-	lastApiCall  time.Time
+	lastApiCall  int64
 	apiCallCount int
 	currencyPair *common.CurrencyPair
 	common.Exchange
@@ -27,8 +30,7 @@ func NewGDAX(_gdax *dao.UserCoinExchange, logger *logging.Logger, currencyPair *
 	return &GDAX{
 		gdax:         gdax.NewClient(_gdax.Secret, _gdax.Key, _gdax.Passphrase),
 		logger:       logger,
-		name:         "GDAX",
-		lastApiCall:  time.Now(),
+		name:         "gdax",
 		apiCallCount: 0,
 		currencyPair: currencyPair}
 }
@@ -43,18 +45,36 @@ func (_gdax *GDAX) GetTradeHistory(start, end time.Time, granularity int) []comm
 		Granularity: granularity}
 	rates, err := _gdax.gdax.GetHistoricRates(_gdax.FormattedCurrencyPair(), params)
 	if err != nil {
+		if strings.Contains(err.Error(), "granularity too small for the requested time range") {
+			_gdax.logger.Debug("[GDAX.GetTradeHistory] Result set too big; chunking into smaller requests...")
+			var candlesticks []common.Candlestick
+			diff := end.Sub(start)
+			days := int(diff.Hours() / 24)
+			for i := 0; i < days; i++ {
+				newStart := start.AddDate(0, 0, i)
+				newEnd := start.AddDate(0, 0, i).Add(time.Hour*23 + time.Minute*59 + time.Second*59)
+				sticks := _gdax.GetTradeHistory(newStart, newEnd, granularity)
+				//bytes, _ := json.MarshalIndent(sticks, "", "    ")
+				//fmt.Println(string(bytes))
+				candlesticks = append(candlesticks, sticks...)
+			}
+			return candlesticks
+		}
 		_gdax.logger.Errorf("[GDAX.GetTradeHistory] %s", err.Error())
-		time.Sleep(time.Duration(time.Second * 10))
+		time.Sleep(time.Second * 1)
 		return _gdax.GetTradeHistory(start, end, granularity)
 	}
 	for _, r := range rates {
 		candlesticks = append(candlesticks, common.Candlestick{
-			Date:   r.Time,
-			Open:   r.Open,
-			Close:  r.Close,
-			High:   r.High,
-			Low:    r.Low,
-			Volume: r.Volume})
+			Exchange:     _gdax.name,
+			CurrencyPair: _gdax.currencyPair,
+			Period:       granularity,
+			Date:         r.Time,
+			Open:         r.Open,
+			Close:        r.Close,
+			High:         r.High,
+			Low:          r.Low,
+			Volume:       r.Volume})
 	}
 	return candlesticks
 }
@@ -194,12 +214,14 @@ func (_gdax *GDAX) FormattedCurrencyPair() string {
 }
 
 func (_gdax *GDAX) respectRateLimit() {
-	for time.Since(_gdax.lastApiCall).Seconds() >= 1 && _gdax.apiCallCount >= 3 {
+	now := time.Now().Unix()
+	diff := now - _gdax.lastApiCall
+	for diff <= 30 && _gdax.apiCallCount >= 3 {
 		_gdax.logger.Info("[GDAX.respectRateLimit] Cooling off")
 		_gdax.logger.Debugf("[GDAX.respectRateLimit] apiCallCount: %d, lastApiCall: %s", _gdax.apiCallCount, _gdax.lastApiCall)
 		time.Sleep(1 * time.Second)
-		_gdax.apiCallCount = -1
+		GDAXLastApiCall = -1
 	}
-	_gdax.lastApiCall = time.Now()
+	GDAXLastApiCall = time.Now().Unix()
 	_gdax.apiCallCount += 1
 }

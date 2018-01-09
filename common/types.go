@@ -14,6 +14,7 @@ const (
 	BUFFERED_CHANNEL_SIZE = 256
 	WEBSOCKET_KEEPALIVE   = 10 * time.Second
 	HTTP_CLIENT_TIMEOUT   = 10 * time.Second
+	CANDLESTICK_MIN_LOAD  = 250
 )
 
 type Context struct {
@@ -61,8 +62,9 @@ type CryptoWallet struct {
 }
 
 type User struct {
-	Id       uint   `json:"id"`
-	Username string `json:"username"`
+	Id            uint   `json:"id"`
+	Username      string `json:"username"`
+	LocalCurrency string `json:"local_currency"`
 }
 
 type CurrencyPair struct {

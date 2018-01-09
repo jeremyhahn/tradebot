@@ -41,26 +41,33 @@ func (chart *Chart) GetChartData() *common.ChartData {
 	return chart.data
 }
 
+func (chart *Chart) loadCandlesticks() []common.Candlestick {
+
+	t := time.Now()
+	year, month, day := t.Date()
+	yesterday := time.Date(year, month, day-1, 0, 0, 0, 0, t.Location())
+	//lastWeek := time.Date(year, month, day-7, 0, 0, 0, 0, t.Location())
+	now := time.Now()
+
+	chart.logger.Debugf("[Chart.Stream] Getting %s %s trade history from %s - %s ",
+		chart.exchange.GetName(), chart.exchange.FormattedCurrencyPair(), yesterday, now)
+
+	candlesticks := chart.exchange.GetTradeHistory(yesterday, now, chart.period)
+	if len(candlesticks) < 20 {
+		chart.logger.Errorf("[Chart.Stream] Failed to load initial candlesticks from %s. Total records: %d",
+			chart.exchange.GetName(), len(candlesticks))
+		return nil
+	}
+
+	return candlesticks
+}
+
 func (chart *Chart) Stream() {
 
 	chart.logger.Infof("[Chart.Stream] Streaming %s %s chart data.",
 		chart.exchange.GetName(), chart.exchange.FormattedCurrencyPair())
 
-	t := time.Now()
-	year, month, day := t.Date()
-	today := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-	//yesterday := time.Date(year, month, (day - 1), 0, 0, 0, 0, t.Location())
-	now := time.Now()
-
-	chart.logger.Debugf("[Chart.Stream] Getting %s %s trade history from %s - %s ",
-		chart.exchange.GetName(), chart.exchange.FormattedCurrencyPair(), today, now)
-
-	candlesticks := chart.exchange.GetTradeHistory(today, now, chart.period)
-	if len(candlesticks) < 20 {
-		chart.logger.Errorf("[Chart.Stream] Failed to load initial candlesticks from %s. Total records: %d",
-			chart.exchange.GetName(), len(candlesticks))
-		return
-	}
+	candlesticks := chart.loadCandlesticks()
 
 	// RSI
 	rsiSma := indicators.NewSimpleMovingAverage(candlesticks[:14])
@@ -78,10 +85,14 @@ func (chart *Chart) Stream() {
 	macd := indicators.NewMovingAverageConvergenceDivergence(macdEma1, macdEma2, 9)
 	chart.priceStream.SubscribeToPeriod(macd)
 
-	// Pre-warm indicators
-	for _, c := range candlesticks {
+	chart.logger.Debugf("[Chart.Stream] Prewarming indicators with %d candlesticks", len(candlesticks))
+	for _, c := range candlesticks[14:] {
 		rsi.OnPeriodChange(&c)
+	}
+	for _, c := range candlesticks[20:] {
 		bollinger.OnPeriodChange(&c)
+	}
+	for _, c := range candlesticks[26:] {
 		macd.OnPeriodChange(&c)
 	}
 
@@ -110,14 +121,7 @@ func (chart *Chart) Stream() {
 		chart.data.BollingerMiddle = bollinger.GetMiddle()
 		chart.data.BollingerLower = bollinger.GetLower()
 
+		//bytes, _ := json.MarshalIndent(chart.data, "", "    ")
 		chart.logger.Debugf("[Chart.Stream] ChartData: %+v\n", chart.data)
 	}
-}
-
-func (chart *Chart) OnPeriodChange(candlestick *common.Candlestick) {
-	chart.logger.Debugf("[Chart.OnPriceChange] candlestick: %+v\n", candlestick)
-}
-
-func (chart *Chart) OnPriceChange(priceChange common.PriceChange) {
-	chart.logger.Debugf("[Chart.OnPriceChange] priceChange: %+v\n", priceChange)
 }

@@ -33,6 +33,11 @@ func NewRelativeStrengthIndex(ma common.MovingAverage) *RSI {
 
 func CreateRelativeStrengthIndex(ma common.MovingAverage, period int, overbought, oversold float64) *RSI {
 	candles := ma.GetCandlesticks()
+	candleLen := len(candles)
+	lastPrice := 0.0
+	if candleLen > 0 {
+		lastPrice = candles[candleLen-1].Close
+	}
 	return &RSI{
 		period:     period,
 		ma:         ma,
@@ -43,7 +48,7 @@ func CreateRelativeStrengthIndex(ma common.MovingAverage, period int, overbought
 		d:          0.0,
 		avgU:       0.0,
 		avgD:       0.0,
-		lastPrice:  candles[len(candles)-1].Close}
+		lastPrice:  lastPrice}
 }
 
 func (rsi *RSI) Calculate(price float64) float64 {

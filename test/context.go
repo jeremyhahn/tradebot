@@ -25,11 +25,10 @@ func NewTestContext() *common.Context {
 
 	TEST_CONTEXT = &common.Context{
 		DB:     db,
-		Logger: logger}
-
-	TEST_CONTEXT.User = &common.User{
-		Id:       1,
-		Username: TEST_USERNAME}
+		Logger: logger,
+		User: &common.User{
+			Id:       1,
+			Username: TEST_USERNAME}}
 
 	var wallets []dao.UserWallet
 	wallets = append(wallets, dao.UserWallet{
@@ -53,10 +52,10 @@ func NewTestContext() *common.Context {
 		Name:   "binance",
 		Key:    BINANCE_APIKEY,
 		Secret: BINANCE_SECRET})
-	exchanges = append(exchanges, dao.UserCoinExchange{
-		Name:   "bithumb",
-		Key:    BITHUMB_APIKEY,
-		Secret: BITHUMB_SECRET})
+	/*exchanges = append(exchanges, dao.UserCoinExchange{
+	Name:   "bithumb",
+	Key:    BITHUMB_APIKEY,
+	Secret: BITHUMB_SECRET})*/
 
 	userDAO := dao.NewUserDAO(TEST_CONTEXT)
 	userDAO.Create(&dao.User{Username: TEST_USERNAME, Exchanges: exchanges, Wallets: wallets})

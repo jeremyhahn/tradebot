@@ -79,7 +79,7 @@ func (service *UserService) GetWallets(user *common.User) []common.CryptoWallet 
 			c <- common.CryptoWallet{
 				Address:  wallet.Address,
 				Currency: wallet.Currency,
-				Balance:  balance, //service.getBalance(wallet.Currency, wallet.Address),
+				Balance:  balance,
 				NetWorth: balance * service.getPrice(wallet.Currency, balance)}
 		}()
 	}

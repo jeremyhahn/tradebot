@@ -40,7 +40,7 @@ func CreateExponentialMovingAverage(candles []common.Candlestick, size int) *EMA
 		last:         0.0,
 		multiplier:   1}
 	candleLen := len(candles)
-	if candles[0].Close > 0 {
+	if candleLen > 0 && candles[0].Close > 0 {
 		ema.prices = prices
 		ema.count = candleLen
 		ema.index = candleLen - 1
@@ -109,6 +109,9 @@ func (ema *EMA) GetMultiplier() float64 {
 
 func (ema *EMA) GetGainsAndLosses() (float64, float64) {
 	var u, d float64
+	if len(ema.candlesticks) <= 0 {
+		return 0.0, 0.0
+	}
 	var lastClose = ema.candlesticks[0].Close
 	for _, c := range ema.candlesticks {
 		difference := (c.Close - lastClose)
