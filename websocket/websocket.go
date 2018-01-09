@@ -48,13 +48,15 @@ func (ws *WebsocketServer) Start() {
 
 	http.HandleFunc("/marketcap", ws.marketcapHandler.onConnect)
 
+	go ws.run()
+
 	err := http.ListenAndServe(fmt.Sprintf(":%d", ws.port), nil)
 	if err != nil {
 		ws.ctx.Logger.Error("[WebSocket] Unable to start server: ", err)
 	}
 }
 
-func (ws *WebsocketServer) Run() {
+func (ws *WebsocketServer) run() {
 	ws.ctx.Logger.Debug("[WebsocketServer.run] Starting loop")
 	for {
 		ws.ctx.Logger.Debug("[WebsocketServer.run] Main loop...")

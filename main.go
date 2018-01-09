@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/websocket"
 	"github.com/jinzhu/gorm"
@@ -26,61 +29,36 @@ func main() {
 		DB:     sqlite,
 		Logger: logger}
 
-	//userDAO := dao.NewUserDAO(ctx)
-	//ctx.User = userDAO.GetById(1)
+	userDAO := dao.NewUserDAO(ctx)
+	ctx.User = userDAO.GetById(1)
 	/*if user.Username == "" {
 		userDAO.Create(&dao.User{
 			Username: "test"})
 	}*/
 
-	//config := NewConfiguration(sqlite, logger)
-	//period := 900 // seconds; 15 minutes
-
-	//marketcap := service.NewMarketCapService(ctx, dao.NewMarketCapDAO(ctx))
-	//marketcap.GetMarkets()
-	//marketcap.GetGlobalMarket("BTC")
-
-	//wallets := userDAO.GetWallets(ctx.User)
-
-	///gdaxCurrencyPair := &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"}
-	///bittrexCurrencyPair := &common.CurrencyPair{Base: "USDT", Quote: "BTC", LocalCurrency: "USDT"}
-	///binanceCurrencyPair := &common.CurrencyPair{Base: "BTC", Quote: "USDT", LocalCurrency: "USDT"}
-
-	///exchangeDAO := exchange.NewExchangeDAO(ctx)
-
-	///gdax := exchange.NewGDAX(exchangeDAO.Get("gdax"), logger, gdaxCurrencyPair)             // BTC-USD
-	///bittrex := exchange.NewBittrex(exchangeDAO.Get("bittrex"), logger, bittrexCurrencyPair) // USDT-BTC
-	///binance := exchange.NewBinance(exchangeDAO.Get("binance"), logger, binanceCurrencyPair) // BTCUSDT
-
-	//btcGDAXChart := service.NewChart(ctx, gdax, period)
-	//btcBittrexChart := service.NewChart(ctx, bittrex, period)
-	//btcBinanceChart := service.NewChart(ctx, binance, period)
-
-	//go btcGDAXChart.Stream()
-	//go btcBittrexChart.Stream()
-	//go btcBinanceChart.Stream()
-
 	ws := websocket.NewWebsocketServer(ctx, 8080, service.NewMarketCapService(logger))
 	go ws.Start()
-	ws.Run()
 
-	/*
-		exchangeMap := make(map[string]common.Exchange)
-		exchangeMap["gdax"] = gdax
-		exchangeMap["bittrex"] = bittrex
-		exchangeMap["binance"] = binance
-	*/
+	exchangeDAO := dao.NewExchangeDAO(ctx)
+	autotradeDAO := dao.NewAutoTradeDAO(ctx)
+	fmt.Println(autotradeDAO.Find(ctx.User))
 
-	/*
-		for {
+	for _, trade := range autotradeDAO.Find(ctx.User) {
+		currencyPair := &common.CurrencyPair{
+			Base:          trade.Base,
+			Quote:         trade.Quote,
+			LocalCurrency: ctx.User.LocalCurrency}
 
-			fmt.Println("[Main] tick...")
-			time.Sleep(1 * time.Second)
+		exchangeService := service.NewExchangeService(ctx, exchangeDAO)
+		exchange := exchangeService.NewExchange(ctx.User, trade.Exchange, currencyPair)
+		chart := service.NewChart(ctx, exchange, trade.Period)
 
-			//ws.PortfolioChan <- service.NewPortfolio(ctx, exchangeMap, wallets)
-			//ws.ChartChan <- btcBinanceChart.GetChartData()
-		}
-	*/
+		fmt.Printf("Loading autotrade pair: %s-%s\n", trade.Base, trade.Quote)
+		fmt.Printf("Chart: %+v\n", chart)
+
+		chart.Stream()
+	}
+
 }
 
 func InitSQLite() *gorm.DB {

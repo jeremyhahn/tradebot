@@ -79,6 +79,9 @@ func (sma *SMA) GetSize() int {
 
 func (sma *SMA) GetGainsAndLosses() (float64, float64) {
 	var gains, losses float64
+	if len(sma.candlesticks) <= 0 {
+		return 0.0, 0.0
+	}
 	var lastClose = sma.candlesticks[0].Close
 	for _, c := range sma.candlesticks {
 		difference := (c.Close - lastClose)
