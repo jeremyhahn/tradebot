@@ -13,7 +13,10 @@ import (
 type Chart struct {
 	exchange      common.Exchange
 	db            *gorm.DB
+	obv           *indicators.OBV
 	rsi           *indicators.RSI
+	bband         *indicators.Bollinger
+	macd          *indicators.MACD
 	logger        *logging.Logger
 	priceStream   *PriceStream
 	priceChannel  chan common.PriceChange
@@ -46,7 +49,6 @@ func (chart *Chart) loadCandlesticks() []common.Candlestick {
 	t := time.Now()
 	year, month, day := t.Date()
 	yesterday := time.Date(year, month, day-1, 0, 0, 0, 0, t.Location())
-	//lastWeek := time.Date(year, month, day-7, 0, 0, 0, 0, t.Location())
 	now := time.Now()
 
 	chart.logger.Debugf("[Chart.Stream] Getting %s %s trade history from %s - %s ",
@@ -67,61 +69,85 @@ func (chart *Chart) Stream() {
 	chart.logger.Infof("[Chart.Stream] Streaming %s %s chart data.",
 		chart.exchange.GetName(), chart.exchange.FormattedCurrencyPair())
 
-	candlesticks := chart.loadCandlesticks()
+	candles := chart.loadCandlesticks()
+	chart.logger.Debugf("[Chart.Stream] Prewarming indicators with %d candlesticks", len(candles))
+	candlesticks := chart.reverseCandles(candles)
 
-	// RSI
 	rsiSma := indicators.NewSimpleMovingAverage(candlesticks[:14])
-	rsi := indicators.NewRelativeStrengthIndex(rsiSma)
-	chart.priceStream.SubscribeToPeriod(rsi)
-
-	// Bollinger Band
-	bollingerSma := indicators.NewSimpleMovingAverage(candlesticks[:20])
-	bollinger := indicators.NewBollingerBand(bollingerSma)
-	chart.priceStream.SubscribeToPeriod(bollinger)
-
-	// MACD
-	macdEma1 := indicators.NewExponentialMovingAverage(candlesticks[:12])
-	macdEma2 := indicators.NewExponentialMovingAverage(candlesticks[:26])
-	macd := indicators.NewMovingAverageConvergenceDivergence(macdEma1, macdEma2, 9)
-	chart.priceStream.SubscribeToPeriod(macd)
-
-	chart.logger.Debugf("[Chart.Stream] Prewarming indicators with %d candlesticks", len(candlesticks))
+	chart.rsi = indicators.NewRelativeStrengthIndex(rsiSma)
 	for _, c := range candlesticks[14:] {
-		rsi.OnPeriodChange(&c)
+		chart.rsi.OnPeriodChange(&c)
 	}
+	chart.priceStream.SubscribeToPeriod(chart.rsi)
+
+	bollingerSma := indicators.NewSimpleMovingAverage(candlesticks[:20])
+	chart.bband = indicators.NewBollingerBand(bollingerSma)
 	for _, c := range candlesticks[20:] {
-		bollinger.OnPeriodChange(&c)
+		chart.bband.OnPeriodChange(&c)
 	}
+	chart.priceStream.SubscribeToPeriod(chart.bband)
+
+	macdEma1 := indicators.NewExponentialMovingAverage(candlesticks[:10])
+	macdEma2 := indicators.NewExponentialMovingAverage(candlesticks[:26])
+	for _, c := range candlesticks[10:26] {
+		macdEma1.OnPeriodChange(&c)
+	}
+	chart.macd = indicators.NewMovingAverageConvergenceDivergence(macdEma1, macdEma2, 9)
 	for _, c := range candlesticks[26:] {
-		macd.OnPeriodChange(&c)
+		chart.macd.OnPeriodChange(&c)
 	}
+	chart.priceStream.SubscribeToPeriod(chart.macd)
+
+	chart.obv = indicators.NewOnBalanceVolume(candlesticks)
+	chart.priceStream.SubscribeToPeriod(chart.obv)
 
 	priceChange := make(chan common.PriceChange)
 	go chart.exchange.SubscribeToLiveFeed(priceChange)
 
+	chart.priceStream.SubscribeToPrice(chart)
+	chart.priceStream.SubscribeToPeriod(chart)
+
 	for {
-		newPrice := <-priceChange
-		satoshis := newPrice.Satoshis
-
-		bollinger.Calculate(satoshis)
-		macdValue, macdSignal, macdHistogram := macd.Calculate(satoshis)
-
-		chart.data.CurrencyPair = chart.exchange.GetCurrencyPair()
-		chart.data.Price = newPrice.Price
-		chart.data.Satoshis = newPrice.Satoshis
-		chart.data.MACDValue = macd.GetValue()
-		chart.data.MACDSignal = macd.GetSignalLine()
-		chart.data.MACDHistogram = macd.GetHistogram()
-		chart.data.MACDValueLive = macdValue
-		chart.data.MACDSignalLive = macdSignal
-		chart.data.MACDHistogramLive = macdHistogram
-		chart.data.RSI = rsi.GetValue()
-		chart.data.RSILive = rsi.Calculate(satoshis)
-		chart.data.BollingerUpper = bollinger.GetUpper()
-		chart.data.BollingerMiddle = bollinger.GetMiddle()
-		chart.data.BollingerLower = bollinger.GetLower()
-
-		//bytes, _ := json.MarshalIndent(chart.data, "", "    ")
-		chart.logger.Debugf("[Chart.Stream] ChartData: %+v\n", chart.data)
+		chart.priceStream.Listen(priceChange)
 	}
+}
+
+func (chart *Chart) OnPeriodChange(candle *common.Candlestick) {
+	chart.rsi.OnPeriodChange(candle)
+	chart.bband.OnPeriodChange(candle)
+	chart.macd.OnPeriodChange(candle)
+}
+
+func (chart *Chart) OnPriceChange(newPrice *common.PriceChange) {
+	bUpper, bMiddle, bLower := chart.bband.Calculate(newPrice.Price)
+	macdValue, macdSignal, macdHistogram := chart.macd.Calculate(newPrice.Price)
+	chart.data.CurrencyPair = chart.exchange.GetCurrencyPair()
+	chart.data.Price = newPrice.Price
+	chart.data.Satoshis = newPrice.Satoshis
+	chart.data.RSI = chart.rsi.GetValue()
+	chart.data.RSILive = chart.rsi.Calculate(newPrice.Price)
+	chart.data.BollingerUpper = chart.bband.GetUpper()
+	chart.data.BollingerMiddle = chart.bband.GetMiddle()
+	chart.data.BollingerLower = chart.bband.GetLower()
+	chart.data.BollingerUpperLive = bUpper
+	chart.data.BollingerMiddleLive = bMiddle
+	chart.data.BollingerLowerLive = bLower
+	chart.data.MACDValue = chart.macd.GetValue()
+	chart.data.MACDSignal = chart.macd.GetSignalLine()
+	chart.data.MACDHistogram = chart.macd.GetHistogram()
+	chart.data.MACDValueLive = macdValue
+	chart.data.MACDSignalLive = macdSignal
+	chart.data.MACDHistogramLive = macdHistogram
+	chart.data.OnBalanceVolume = chart.obv.GetValue()
+	chart.data.OnBalanceVolumeLive = chart.obv.Calculate(newPrice.Price)
+	//bytes, _ := json.MarshalIndent(chart.data, "", "    ")
+	chart.logger.Debugf("[Chart.OnPriceChange] ChartData: %+v\n", chart.data)
+}
+
+func (chart *Chart) reverseCandles(candles []common.Candlestick) []common.Candlestick {
+	var newCandles []common.Candlestick
+	for i := len(candles) - 1; i > 0; i-- {
+		newCandles = append(newCandles, candles[i])
+	}
+	return newCandles
 }

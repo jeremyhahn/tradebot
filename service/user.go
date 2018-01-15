@@ -5,7 +5,6 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
-	"github.com/jeremyhahn/tradebot/exchange"
 )
 
 type UserService struct {
@@ -38,26 +37,26 @@ func (service *UserService) GetUserByName(username string) *common.User {
 	return service.dao.GetByName(username)
 }
 
-func (service *UserService) GetExchange(user *common.User, name string) common.Exchange {
+func (service *UserService) GetExchange(user *common.User, name string, currencyPair *common.CurrencyPair) common.Exchange {
 	exchanges := service.dao.GetExchanges(user)
 	for _, ex := range exchanges {
 		if ex.Name == name {
-			currencyPair := exchange.CurrencyPairMap[name]
-			return exchange.SupportedExchangeMap[name](&ex, service.ctx.Logger, currencyPair)
+			return NewExchangeService(service.ctx, dao.NewExchangeDAO(service.ctx)).NewExchange(user, ex.Name, currencyPair)
 		}
 	}
 	return nil
 }
 
-func (service *UserService) GetExchanges(user *common.User) []common.CoinExchange {
+func (service *UserService) GetExchanges(user *common.User, currencyPair *common.CurrencyPair) []common.CoinExchange {
 	var exchangeList []common.CoinExchange
 	var chans []chan common.CoinExchange
 	exchanges := service.dao.GetExchanges(user)
 	for _, ex := range exchanges {
 		c := make(chan common.CoinExchange, 1)
 		chans = append(chans, c)
-		currencyPair := exchange.CurrencyPairMap[ex.Name]
-		exchange := exchange.SupportedExchangeMap[ex.Name](&ex, service.ctx.Logger, currencyPair)
+		exchangeDAO := dao.NewExchangeDAO(service.ctx)
+		exchangeService := NewExchangeService(service.ctx, exchangeDAO)
+		exchange := exchangeService.NewExchange(user, ex.Name, currencyPair)
 		go func() { c <- exchange.GetExchange() }()
 	}
 	for i := 0; i < len(exchanges); i++ {

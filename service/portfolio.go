@@ -20,12 +20,12 @@ func NewPortfolioService(ctx *common.Context, marketcapService *MarketCapService
 		marketcapService: marketcapService}
 }
 
-func (ps *PortfolioService) Build(user *common.User) *common.Portfolio {
+func (ps *PortfolioService) Build(user *common.User, currencyPair *common.CurrencyPair) *common.Portfolio {
 	ps.ctx.Logger.Debugf("[PortfolioService.Build] Building portfolio for %s", user.Username)
 	var netWorth float64
 	userDAO := dao.CreateUserDAO(ps.ctx, user)
 	userService := NewUserService(ps.ctx, userDAO, ps.marketcapService)
-	exchangeList := userService.GetExchanges(ps.ctx.User)
+	exchangeList := userService.GetExchanges(ps.ctx.User, currencyPair)
 	walletList := userService.GetWallets(ps.ctx.User)
 	for _, ex := range exchangeList {
 		netWorth += ex.Total
@@ -42,15 +42,16 @@ func (ps *PortfolioService) Build(user *common.User) *common.Portfolio {
 
 func (ps *PortfolioService) Queue(user *common.User) <-chan *common.Portfolio {
 	ps.ctx.Logger.Debugf("[PortfolioService.Queue] Adding portfolio to queue on behalf of %s", user.Username)
-	portfolio := ps.Build(user)
+	currencyPair := &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"}
+	portfolio := ps.Build(user, currencyPair)
 	ps.ctx.Logger.Debugf("[PortfolioService.Queue] portfolio=%+v\n", portfolio)
 	portChan := make(chan *common.Portfolio, 1)
 	portChan <- portfolio
 	return portChan
 }
 
-func (ps *PortfolioService) Stream(user *common.User) <-chan *common.Portfolio {
-	portfolio := ps.Build(user)
+func (ps *PortfolioService) Stream(user *common.User, currencyPair *common.CurrencyPair) <-chan *common.Portfolio {
+	portfolio := ps.Build(user, currencyPair)
 	ps.ctx.Logger.Debugf("[PortfolioService.Stream] Starting stream for %s", portfolio.User.Username)
 	portChan := make(chan *common.Portfolio)
 	go func() {

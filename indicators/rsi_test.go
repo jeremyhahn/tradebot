@@ -7,6 +7,7 @@ import (
 	"github.com/jeremyhahn/tradebot/util"
 )
 
+// http://cns.bu.edu/~gsc/CN710/fincast/Technical%20_indicators/Relative%20Strength%20Index%20(RSI).htm
 func TestRelativeStrengthIndexWithSMA(t *testing.T) {
 
 	var candlesticks []common.Candlestick
@@ -55,6 +56,12 @@ func TestRelativeStrengthIndexWithSMA(t *testing.T) {
 		t.Errorf("[RSI] Incorrect RSI (SMA) calcuation, got: %f, want: %f.", actual, expected)
 	}
 
+	actual = util.RoundFloat(rsi.Calculate(45.6875), 3)
+	expected = 48.477
+	if actual != expected {
+		t.Errorf("[RSI] Incorrect RSI (SMA) calcuation, got: %f, want: %f.", actual, expected)
+	}
+
 	rsi.OnPeriodChange(&common.Candlestick{Close: 45.6875})
 	actual = util.RoundFloat(rsi.GetValue(), 3)
 	expected = 48.477
@@ -79,6 +86,12 @@ func TestRelativeStrengthIndexWithSMA(t *testing.T) {
 	rsi.OnPeriodChange(&common.Candlestick{Close: 44.8750})
 	actual = util.RoundFloat(rsi.GetValue(), 3)
 	expected = 47.382
+	if actual != expected {
+		t.Errorf("[RSI] Incorrect RSI (SMA) calcuation, got: %f, want: %f.", actual, expected)
+	}
+
+	actual = util.RoundFloat(rsi.Calculate(43.6875), 3)
+	expected = 43.992
 	if actual != expected {
 		t.Errorf("[RSI] Incorrect RSI (SMA) calcuation, got: %f, want: %f.", actual, expected)
 	}

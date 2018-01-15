@@ -1,6 +1,7 @@
 package indicators
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -80,6 +81,10 @@ func (ema *EMA) GetCandlesticks() []common.Candlestick {
 	return ema.candlesticks
 }
 
+func (ema *EMA) GetPrices() []float64 {
+	return ema.prices
+}
+
 func (ema *EMA) GetAverage() float64 {
 	return ema.average
 }
@@ -126,6 +131,6 @@ func (ema *EMA) GetGainsAndLosses() (float64, float64) {
 }
 
 func (ema *EMA) OnPeriodChange(candle *common.Candlestick) {
-	//fmt.Println("[EMA] OnPeriodChange: ", candle.Date, candle.Close)
+	fmt.Println("[EMA] OnPeriodChange: ", candle.Date, candle.Close)
 	ema.Add(candle)
 }
