@@ -145,7 +145,7 @@ func (_gdax *GDAX) SubscribeToLiveFeed(priceChannel chan common.PriceChange) {
 
 		if err := wsConn.ReadJSON(&message); err != nil {
 			_gdax.logger.Errorf("[GDAX.SubscribeToLiveFeed] %s", err.Error())
-			continue
+			break
 		}
 
 		if message.Type == "match" && message.Reason == "filled" {

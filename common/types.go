@@ -101,21 +101,26 @@ type PriceChange struct {
 }
 
 type ChartData struct {
-	CurrencyPair      CurrencyPair `json:"currency"`
-	Exchange          string       `json:"exchange"`
-	Price             float64      `json:"price"`
-	Satoshis          float64      `json:"satoshis"`
-	MACDValue         float64      `json:"macd_value"`
-	MACDHistogram     float64      `json:"macd_histogram"`
-	MACDSignal        float64      `json:"macd_signal"`
-	MACDValueLive     float64      `json:"macd_value_live"`
-	MACDHistogramLive float64      `json:"macd_histogram_live"`
-	MACDSignalLive    float64      `json:"macd_signal_live"`
-	RSI               float64      `json:"rsi"`
-	RSILive           float64      `json:"rsi_live"`
-	BollingerUpper    float64      `json:"bband_upper"`
-	BollingerMiddle   float64      `json:"bband_middle"`
-	BollingerLower    float64      `json:"bband_lower"`
+	CurrencyPair        CurrencyPair `json:"currency"`
+	Exchange            string       `json:"exchange"`
+	Price               float64      `json:"price"`
+	Satoshis            float64      `json:"satoshis"`
+	MACDValue           float64      `json:"macd_value"`
+	MACDHistogram       float64      `json:"macd_histogram"`
+	MACDSignal          float64      `json:"macd_signal"`
+	MACDValueLive       float64      `json:"macd_value_live"`
+	MACDHistogramLive   float64      `json:"macd_histogram_live"`
+	MACDSignalLive      float64      `json:"macd_signal_live"`
+	RSI                 float64      `json:"rsi"`
+	RSILive             float64      `json:"rsi_live"`
+	BollingerUpper      float64      `json:"bband_upper"`
+	BollingerMiddle     float64      `json:"bband_middle"`
+	BollingerLower      float64      `json:"bband_lower"`
+	BollingerUpperLive  float64      `json:"bband_upper_live"`
+	BollingerMiddleLive float64      `json:"bband_middle_live"`
+	BollingerLowerLive  float64      `json:"bband_lower_live"`
+	OnBalanceVolume     float64      `json:"on_balance_volume"`
+	OnBalanceVolumeLive float64      `json:"on_balance_volume_live"`
 }
 
 type MovingAverage interface {
@@ -125,6 +130,7 @@ type MovingAverage interface {
 	GetCount() int
 	GetIndex() int
 	GetAverage() float64
+	GetPrices() []float64
 	Sum() float64
 	GetGainsAndLosses() (float64, float64)
 	PeriodListener
@@ -154,6 +160,5 @@ type Exchange interface {
 }
 
 type Indicator interface {
-	Calculate(price float64)
 	PeriodListener
 }

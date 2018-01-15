@@ -156,12 +156,14 @@ func (b *Binance) GetTradeHistory(start, end time.Time, granularity int) []commo
 		return candlesticks
 	}
 	for _, k := range klines {
+		volume, _ := strconv.ParseFloat(k.Volume, 64)
 		close, _ := strconv.ParseFloat(k.Close, 64)
 		open, _ := strconv.ParseFloat(k.Open, 64)
 		candlesticks = append(candlesticks, common.Candlestick{
 			Close:  close,
 			Open:   open,
-			Period: granularity})
+			Period: granularity,
+			Volume: volume})
 	}
 	return candlesticks
 }

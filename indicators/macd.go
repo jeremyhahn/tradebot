@@ -1,6 +1,8 @@
 package indicators
 
 import (
+	"fmt"
+
 	"github.com/jeremyhahn/tradebot/common"
 )
 
@@ -37,14 +39,20 @@ func NewMovingAverageConvergenceDivergence(ema1, ema2 common.MovingAverage, sign
 
 func (macd *MACD) Calculate(price float64) (float64, float64, float64) {
 	var value, signal, histogram float64
-	if (macd.ema3.GetIndex()+1) == macd.signalSize || macd.lastSignal > 0 {
+
+	if macd.ema3 != nil {
+		prices := macd.ema3.GetPrices()
+		///priceLen := len(prices)
+		sum := 0.0
+		for _, p := range prices {
+			sum += p
+		}
+		size := macd.ema3.GetSize()
 		value = macd.ema1.GetAverage() - macd.ema2.GetAverage()
-		tmpEma := macd.ema3
-		tmpEma.Add(&common.Candlestick{Close: price})
 		if macd.signal == 0 {
-			signal = macd.ema3.Sum() / float64(macd.ema3.GetSize())
+			signal = sum / float64(size)
 		} else {
-			signal = macd.value*(2/(float64(macd.ema3.GetSize()+1))) + (macd.lastSignal * (1 - (2 / (float64(macd.ema3.GetSize()) + 1))))
+			signal = macd.value*(2/(float64(size+1))) + (macd.lastSignal * (1 - (2 / (float64(size) + 1))))
 		}
 		histogram = value - signal
 	}
@@ -64,7 +72,7 @@ func (macd *MACD) GetHistogram() float64 {
 }
 
 func (macd *MACD) OnPeriodChange(candle *common.Candlestick) {
-	//fmt.Println("[MACD] OnPeriodChange: ", candle.Date, candle.Close)
+	fmt.Println("[MACD] OnPeriodChange: ", candle.Date, candle.Close)
 	macd.ema1.Add(candle)
 	macd.ema2.Add(candle)
 	macd.value = macd.ema1.GetAverage() - macd.ema2.GetAverage()

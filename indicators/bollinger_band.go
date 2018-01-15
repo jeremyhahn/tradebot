@@ -1,6 +1,7 @@
 package indicators
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -33,9 +34,7 @@ func CreateBollingerBand(sma common.MovingAverage, k int) *Bollinger {
 }
 
 func (b *Bollinger) GetUpper() float64 {
-	return util.RoundFloat(
-		b.sma.GetAverage()+b.standardDeviation(b.getPrices(), b.price),
-		2)
+	return util.RoundFloat(b.sma.GetAverage()+(b.StandardDeviation()*2), 2)
 }
 
 func (b *Bollinger) GetMiddle() float64 {
@@ -43,33 +42,38 @@ func (b *Bollinger) GetMiddle() float64 {
 }
 
 func (b *Bollinger) GetLower() float64 {
-	return util.RoundFloat(
-		b.sma.GetAverage()-b.standardDeviation(b.getPrices(), b.price),
-		2)
+	return util.RoundFloat(b.sma.GetAverage()-(b.StandardDeviation()*2), 2)
 }
 
-func (b *Bollinger) Calculate(price float64) {
-	b.price = price
+func (b *Bollinger) StandardDeviation() float64 {
+	return b.CalculateStandardDeviation(b.sma.GetPrices(), b.sma.GetAverage())
 }
 
-func (b *Bollinger) getPrices() []float64 {
-	var prices []float64
-	for _, c := range b.sma.GetCandlesticks() {
-		prices = append(prices, c.Close)
+func (b *Bollinger) Calculate(price float64) (float64, float64, float64) {
+	total := 0.0
+	prices := b.sma.GetPrices()
+	prices[0] = price
+	for _, p := range prices {
+		total += p
 	}
-	return prices
+	avg := total / float64(len(prices))
+	stdDev := b.CalculateStandardDeviation(prices, avg)
+	upper := util.RoundFloat(avg+(stdDev*2), 2)
+	middle := util.RoundFloat(avg, 2)
+	lower := util.RoundFloat(avg-(stdDev*2), 2)
+	return upper, middle, lower
 }
 
-func (b *Bollinger) standardDeviation(prices []float64, mean float64) float64 {
+func (b *Bollinger) CalculateStandardDeviation(prices []float64, mean float64) float64 {
 	total := 0.0
 	for _, price := range prices {
-		total += math.Pow(price-mean, float64(b.k))
+		total += math.Pow(price-mean, 2)
 	}
-	variance := total / float64(len(prices)-1)
-	return math.Sqrt(variance)
+	variance := total / float64(len(prices))
+	return util.RoundFloat(math.Sqrt(variance), 2)
 }
 
 func (b *Bollinger) OnPeriodChange(candle *common.Candlestick) {
-	//fmt.Println("[Bollinger] OnPeriodChange: ", candle.Date, candle.Close)
+	fmt.Println("[Bollinger] OnPeriodChange: ", candle.Date, candle.Close)
 	b.sma.Add(candle)
 }
