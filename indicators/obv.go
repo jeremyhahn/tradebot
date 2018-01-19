@@ -55,6 +55,6 @@ func (obv *OBV) OnPeriodChange(candle *common.Candlestick) {
 		obv.volume -= candle.Volume
 	}
 	obv.lastPrice = candle.Close
-	obv.liveVolume = 0
-	obv.lastLivePrice = 0
+	obv.liveVolume = obv.volume
+	obv.lastLivePrice = obv.lastPrice
 }

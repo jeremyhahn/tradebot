@@ -85,12 +85,12 @@ func (rsi *RSI) GetValue() float64 {
 	return rsi.oscillator
 }
 
-func (rsi *RSI) IsOverBought() bool {
-	return rsi.oscillator >= rsi.overbought
+func (rsi *RSI) IsOverBought(price float64) bool {
+	return price > rsi.overbought
 }
 
-func (rsi *RSI) IsOverSold() bool {
-	return rsi.oscillator <= rsi.oversold
+func (rsi *RSI) IsOverSold(price float64) bool {
+	return price < rsi.oversold
 }
 
 func (rsi *RSI) OnPeriodChange(candle *common.Candlestick) {

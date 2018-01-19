@@ -5,33 +5,38 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 )
 
-type TradeLedger struct {
-	Symbol   string
-	BuyPrice float64
-}
-
 type TradeService struct {
 	ctx              *common.Context
 	marketcapService *MarketCapService
 	currencyPair     *common.CurrencyPair
 	marketMap        map[string]common.MarketCap
+	Charts           []ChartService
 }
 
 func NewTradeService(ctx *common.Context, marketcapService *MarketCapService) *TradeService {
+	var services []ChartService
+	exchangeDAO := dao.NewExchangeDAO(ctx)
+	autotradeDAO := dao.NewAutoTradeDAO(ctx)
+	for _, autoTradeCoin := range autotradeDAO.Find(ctx.User) {
+		currencyPair := &common.CurrencyPair{
+			Base:          autoTradeCoin.Base,
+			Quote:         autoTradeCoin.Quote,
+			LocalCurrency: ctx.User.LocalCurrency}
+		exchangeService := NewExchangeService(ctx, exchangeDAO)
+		exchange := exchangeService.NewExchange(ctx.User, autoTradeCoin.Exchange, currencyPair)
+		chart := NewChartService(ctx, exchange, nil, autoTradeCoin.Period)
+		ctx.Logger.Debugf("[NewTradeService] Loading AutoTrade currency pair: %s-%s\n", autoTradeCoin.Base, autoTradeCoin.Quote)
+		ctx.Logger.Debugf("[NewTradeService] Chart: %+v\n", chart)
+		services = append(services, *chart)
+	}
 	return &TradeService{
 		ctx:              ctx,
-		marketcapService: marketcapService}
+		marketcapService: marketcapService,
+		Charts:           services}
 }
 
-func (ts *TradeService) MakeMeRich(currencyPair *common.CurrencyPair) {
-	var charts []Chart
-	userDAO := dao.NewUserDAO(ts.ctx)
-	userService := NewUserService(ts.ctx, userDAO, ts.marketcapService)
-	exchanges := userService.GetExchanges(ts.ctx.User, currencyPair)
-	for _, ex := range exchanges {
-		exchange := userService.GetExchange(ts.ctx.User, ex.Name, currencyPair)
-		chart := NewChart(ts.ctx, exchange, 900) // 15 minutes
-		charts = append(charts, *chart)
+func (ts *TradeService) Trade() {
+	for _, chart := range ts.Charts {
+		chart.Stream()
 	}
-	charts[0].Stream()
 }

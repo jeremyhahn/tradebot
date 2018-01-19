@@ -7,8 +7,8 @@ import (
 )
 
 type PriceStream struct {
-	Period          int       // total number of seconds per candlestick
-	Start           time.Time // when the first price was added to the buffer
+	Period          int       // total seconds per candlestick
+	Start           time.Time // timestamp of first candlestick
 	Volume          int
 	buffer          []float64
 	priceListeners  []common.PriceListener

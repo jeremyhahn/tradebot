@@ -17,12 +17,15 @@ import (
 var GDAXLastApiCall = time.Now().AddDate(0, 0, -1).Unix()
 
 type GDAX struct {
-	gdax         *gdax.Client
-	logger       *logging.Logger
-	name         string
-	lastApiCall  int64
-	apiCallCount int
-	currencyPair *common.CurrencyPair
+	gdax            *gdax.Client
+	logger          *logging.Logger
+	name            string
+	lastApiCall     int64
+	lastBalanceCall int64
+	balances        []common.Coin
+	netWorth        float64
+	apiCallCount    int
+	currencyPair    *common.CurrencyPair
 	common.Exchange
 }
 
@@ -32,7 +35,9 @@ func NewGDAX(_gdax *dao.UserCoinExchange, logger *logging.Logger, currencyPair *
 		logger:       logger,
 		name:         "gdax",
 		apiCallCount: 0,
-		currencyPair: currencyPair}
+		currencyPair: currencyPair,
+		netWorth:     0.0,
+		balances:     make([]common.Coin, 0)}
 }
 
 func (_gdax *GDAX) GetTradeHistory(start, end time.Time, granularity int) []common.Candlestick {
@@ -80,7 +85,16 @@ func (_gdax *GDAX) GetTradeHistory(start, end time.Time, granularity int) []comm
 }
 
 func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
+
+	cacheTime := time.Now().Unix()
+	cacheDiff := cacheTime - _gdax.lastBalanceCall
+	if cacheDiff <= 3600 && len(_gdax.balances) > 0 {
+		_gdax.logger.Debug("[GDAX.GetBalances] Returning cached balances")
+		return _gdax.balances, _gdax.netWorth
+	}
+
 	_gdax.respectRateLimit()
+
 	_gdax.logger.Debugf("[GDAX] Getting %s balances", _gdax.currencyPair.Base)
 	var coins []common.Coin
 	sum := 0.0
@@ -119,6 +133,9 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
 			Price:     price,
 			Total:     t})
 	}
+	_gdax.balances = coins
+	_gdax.netWorth = sum
+	_gdax.lastBalanceCall = time.Now().Unix()
 	return coins, sum
 }
 
