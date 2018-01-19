@@ -1,11 +1,10 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/service"
+	"github.com/jeremyhahn/tradebot/strategy"
 	"github.com/jeremyhahn/tradebot/websocket"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -36,26 +35,32 @@ func main() {
 			Username: "test"})
 	}*/
 
-	ws := websocket.NewWebsocketServer(ctx, 8080, service.NewMarketCapService(logger))
+	marketcapService := service.NewMarketCapService(logger)
+
+	ws := websocket.NewWebsocketServer(ctx, 8080, marketcapService)
 	go ws.Start()
 
+	//tradeService := service.NewTradeService(ctx, marketcapService)
+	//tradeService.Trade()
+
+	var services []service.ChartService
 	exchangeDAO := dao.NewExchangeDAO(ctx)
 	autotradeDAO := dao.NewAutoTradeDAO(ctx)
-	fmt.Println(autotradeDAO.Find(ctx.User))
-
-	for _, trade := range autotradeDAO.Find(ctx.User) {
+	for _, autoTradeCoin := range autotradeDAO.Find(ctx.User) {
+		ctx.Logger.Debugf("[NewTradeService] Loading AutoTrade currency pair: %s-%s\n", autoTradeCoin.Base, autoTradeCoin.Quote)
 		currencyPair := &common.CurrencyPair{
-			Base:          trade.Base,
-			Quote:         trade.Quote,
+			Base:          autoTradeCoin.Base,
+			Quote:         autoTradeCoin.Quote,
 			LocalCurrency: ctx.User.LocalCurrency}
-
 		exchangeService := service.NewExchangeService(ctx, exchangeDAO)
-		exchange := exchangeService.NewExchange(ctx.User, trade.Exchange, currencyPair)
-		chart := service.NewChart(ctx, exchange, trade.Period)
+		exchange := exchangeService.NewExchange(ctx.User, autoTradeCoin.Exchange, currencyPair)
+		strategy := strategy.NewDefaultTradingStrategy(ctx, &autoTradeCoin)
+		chart := service.NewChartService(ctx, exchange, strategy, autoTradeCoin.Period)
+		ctx.Logger.Debugf("[NewTradeService] Chart: %+v\n", chart)
+		services = append(services, *chart)
+	}
 
-		fmt.Printf("Loading autotrade pair: %s-%s\n", trade.Base, trade.Quote)
-		fmt.Printf("Chart: %+v\n", chart)
-
+	for _, chart := range services {
 		chart.Stream()
 	}
 

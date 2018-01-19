@@ -12,7 +12,7 @@ import (
 type ChartHandler struct {
 	clients map[*websocket.Conn]common.ChartData
 	channel chan common.ChartData
-	charts  []service.Chart
+	charts  []service.ChartService
 	logger  *logging.Logger
 }
 

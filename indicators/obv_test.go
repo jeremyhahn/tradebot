@@ -6,6 +6,7 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 )
 
+// https://www.investopedia.com/terms/o/onbalancevolume.asp
 func TestOnBalanceVolume(t *testing.T) {
 
 	var candlesticks []common.Candlestick
