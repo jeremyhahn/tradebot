@@ -80,10 +80,8 @@ func (dao *UserDAO) GetByName(username string) *common.User {
 		LocalCurrency: user.LocalCurrency}
 }
 
-func (dao *UserDAO) Create(user *User) {
-	if err := dao.ctx.DB.Create(user).Error; err != nil {
-		dao.ctx.Logger.Errorf("[UserDAO.Create] Error:%s", err.Error())
-	}
+func (dao *UserDAO) Create(user *User) bool {
+	return dao.ctx.DB.NewRecord(user)
 }
 
 func (dao *UserDAO) GetWallets(user *common.User) []UserWallet {

@@ -9,11 +9,10 @@ import (
 )
 
 type TradingStrategy interface {
-	//GetPriceChangeChannel() chan *ChartService
-	OnPriceChange(service *ChartService)
+	OnPriceChange(chart common.ChartService)
 }
 
-type ChartService struct {
+type ChartServiceImpl struct {
 	ctx           *common.Context
 	priceStream   *PriceStream
 	priceChannel  chan common.PriceChange
@@ -27,14 +26,11 @@ type ChartService struct {
 	Bband         *indicators.Bollinger
 	MACD          *indicators.MACD
 	Data          *common.ChartData
+	common.ChartService
 }
 
-func NewChartServiceMock() *ChartService {
-	return &ChartService{}
-}
-
-func NewChartService(ctx *common.Context, exchange common.Exchange, strategy TradingStrategy, period int) *ChartService {
-	return &ChartService{
+func NewChartService(ctx *common.Context, exchange common.Exchange, strategy TradingStrategy, period int) common.ChartService {
+	return &ChartServiceImpl{
 		Exchange:    exchange,
 		strategy:    strategy,
 		ctx:         ctx,
@@ -43,11 +39,19 @@ func NewChartService(ctx *common.Context, exchange common.Exchange, strategy Tra
 		priceStream: NewPriceStream(period)}
 }
 
-func (chart *ChartService) GetChartData() *common.ChartData {
+func (chart *ChartServiceImpl) GetExchange() common.Exchange {
+	return chart.Exchange
+}
+
+func (chart *ChartServiceImpl) GetData() *common.ChartData {
 	return chart.Data
 }
 
-func (chart *ChartService) loadCandlesticks() []common.Candlestick {
+func (chart *ChartServiceImpl) GetCurrencyPair() common.CurrencyPair {
+	return chart.Exchange.GetCurrencyPair()
+}
+
+func (chart *ChartServiceImpl) loadCandlesticks() []common.Candlestick {
 
 	t := time.Now()
 	year, month, day := t.Date()
@@ -67,7 +71,7 @@ func (chart *ChartService) loadCandlesticks() []common.Candlestick {
 	return candlesticks
 }
 
-func (chart *ChartService) Stream() {
+func (chart *ChartServiceImpl) Stream() {
 
 	chart.ctx.Logger.Infof("[ChartService.Stream] Streaming %s %s chart data.",
 		chart.Exchange.GetName(), chart.Exchange.FormattedCurrencyPair())
@@ -115,13 +119,13 @@ func (chart *ChartService) Stream() {
 	}
 }
 
-func (chart *ChartService) OnPeriodChange(candle *common.Candlestick) {
+func (chart *ChartServiceImpl) OnPeriodChange(candle *common.Candlestick) {
 	chart.RSI.OnPeriodChange(candle)
 	chart.Bband.OnPeriodChange(candle)
 	chart.MACD.OnPeriodChange(candle)
 }
 
-func (chart *ChartService) OnPriceChange(newPrice *common.PriceChange) {
+func (chart *ChartServiceImpl) OnPriceChange(newPrice *common.PriceChange) {
 	bUpper, bMiddle, bLower := chart.Bband.Calculate(newPrice.Price)
 	macdValue, macdSignal, macdHistogram := chart.MACD.Calculate(newPrice.Price)
 	chart.Data.CurrencyPair = chart.Exchange.GetCurrencyPair()
@@ -146,10 +150,12 @@ func (chart *ChartService) OnPriceChange(newPrice *common.PriceChange) {
 	chart.Data.OnBalanceVolumeLive = chart.OBV.Calculate(newPrice.Price)
 	//bytes, _ := json.MarshalIndent(chart.Data, "", "    ")
 	//chart.ctx.Logger.Debugf("[ChartService.OnPriceChange] ChartData: %+v\n", chart.Data)
-	chart.strategy.OnPriceChange(chart)
+	if chart.strategy != nil {
+		chart.strategy.OnPriceChange(chart)
+	}
 }
 
-func (chart *ChartService) reverseCandles(candles []common.Candlestick) []common.Candlestick {
+func (chart *ChartServiceImpl) reverseCandles(candles []common.Candlestick) []common.Candlestick {
 	var newCandles []common.Candlestick
 	for i := len(candles) - 1; i > 0; i-- {
 		newCandles = append(newCandles, candles[i])

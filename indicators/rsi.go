@@ -7,12 +7,6 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 )
 
-type RelativeStrengthIndex interface {
-	IsOverBought()
-	IsOverSold()
-	common.Indicator
-}
-
 type RSI struct {
 	period     int
 	ma         common.MovingAverage
@@ -25,14 +19,13 @@ type RSI struct {
 	avgD       float64
 	lastPrice  float64
 	common.Indicator
-	RelativeStrengthIndex
 }
 
 func NewRelativeStrengthIndex(ma common.MovingAverage) *RSI {
-	return CreateRelativeStrengthIndex(ma, len(ma.GetCandlesticks()), 70, 30)
+	return CreateRelativeStrengthIndex(ma, len(ma.GetCandlesticks()))
 }
 
-func CreateRelativeStrengthIndex(ma common.MovingAverage, period int, overbought, oversold float64) *RSI {
+func CreateRelativeStrengthIndex(ma common.MovingAverage, period int) *RSI {
 	candles := ma.GetCandlesticks()
 	candleLen := len(candles)
 	lastPrice := 0.0
@@ -43,8 +36,6 @@ func CreateRelativeStrengthIndex(ma common.MovingAverage, period int, overbought
 		period:     period,
 		ma:         ma,
 		oscillator: 0,
-		overbought: overbought,
-		oversold:   oversold,
 		u:          0.0,
 		d:          0.0,
 		avgU:       0.0,
@@ -83,14 +74,6 @@ func (rsi *RSI) Calculate(price float64) float64 {
 
 func (rsi *RSI) GetValue() float64 {
 	return rsi.oscillator
-}
-
-func (rsi *RSI) IsOverBought(price float64) bool {
-	return price > rsi.overbought
-}
-
-func (rsi *RSI) IsOverSold(price float64) bool {
-	return price < rsi.oversold
 }
 
 func (rsi *RSI) OnPeriodChange(candle *common.Candlestick) {

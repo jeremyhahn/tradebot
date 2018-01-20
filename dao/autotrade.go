@@ -19,7 +19,7 @@ type AutoTradeCoin struct {
 	Quote    string `gorm:"unique_index:idx_autotrade_coin;"`
 	Exchange string `gorm:"unique_index:idx_autotrade_coin;"`
 	Period   int
-	Trades   []Trade `gorm:"ForeignKey:AutoTradeID;"`
+	Trades   []Trade `gorm:"ForeignKey:AutoTradeID"`
 }
 
 func NewAutoTradeDAO(ctx *common.Context) *AutoTradeDAO {
@@ -28,8 +28,14 @@ func NewAutoTradeDAO(ctx *common.Context) *AutoTradeDAO {
 	return &AutoTradeDAO{ctx: ctx}
 }
 
-func (dao *AutoTradeDAO) Save(coin *AutoTradeCoin) {
+func (dao *AutoTradeDAO) Create(coin *AutoTradeCoin) {
 	if err := dao.ctx.DB.Create(coin).Error; err != nil {
+		dao.ctx.Logger.Errorf("[AutoTradeDAO.Create] Error:%s", err.Error())
+	}
+}
+
+func (dao *AutoTradeDAO) Save(coin *AutoTradeCoin) {
+	if err := dao.ctx.DB.Save(coin).Error; err != nil {
 		dao.ctx.Logger.Errorf("[AutoTradeDAO.Save] Error:%s", err.Error())
 	}
 }
