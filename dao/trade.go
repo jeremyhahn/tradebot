@@ -17,7 +17,7 @@ type TradeDAO struct {
 
 type Trade struct {
 	ID          uint   `gorm:"primary_key"`
-	AutoTradeID uint   `gorm:"foreign_key;"`
+	AutoTradeID uint   `gorm:"foreign_key"`
 	UserID      uint   `gorm:"index"`
 	Base        string `gorm:"index"`
 	Quote       string `gorm:"index"`
@@ -35,7 +35,7 @@ func NewTradeDAO(ctx *common.Context) *TradeDAO {
 }
 
 func (dao *TradeDAO) Save(trade *Trade) {
-	if err := dao.ctx.DB.Create(trade).Error; err != nil {
+	if err := dao.ctx.DB.Save(trade).Error; err != nil {
 		dao.ctx.Logger.Errorf("[TradeDAO.Save] Error:%s", err.Error())
 	}
 }

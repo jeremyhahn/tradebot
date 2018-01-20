@@ -17,6 +17,15 @@ const (
 	CANDLESTICK_MIN_LOAD  = 250
 )
 
+type ChartService interface {
+	Stream()
+	GetExchange() Exchange
+	GetData() *ChartData
+	OnPeriodChange(candle *Candlestick)
+	OnPriceChange(newPrice *PriceChange)
+	GetCurrencyPair() CurrencyPair
+}
+
 type Context struct {
 	Logger *logging.Logger
 	DB     *gorm.DB

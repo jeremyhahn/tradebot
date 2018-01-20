@@ -21,19 +21,12 @@ func main() {
 	sqlite := InitSQLite()
 	defer sqlite.Close()
 
-	//mysql := InitMySQL()
-	//defer mysql.Close()
-
 	ctx := &common.Context{
 		DB:     sqlite,
 		Logger: logger}
 
 	userDAO := dao.NewUserDAO(ctx)
 	ctx.User = userDAO.GetById(1)
-	/*if user.Username == "" {
-		userDAO.Create(&dao.User{
-			Username: "test"})
-	}*/
 
 	marketcapService := service.NewMarketCapService(logger)
 
@@ -43,10 +36,11 @@ func main() {
 	//tradeService := service.NewTradeService(ctx, marketcapService)
 	//tradeService.Trade()
 
-	var services []service.ChartService
+	var services []common.ChartService
 	exchangeDAO := dao.NewExchangeDAO(ctx)
-	autotradeDAO := dao.NewAutoTradeDAO(ctx)
-	for _, autoTradeCoin := range autotradeDAO.Find(ctx.User) {
+	autoTradeDAO := dao.NewAutoTradeDAO(ctx)
+	signalDAO := dao.NewSignalLogDAO(ctx)
+	for _, autoTradeCoin := range autoTradeDAO.Find(ctx.User) {
 		ctx.Logger.Debugf("[NewTradeService] Loading AutoTrade currency pair: %s-%s\n", autoTradeCoin.Base, autoTradeCoin.Quote)
 		currencyPair := &common.CurrencyPair{
 			Base:          autoTradeCoin.Base,
@@ -54,10 +48,10 @@ func main() {
 			LocalCurrency: ctx.User.LocalCurrency}
 		exchangeService := service.NewExchangeService(ctx, exchangeDAO)
 		exchange := exchangeService.NewExchange(ctx.User, autoTradeCoin.Exchange, currencyPair)
-		strategy := strategy.NewDefaultTradingStrategy(ctx, &autoTradeCoin)
+		strategy := strategy.NewDefaultTradingStrategy(ctx, &autoTradeCoin, autoTradeDAO, signalDAO)
 		chart := service.NewChartService(ctx, exchange, strategy, autoTradeCoin.Period)
 		ctx.Logger.Debugf("[NewTradeService] Chart: %+v\n", chart)
-		services = append(services, *chart)
+		services = append(services, chart)
 	}
 
 	for _, chart := range services {

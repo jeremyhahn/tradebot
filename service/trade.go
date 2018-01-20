@@ -10,11 +10,11 @@ type TradeService struct {
 	marketcapService *MarketCapService
 	currencyPair     *common.CurrencyPair
 	marketMap        map[string]common.MarketCap
-	Charts           []ChartService
+	Charts           []common.ChartService
 }
 
 func NewTradeService(ctx *common.Context, marketcapService *MarketCapService) *TradeService {
-	var services []ChartService
+	var services []common.ChartService
 	exchangeDAO := dao.NewExchangeDAO(ctx)
 	autotradeDAO := dao.NewAutoTradeDAO(ctx)
 	for _, autoTradeCoin := range autotradeDAO.Find(ctx.User) {
@@ -27,7 +27,7 @@ func NewTradeService(ctx *common.Context, marketcapService *MarketCapService) *T
 		chart := NewChartService(ctx, exchange, nil, autoTradeCoin.Period)
 		ctx.Logger.Debugf("[NewTradeService] Loading AutoTrade currency pair: %s-%s\n", autoTradeCoin.Base, autoTradeCoin.Quote)
 		ctx.Logger.Debugf("[NewTradeService] Chart: %+v\n", chart)
-		services = append(services, *chart)
+		services = append(services, chart)
 	}
 	return &TradeService{
 		ctx:              ctx,
