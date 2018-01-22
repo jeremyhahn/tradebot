@@ -59,6 +59,7 @@ type Binance struct {
 	logger       *logging.Logger
 	name         string
 	currencyPair *common.CurrencyPair
+	tradingFee   float64
 	common.Exchange
 }
 
@@ -67,7 +68,8 @@ func NewBinance(exchange *dao.UserCoinExchange, logger *logging.Logger, currency
 		client:       binance.NewClient(exchange.Key, exchange.Secret),
 		logger:       logger,
 		name:         "binance",
-		currencyPair: currencyPair}
+		currencyPair: currencyPair,
+		tradingFee:   .01}
 }
 
 func (b *Binance) GetBalances() ([]common.Coin, float64) {
@@ -275,4 +277,8 @@ func (b *Binance) GetName() string {
 
 func (b *Binance) FormattedCurrencyPair() string {
 	return fmt.Sprintf("%s%s", b.currencyPair.Base, b.currencyPair.Quote)
+}
+
+func (b *Binance) GetTradingFee() float64 {
+	return b.tradingFee
 }

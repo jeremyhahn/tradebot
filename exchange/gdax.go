@@ -26,6 +26,7 @@ type GDAX struct {
 	netWorth        float64
 	apiCallCount    int
 	currencyPair    *common.CurrencyPair
+	tradingFee      float64
 	common.Exchange
 }
 
@@ -37,7 +38,8 @@ func NewGDAX(_gdax *dao.UserCoinExchange, logger *logging.Logger, currencyPair *
 		apiCallCount: 0,
 		currencyPair: currencyPair,
 		netWorth:     0.0,
-		balances:     make([]common.Coin, 0)}
+		balances:     make([]common.Coin, 0),
+		tradingFee:   0.025}
 }
 
 func (_gdax *GDAX) GetTradeHistory(start, end time.Time, granularity int) []common.Candlestick {
@@ -228,6 +230,10 @@ func (_gdax *GDAX) GetName() string {
 
 func (_gdax *GDAX) FormattedCurrencyPair() string {
 	return fmt.Sprintf("%s-%s", _gdax.currencyPair.Base, _gdax.currencyPair.Quote)
+}
+
+func (_gdax *GDAX) GetTradingFee() float64 {
+	return _gdax.tradingFee
 }
 
 func (_gdax *GDAX) respectRateLimit() {

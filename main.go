@@ -41,15 +41,15 @@ func main() {
 	autoTradeDAO := dao.NewAutoTradeDAO(ctx)
 	signalDAO := dao.NewSignalLogDAO(ctx)
 	for _, autoTradeCoin := range autoTradeDAO.Find(ctx.User) {
-		ctx.Logger.Debugf("[NewTradeService] Loading AutoTrade currency pair: %s-%s\n", autoTradeCoin.Base, autoTradeCoin.Quote)
+		ctx.Logger.Debugf("[NewTradeService] Loading AutoTrade currency pair: %s-%s\n", autoTradeCoin.GetBase(), autoTradeCoin.GetQuote())
 		currencyPair := &common.CurrencyPair{
-			Base:          autoTradeCoin.Base,
-			Quote:         autoTradeCoin.Quote,
+			Base:          autoTradeCoin.GetBase(),
+			Quote:         autoTradeCoin.GetQuote(),
 			LocalCurrency: ctx.User.LocalCurrency}
 		exchangeService := service.NewExchangeService(ctx, exchangeDAO)
-		exchange := exchangeService.NewExchange(ctx.User, autoTradeCoin.Exchange, currencyPair)
-		strategy := strategy.NewDefaultTradingStrategy(ctx, &autoTradeCoin, autoTradeDAO, signalDAO)
-		chart := service.NewChartService(ctx, exchange, strategy, autoTradeCoin.Period)
+		exchange := exchangeService.NewExchange(ctx.User, autoTradeCoin.GetExchange(), currencyPair)
+		strategy := strategy.NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, signalDAO)
+		chart := service.NewChartService(ctx, exchange, strategy, autoTradeCoin.GetPeriod())
 		ctx.Logger.Debugf("[NewTradeService] Chart: %+v\n", chart)
 		services = append(services, chart)
 	}

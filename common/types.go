@@ -166,6 +166,7 @@ type Exchange interface {
 	GetExchangeAsync(*chan CoinExchange)
 	GetExchange() CoinExchange
 	GetNetWorth() float64
+	GetTradingFee() float64
 }
 
 type Indicator interface {

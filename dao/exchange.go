@@ -1,8 +1,6 @@
 package dao
 
-import (
-	"github.com/jeremyhahn/tradebot/common"
-)
+import "github.com/jeremyhahn/tradebot/common"
 
 type IExchangeDAO interface {
 	Get(key string) string
@@ -15,7 +13,7 @@ type ExchangeDAO struct {
 }
 
 type CoinExchange struct {
-	UserId     User
+	UserID     uint
 	Name       string `gorm:"primary_key" sql:"type:varchar(255)"`
 	URL        string `gorm:"not null" sql:"type:varchar(255)"`
 	Key        string `gorm:"not null" sql:"type:varchar(255)"`

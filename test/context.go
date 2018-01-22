@@ -11,6 +11,17 @@ import (
 	logging "github.com/op/go-logging"
 )
 
+func NewUnitTestContext() *common.Context {
+	backend, _ := logging.NewSyslogBackend(common.APPNAME)
+	logging.SetBackend(backend)
+	logger := logging.MustGetLogger(common.APPNAME)
+	return &common.Context{
+		Logger: logger,
+		User: &common.User{
+			Id:       1,
+			Username: TEST_USERNAME}}
+}
+
 func NewTestContext() *common.Context {
 
 	backend, _ := logging.NewSyslogBackend(common.APPNAME)
@@ -103,6 +114,8 @@ func NewTestContext() *common.Context {
 }
 
 func CleanupMockContext() {
-	TEST_CONTEXT.DB.Close()
-	os.Remove(TEST_DBPATH)
+	if TEST_CONTEXT != nil {
+		TEST_CONTEXT.DB.Close()
+		os.Remove(TEST_DBPATH)
+	}
 }

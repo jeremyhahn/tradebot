@@ -1,15 +1,35 @@
 package dao
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"fmt"
 
-type IAutoTrade interface {
-	Get(symbol string) string
+	"github.com/jeremyhahn/tradebot/common"
+)
+
+type IAutoTradeDAO interface {
+	Create(coin IAutoTradeCoin)
+	Save(coin IAutoTradeCoin)
+	Update(coin IAutoTradeCoin)
+	Find(user *common.User) []IAutoTradeCoin
+	GetTrades(user *common.User) []Trade
+	GetLastTrade(coin IAutoTradeCoin) *Trade
+	FindByCurrency(user *common.User, currencyPair *common.CurrencyPair) []Trade
 }
 
 type AutoTradeDAO struct {
 	ctx   *common.Context
 	Coins []AutoTradeCoin
-	IAutoTrade
+	IAutoTradeDAO
+}
+
+type IAutoTradeCoin interface {
+	GetTrades() []Trade
+	SetTrades(trades []Trade)
+	AddTrade(trade *Trade)
+	GetBase() string
+	GetQuote() string
+	GetPeriod() int
+	GetExchange() string
 }
 
 type AutoTradeCoin struct {
@@ -28,31 +48,36 @@ func NewAutoTradeDAO(ctx *common.Context) *AutoTradeDAO {
 	return &AutoTradeDAO{ctx: ctx}
 }
 
-func (dao *AutoTradeDAO) Create(coin *AutoTradeCoin) {
+func (dao *AutoTradeDAO) Create(coin IAutoTradeCoin) {
 	if err := dao.ctx.DB.Create(coin).Error; err != nil {
 		dao.ctx.Logger.Errorf("[AutoTradeDAO.Create] Error:%s", err.Error())
 	}
 }
 
-func (dao *AutoTradeDAO) Save(coin *AutoTradeCoin) {
+func (dao *AutoTradeDAO) Save(coin IAutoTradeCoin) {
 	if err := dao.ctx.DB.Save(coin).Error; err != nil {
 		dao.ctx.Logger.Errorf("[AutoTradeDAO.Save] Error:%s", err.Error())
 	}
 }
 
-func (dao *AutoTradeDAO) Update(coin *AutoTradeCoin) {
+func (dao *AutoTradeDAO) Update(coin IAutoTradeCoin) {
 	if err := dao.ctx.DB.Update(coin).Error; err != nil {
 		dao.ctx.Logger.Errorf("[AutoTradeDAO.Update] Error:%s", err.Error())
 	}
 }
 
-func (dao *AutoTradeDAO) Find(user *common.User) []AutoTradeCoin {
+func (dao *AutoTradeDAO) Find(user *common.User) []IAutoTradeCoin {
 	var coins []AutoTradeCoin
 	daoUser := &User{Id: user.Id, Username: user.Username}
 	if err := dao.ctx.DB.Model(daoUser).Related(&coins).Error; err != nil {
 		dao.ctx.Logger.Errorf("[AutoTradeDAO.Find] Error: %s", err.Error())
 	}
-	return coins
+	fmt.Printf("%+v\n", coins)
+	var icoins []IAutoTradeCoin
+	for _, coin := range coins {
+		icoins = append(icoins, &coin)
+	}
+	return icoins
 }
 
 func (dao *AutoTradeDAO) GetTrades(user *common.User) []Trade {
@@ -64,7 +89,7 @@ func (dao *AutoTradeDAO) GetTrades(user *common.User) []Trade {
 	return trades
 }
 
-func (dao *AutoTradeDAO) GetLastTrade(coin *AutoTradeCoin) *Trade {
+func (dao *AutoTradeDAO) GetLastTrade(coin IAutoTradeCoin) *Trade {
 	var trades []Trade
 	if err := dao.ctx.DB.Order("date desc").Limit(1).Model(coin).Find(&trades).Error; err != nil {
 		dao.ctx.Logger.Errorf("[AutoTradeDAO.GetLastTrade] Error: %s", err.Error())
@@ -84,7 +109,35 @@ func (dao *AutoTradeDAO) FindByCurrency(user *common.User, currencyPair *common.
 		Quote:  currencyPair.Quote,
 		UserID: user.Id}
 	if err := dao.ctx.DB.Model(autoTradeCoin).Find(&trades).Error; err != nil {
-		dao.ctx.Logger.Errorf("[TradeDAO.FindByCurrency] Error: %s", err.Error())
+		dao.ctx.Logger.Errorf("[AutoTradeDAO.FindByCurrency] Error: %s", err.Error())
 	}
 	return trades
+}
+
+func (atc *AutoTradeCoin) GetTrades() []Trade {
+	return atc.Trades
+}
+
+func (atc *AutoTradeCoin) SetTrades(trades []Trade) {
+	atc.Trades = trades
+}
+
+func (atc *AutoTradeCoin) AddTrade(trade *Trade) {
+	atc.Trades = append(atc.Trades, *trade)
+}
+
+func (atc *AutoTradeCoin) GetBase() string {
+	return atc.Base
+}
+
+func (atc *AutoTradeCoin) GetQuote() string {
+	return atc.Quote
+}
+
+func (atc *AutoTradeCoin) GetPeriod() int {
+	return atc.Period
+}
+
+func (atc *AutoTradeCoin) GetExchange() string {
+	return atc.Exchange
 }

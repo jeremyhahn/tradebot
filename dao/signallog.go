@@ -6,14 +6,15 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 )
 
-type ISignalLog interface {
-	Get(symbol string) string
+type ISignalLogDAO interface {
+	Save(log *SignalLog)
+	Update(log *SignalLog)
+	Find(user *common.User) []SignalLog
 }
 
 type SignalLogDAO struct {
 	ctx *common.Context
-
-	ISignalLog
+	ISignalLogDAO
 }
 
 type SignalLog struct {
