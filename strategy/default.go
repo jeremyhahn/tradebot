@@ -134,24 +134,32 @@ func (strategy *DefaultTradingStrategy) countSignals(data *common.ChartData) (in
 }
 
 func (strategy *DefaultTradingStrategy) minSellPrice(currentPrice, tradingFee float64) float64 {
-	var price, tax, profitMargin float64
-	if strategy.lastTrade.Price > currentPrice {
-		price = strategy.lastTrade.Price
-	} else {
+	var absMinPrice, price, tax, profitMargin float64
+	if currentPrice > strategy.lastTrade.Price {
 		price = currentPrice
+	} else {
+		price = strategy.lastTrade.Price
 	}
 	if strategy.config.profitMarginMinPercent > 0 {
-		profitMargin = price * strategy.config.profitMarginMinPercent
+		profitMargin = strategy.lastTrade.Price * strategy.config.profitMarginMinPercent
 	} else {
 		profitMargin = strategy.config.profitMarginMin
 	}
-	if strategy.config.tax > 0 {
-		tax = (price + profitMargin) * strategy.config.tax
+	absMinPrice = strategy.lastTrade.Price + profitMargin
+	if currentPrice > absMinPrice {
+		price = currentPrice
+	} else {
+		price = absMinPrice
 	}
-	fee := (price + profitMargin) * tradingFee
+	diff := price - strategy.lastTrade.Price
+	if strategy.config.tax > 0 && diff > 0 {
+		tax = diff * strategy.config.tax
+	}
+	fee := price * tradingFee
 	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.minSellPrice] price: %f, profitMargin: %f, fee: %f,tax: %f",
 		price, profitMargin, fee, tax)
-	return price + profitMargin + fee + tax
+
+	return price + fee + tax
 }
 
 func (strategy *DefaultTradingStrategy) getTradeAmounts(chart common.ChartService) (float64, float64) {

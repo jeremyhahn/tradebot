@@ -23,11 +23,19 @@ type Bittrex struct {
 }
 
 func NewBittrex(btx *dao.UserCoinExchange, logger *logging.Logger, currencyPair *common.CurrencyPair) common.Exchange {
+	var cp *common.CurrencyPair
+	if currencyPair.Quote == "USD" {
+		cp = &common.CurrencyPair{
+			Base:  "USDT",
+			Quote: currencyPair.Base}
+	} else {
+		cp = currencyPair
+	}
 	return &Bittrex{
 		client:       bittrex.New(btx.Key, btx.Secret),
 		logger:       logger,
 		name:         "bittrex",
-		currencyPair: currencyPair,
+		currencyPair: cp,
 		tradingFee:   .025}
 }
 
@@ -80,8 +88,8 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 	}
 	for _, bal := range balances {
 		var currency string
-		if b.currencyPair.Quote == bal.Currency { // BTC-BTC => USDT-BTC
-			currency = fmt.Sprintf("%s-%s", b.currencyPair.LocalCurrency, bal.Currency)
+		if bal.Currency == "BTC" && b.currencyPair.Quote == bal.Currency {
+			currency = fmt.Sprintf("%s-%s", b.currencyPair.Base, bal.Currency)
 		} else {
 			currency = fmt.Sprintf("%s-%s", b.currencyPair.Quote, bal.Currency)
 		}
@@ -149,7 +157,7 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 }
 
 func (b *Bittrex) getBitcoinPrice() float64 {
-	summary, err := b.client.GetMarketSummary(fmt.Sprintf("%s-BTC", b.currencyPair.LocalCurrency))
+	summary, err := b.client.GetMarketSummary(fmt.Sprintf("%s-BTC", b.currencyPair.Base))
 	if err != nil {
 		b.logger.Errorf("[Bittrex.getBitcoinPrice] %s", err.Error())
 	}
