@@ -19,11 +19,11 @@ func NewExchangeService(ctx *common.Context, dao *dao.ExchangeDAO) *ExchangeServ
 }
 
 func (service *ExchangeService) NewExchange(user *common.User, exchangeName string, currencyPair *common.CurrencyPair) common.Exchange {
-	supportedExchanges := map[string]func(*dao.UserCoinExchange, *logging.Logger, *common.CurrencyPair) common.Exchange{
+	exchangeMap := map[string]func(*dao.UserCoinExchange, *logging.Logger, *common.CurrencyPair) common.Exchange{
 		"gdax":    exchange.NewGDAX,
 		"bittrex": exchange.NewBittrex,
 		"binance": exchange.NewBinance}
 	userDAO := dao.NewUserDAO(service.ctx)
 	ex := userDAO.GetExchange(service.ctx.User, exchangeName)
-	return supportedExchanges[exchangeName](ex, service.ctx.Logger, currencyPair)
+	return exchangeMap[exchangeName](ex, service.ctx.Logger, currencyPair)
 }

@@ -1,5 +1,6 @@
 package service
 
+/*
 import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
@@ -19,13 +20,13 @@ func NewTradeService(ctx *common.Context, marketcapService *MarketCapService) *T
 	autotradeDAO := dao.NewAutoTradeDAO(ctx)
 	for _, autoTradeCoin := range autotradeDAO.Find(ctx.User) {
 		currencyPair := &common.CurrencyPair{
-			Base:          autoTradeCoin.Base,
-			Quote:         autoTradeCoin.Quote,
+			Base:          autoTradeCoin.GetBase(),
+			Quote:         autoTradeCoin.GetQuote(),
 			LocalCurrency: ctx.User.LocalCurrency}
 		exchangeService := NewExchangeService(ctx, exchangeDAO)
-		exchange := exchangeService.NewExchange(ctx.User, autoTradeCoin.Exchange, currencyPair)
-		chart := NewChartService(ctx, exchange, nil, autoTradeCoin.Period)
-		ctx.Logger.Debugf("[NewTradeService] Loading AutoTrade currency pair: %s-%s\n", autoTradeCoin.Base, autoTradeCoin.Quote)
+		exchange := exchangeService.NewExchange(ctx.User, autoTradeCoin.GetExchange(), currencyPair)
+		chart := NewChartService(ctx, exchange, nil, autoTradeCoin.GetPeriod())
+		ctx.Logger.Debugf("[NewTradeService] Loading AutoTrade currency pair: %s-%s\n", autoTradeCoin.GetBase(), autoTradeCoin.GetQuote())
 		ctx.Logger.Debugf("[NewTradeService] Chart: %+v\n", chart)
 		services = append(services, chart)
 	}
@@ -40,3 +41,4 @@ func (ts *TradeService) Trade() {
 		chart.Stream()
 	}
 }
+*/

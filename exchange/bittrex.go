@@ -18,6 +18,7 @@ type Bittrex struct {
 	satoshis     float64
 	name         string
 	currencyPair *common.CurrencyPair
+	tradingFee   float64
 	common.Exchange
 }
 
@@ -26,7 +27,8 @@ func NewBittrex(btx *dao.UserCoinExchange, logger *logging.Logger, currencyPair 
 		client:       bittrex.New(btx.Key, btx.Secret),
 		logger:       logger,
 		name:         "bittrex",
-		currencyPair: currencyPair}
+		currencyPair: currencyPair,
+		tradingFee:   .025}
 }
 
 func (b *Bittrex) SubscribeToLiveFeed(priceChange chan common.PriceChange) {
@@ -203,4 +205,8 @@ func (b *Bittrex) ToUSD(price, satoshis float64) float64 {
 
 func (b *Bittrex) FormattedCurrencyPair() string {
 	return fmt.Sprintf("%s-%s", b.currencyPair.Base, b.currencyPair.Quote)
+}
+
+func (b *Bittrex) GetTradingFee() float64 {
+	return b.tradingFee
 }

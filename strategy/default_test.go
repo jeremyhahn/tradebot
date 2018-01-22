@@ -2,7 +2,6 @@ package strategy
 
 import (
 	"testing"
-	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
@@ -11,55 +10,37 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type MockedExchange struct {
+type MockChartService struct {
+	common.ChartService
 	mock.Mock
 }
 
-type MockedChartService struct {
+type MockExchange struct {
+	common.Exchange
+	mock.Mock
+}
+
+type MockSignalLogDAO struct {
+	dao.ISignalLogDAO
+	mock.Mock
+}
+
+type MockAutoTradeDAO struct {
+	dao.IAutoTradeDAO
+	mock.Mock
+}
+
+type MockAutoTradeCoin struct {
+	dao.IAutoTradeCoin
 	mock.Mock
 }
 
 func TestDefaultTradingStrategy_SignalCount(t *testing.T) {
 
-	ctx := test.NewTestContext()
-
-	trades := make([]dao.Trade, 0, 5)
-	trades = append(trades, dao.Trade{
-		Date:     time.Now().AddDate(0, -1, 0),
-		Type:     "buy",
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Amount:   1,
-		Price:    15000,
-		UserID:   ctx.User.Id})
-	trades = append(trades, dao.Trade{
-		Date:     time.Now().AddDate(0, 0, -20),
-		Type:     "sell",
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Amount:   1,
-		Price:    16000,
-		UserID:   ctx.User.Id})
-
-	autoTradeCoin := &dao.AutoTradeCoin{
-		UserID:   ctx.User.Id,
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Period:   900,
-		Trades:   trades}
-
-	autoTradeDAO := dao.NewAutoTradeDAO(ctx)
-	autoTradeDAO.Create(autoTradeCoin)
-
-	var coins []common.Coin
-	coins = append(coins, common.Coin{
-		Currency:  "BTC",
-		Available: 25.01020304})
-
-	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, dao.NewSignalLogDAO(ctx))
+	ctx := test.NewUnitTestContext()
+	autoTradeCoin := new(MockAutoTradeCoin)
+	autoTradeDAO := new(MockAutoTradeDAO)
+	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO))
 
 	buySignals, sellSignals := strategy.countSignals(&common.ChartData{
 		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
@@ -139,6 +120,42 @@ func TestDefaultTradingStrategy_SignalCount(t *testing.T) {
 	assert.Equal(t, sellSignals, 1)
 }
 
+func TestDefaultTradingStrategy_getTradeAmounts_WithoutTradeSizePercent(t *testing.T) {
+	ctx := test.NewUnitTestContext()
+	autoTradeCoin := new(MockAutoTradeCoin)
+	autoTradeDAO := new(MockAutoTradeDAO)
+	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO))
+	chart := new(MockChartService)
+	buyAmount, quoteAmount := strategy.getTradeAmounts(chart)
+	assert.Equal(t, 25.01020304, buyAmount)
+	assert.Equal(t, 50.25, quoteAmount)
+}
+
+func TestDefaultTradingStrategy_getTradeAmounts_WithTradeSizePercent(t *testing.T) {
+	ctx := test.NewUnitTestContext()
+	autoTradeCoin := new(MockAutoTradeCoin)
+	autoTradeDAO := new(MockAutoTradeDAO)
+	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), &DefaultTradingStrategyConfig{
+		rsiOverSold:            30,
+		rsiOverBought:          70,
+		tax:                    0,
+		stopLoss:               0,
+		stopLossPercent:        .20,
+		profitMarginMin:        0,
+		profitMarginMinPercent: .10,
+		tradeSizePercent:       .10,
+		requiredBuySignals:     2,
+		requiredSellSignals:    2})
+	chart := new(MockChartService)
+	buyAmount, quoteAmount := strategy.getTradeAmounts(chart)
+	assert.Equal(t, 2.5010203040000003, buyAmount)
+	assert.Equal(t, 5.025, quoteAmount)
+}
+
+// -------------------------------------------------------------------------
+// Helpers
+// -------------------------------------------------------------------------
+
 func createChartData() *common.ChartData {
 	return &common.ChartData{
 		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
@@ -150,6 +167,64 @@ func createChartData() *common.ChartData {
 		BollingerLowerLive:  11000}
 }
 
+func createCurrencyPair() common.CurrencyPair {
+	return common.CurrencyPair{
+		Base:          "BTC",
+		Quote:         "USD",
+		LocalCurrency: "USD"}
+}
+
+func (mcs *MockChartService) GetData() *common.ChartData {
+	return &common.ChartData{
+		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
+		Exchange:            "Test",
+		Price:               10000,
+		RSILive:             29,
+		BollingerUpperLive:  15000,
+		BollingerMiddleLive: 13000,
+		BollingerLowerLive:  11000}
+}
+
+func (mcs *MockChartService) GetCurrencyPair() common.CurrencyPair {
+	return createCurrencyPair()
+}
+
+func (cs *MockChartService) GetExchange() common.Exchange {
+	return new(MockExchange)
+}
+
+func (mcs *MockExchange) GetBalances() ([]common.Coin, float64) {
+	btc := 25.01020304
+	usd := 50.25
+	ltc := 75.50
+	var coins []common.Coin
+	coins = append(coins, common.Coin{
+		Currency:  "USD",
+		Available: usd})
+	coins = append(coins, common.Coin{
+		Currency:  "BTC",
+		Available: btc})
+	coins = append(coins, common.Coin{
+		Currency:  "LTC",
+		Available: ltc})
+	return coins, btc + usd + ltc
+}
+
+func (mcs *MockExchange) GetTradingFee() float64 {
+	return .025
+}
+
+func (mdao *MockAutoTradeDAO) GetLastTrade(autoTradeCoin dao.IAutoTradeCoin) *dao.Trade {
+	mdao.Called(autoTradeCoin)
+	trades := autoTradeCoin.GetTrades()
+	return &trades[len(trades)-1]
+}
+
+func (mdao *MockAutoTradeDAO) Save(dao dao.IAutoTradeCoin) {}
+func (mdao *MockSignalLogDAO) Save(dao *dao.SignalLog)     {}
+func (mdao *MockAutoTradeCoin) AddTrade(trade *dao.Trade)  {}
+
+/*
 func createCandlesticks() []common.Candlestick {
 	var candles []common.Candlestick
 	candles = append(candles, common.Candlestick{Close: 100.00})
@@ -184,25 +259,4 @@ func createCandlesticks() []common.Candlestick {
 	candles = append(candles, common.Candlestick{Close: 3000.00})
 	return candles
 }
-
-func (mcs *MockedChartService) GetData() *common.ChartData {
-	return createChartData()
-}
-
-/*
-  exchange := new(MockedExchange)
-  exchange.On("GetName").Return("TestExchange")
-  exchange.On("GetBalances").Return(coins, 25.01020304)
-  exchange.On("GetTradeHistory").Return(createCandlesticks())
-  exchange.On("FormattedCurrencyPair").Return("BTC-USD")
-
-  chart := new(MockedChartService)
-  chart.On("GetExchange").Return(exchange)
-  chart.On("GetCurrencyPair").Return(currencyPair)
-  chart.On("GetData").Return(createChartData())
 */
-
-/*currencyPair := common.CurrencyPair{
-Base:          "BTC",
-Quote:         "USD",
-LocalCurrency: "USD"}*/

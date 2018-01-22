@@ -12,39 +12,60 @@ import (
 )
 
 type DefaultTradingStrategy struct {
-	ctx                 *common.Context
-	autoTradeDAO        *dao.AutoTradeDAO
-	signalLogDAO        *dao.SignalLogDAO
-	autoTradeCoin       *dao.AutoTradeCoin
-	lastTrade           *dao.Trade
-	Name                string
-	rsiOverSold         float64
-	rsiOverBought       float64
-	tax                 float64
-	fees                float64
-	profitMargin        float64
-	stopLoss            float64
-	requiredBuySignals  int
-	requiredSellSignals int
+	Name          string
+	ctx           *common.Context
+	autoTradeDAO  dao.IAutoTradeDAO
+	signalLogDAO  dao.ISignalLogDAO
+	autoTradeCoin dao.IAutoTradeCoin
+	config        *DefaultTradingStrategyConfig
+	lastTrade     *dao.Trade
 	service.TradingStrategy
 }
 
-func NewDefaultTradingStrategy(ctx *common.Context, autoTradeCoin *dao.AutoTradeCoin,
-	autoTradeDAO *dao.AutoTradeDAO, signalLogDAO *dao.SignalLogDAO) *DefaultTradingStrategy {
+type DefaultTradingStrategyConfig struct {
+	rsiOverSold            float64
+	rsiOverBought          float64
+	tax                    float64
+	profitMarginMin        float64
+	profitMarginMinPercent float64
+	stopLoss               float64
+	stopLossPercent        float64
+	requiredBuySignals     int
+	requiredSellSignals    int
+	tradeSize              float64
+	tradeSizePercent       float64
+}
+
+func NewDefaultTradingStrategy(ctx *common.Context, autoTradeCoin dao.IAutoTradeCoin,
+	autoTradeDAO dao.IAutoTradeDAO, signalLogDAO dao.ISignalLogDAO) *DefaultTradingStrategy {
 	return &DefaultTradingStrategy{
-		Name:                "DefaultTradingStrategy",
-		ctx:                 ctx,
-		autoTradeCoin:       autoTradeCoin,
-		autoTradeDAO:        autoTradeDAO,
-		signalLogDAO:        signalLogDAO,
-		rsiOverSold:         30,
-		rsiOverBought:       70,
-		tax:                 .40,
-		fees:                .10,
-		profitMargin:        .20,
-		stopLoss:            .10,
-		requiredBuySignals:  2,
-		requiredSellSignals: 2}
+		Name:          "DefaultTradingStrategy",
+		ctx:           ctx,
+		autoTradeCoin: autoTradeCoin,
+		autoTradeDAO:  autoTradeDAO,
+		signalLogDAO:  signalLogDAO,
+		config: &DefaultTradingStrategyConfig{
+			rsiOverSold:            30,
+			rsiOverBought:          70,
+			tax:                    0,
+			stopLoss:               0,
+			stopLossPercent:        .20,
+			profitMarginMin:        0,
+			profitMarginMinPercent: .10,
+			tradeSizePercent:       0,
+			requiredBuySignals:     2,
+			requiredSellSignals:    2}}
+}
+
+func CreateDefaultTradingStrategy(ctx *common.Context, autoTradeCoin dao.IAutoTradeCoin,
+	autoTradeDAO dao.IAutoTradeDAO, signalLogDAO dao.ISignalLogDAO, config *DefaultTradingStrategyConfig) *DefaultTradingStrategy {
+	return &DefaultTradingStrategy{
+		Name:          "DefaultTradingStrategy",
+		ctx:           ctx,
+		autoTradeCoin: autoTradeCoin,
+		autoTradeDAO:  autoTradeDAO,
+		signalLogDAO:  signalLogDAO,
+		config:        config}
 }
 
 func (strategy *DefaultTradingStrategy) OnPriceChange(chart common.ChartService) {
@@ -53,14 +74,14 @@ func (strategy *DefaultTradingStrategy) OnPriceChange(chart common.ChartService)
 	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.OnPriceChange] ChartData: %+v\n", data)
 
 	buySignals, sellSignals := strategy.countSignals(data)
-	strategy.lastTrade = strategy.autoTradeDAO.GetLastTrade(&dao.AutoTradeCoin{})
+	strategy.lastTrade = strategy.autoTradeDAO.GetLastTrade(strategy.autoTradeCoin)
 
-	if buySignals == strategy.requiredBuySignals {
+	if buySignals == strategy.config.requiredBuySignals {
 		strategy.buy(chart)
 		return
 	}
 
-	if sellSignals == strategy.requiredSellSignals {
+	if sellSignals == strategy.config.requiredSellSignals {
 		strategy.sell(chart)
 		return
 	}
@@ -71,7 +92,7 @@ func (strategy *DefaultTradingStrategy) OnPriceChange(chart common.ChartService)
 func (strategy *DefaultTradingStrategy) countSignals(data *common.ChartData) (int, int) {
 	var buySignals int
 	var sellSignals int
-	if data.RSILive < strategy.rsiOverSold {
+	if data.RSILive < strategy.config.rsiOverSold {
 		buySignals++
 		strategy.signalLogDAO.Save(&dao.SignalLog{
 			UserID:     strategy.ctx.User.Id,
@@ -80,7 +101,7 @@ func (strategy *DefaultTradingStrategy) countSignals(data *common.ChartData) (in
 			Type:       "buy",
 			Price:      data.Price,
 			SignalData: strconv.FormatFloat(data.RSILive, 'f', 8, 64)})
-	} else if data.RSILive > strategy.rsiOverBought {
+	} else if data.RSILive > strategy.config.rsiOverBought {
 		sellSignals++
 		strategy.signalLogDAO.Save(&dao.SignalLog{
 			UserID:     strategy.ctx.User.Id,
@@ -112,41 +133,51 @@ func (strategy *DefaultTradingStrategy) countSignals(data *common.ChartData) (in
 	return buySignals, sellSignals
 }
 
-func (strategy *DefaultTradingStrategy) minBuyPrice() float64 {
-	tax := strategy.lastTrade.Price * strategy.tax
-	profitMargin := strategy.lastTrade.Price * strategy.profitMargin
-	tradeFees := strategy.lastTrade.Price * strategy.fees
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.minBuyPrice] tax: %f, profitMargin: %f, tradeFees: %f",
-		tax, profitMargin, tradeFees)
-	return strategy.lastTrade.Price + tax + profitMargin + tradeFees
-}
-
-func (strategy *DefaultTradingStrategy) minSellPrice(currentPrice float64) float64 {
-	tax := strategy.lastTrade.Price * strategy.tax
-	profitMargin := strategy.lastTrade.Price * strategy.profitMargin
-	tradeFees := strategy.lastTrade.Price * strategy.fees
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.minSellPrice] tax: %f, profitMargin: %f, tradeFees: %f",
-		tax, profitMargin, tradeFees)
-	return currentPrice + tax + profitMargin + tradeFees
+func (strategy *DefaultTradingStrategy) minSellPrice(currentPrice, tradingFee float64) float64 {
+	var price, tax, profitMargin float64
+	if strategy.lastTrade.Price > currentPrice {
+		price = strategy.lastTrade.Price
+	} else {
+		price = currentPrice
+	}
+	if strategy.config.profitMarginMinPercent > 0 {
+		profitMargin = price * strategy.config.profitMarginMinPercent
+	} else {
+		profitMargin = strategy.config.profitMarginMin
+	}
+	if strategy.config.tax > 0 {
+		tax = (price + profitMargin) * strategy.config.tax
+	}
+	fee := (price + profitMargin) * tradingFee
+	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.minSellPrice] price: %f, profitMargin: %f, fee: %f,tax: %f",
+		price, profitMargin, fee, tax)
+	return price + profitMargin + fee + tax
 }
 
 func (strategy *DefaultTradingStrategy) getTradeAmounts(chart common.ChartService) (float64, float64) {
-	baseAmount := 0.0
-	quoteAmount := 0.0
+	var baseAmount, quoteAmount float64
 	currencyPair := chart.GetCurrencyPair()
 	coins, _ := chart.GetExchange().GetBalances()
 	for _, coin := range coins {
 		if coin.Currency == currencyPair.Base {
-			baseAmount = coin.Available * 0.10 // Only trade with 10% of current balance
+			if strategy.config.tradeSizePercent > 0 {
+				baseAmount = coin.Available * strategy.config.tradeSizePercent
+			} else {
+				baseAmount = coin.Available
+			}
 		}
 		if coin.Currency == currencyPair.Quote {
-			quoteAmount = coin.Available * 0.10
+			if strategy.config.tradeSizePercent > 0 {
+				quoteAmount = coin.Available * strategy.config.tradeSizePercent
+			} else {
+				quoteAmount = coin.Available
+			}
 		}
 		if baseAmount > 0 && quoteAmount > 0 {
 			break
 		}
 	}
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.OnPeriodChange] Trading funds - baseAmount: %f, quoteAmount: %f",
+	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.getTradeAmounts] Trading funds - baseAmount: %f, quoteAmount: %f",
 		baseAmount, quoteAmount)
 	return baseAmount, quoteAmount
 }
@@ -164,15 +195,9 @@ func (strategy *DefaultTradingStrategy) buy(chart common.ChartService) {
 		strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.buy] Aborting. Already in a buy position.")
 		return
 	}
-	minTradePrice := strategy.minBuyPrice()
-	if data.Price <= minTradePrice {
-		strategy.ctx.Logger.Debugf(
-			"[DefaultTradingStrategy.buy] Aborting. Price does not meet minimum trade requirements. Price=%d, MinRequirement=%d",
-			data.Price, minTradePrice)
-		return
-	}
-	strategy.autoTradeCoin.Trades = append(strategy.autoTradeCoin.Trades, dao.Trade{
+	strategy.autoTradeCoin.AddTrade(&dao.Trade{
 		UserID:    strategy.ctx.User.Id,
+		Exchange:  data.Exchange,
 		Base:      currencyPair.Base,
 		Quote:     currencyPair.Quote,
 		Date:      time.Now(),
@@ -188,17 +213,17 @@ func (strategy *DefaultTradingStrategy) sell(chart common.ChartService) {
 	data := chart.GetData()
 	_, quoteAmount := strategy.getTradeAmounts(chart)
 	if strategy.lastTrade.Type == "sell" {
-		strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.sell] Aborting. Already in a sell position.")
+		strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.sell] Aborting. Buy position required.")
 		return
 	}
-	minTradePrice := strategy.minSellPrice(data.Price)
+	minTradePrice := strategy.minSellPrice(data.Price, chart.GetExchange().GetTradingFee())
 	if data.Price <= minTradePrice {
 		strategy.ctx.Logger.Debugf(
 			"[DefaultTradingStrategy.sell] Aborting. Price does not meet minimum trade requirements. Price=%d, MinRequirement=%d",
 			data.Price, minTradePrice)
 		return
 	}
-	strategy.autoTradeCoin.Trades = append(strategy.autoTradeCoin.Trades, dao.Trade{
+	strategy.autoTradeCoin.AddTrade(&dao.Trade{
 		UserID:    strategy.ctx.User.Id,
 		Exchange:  data.Exchange,
 		Base:      data.CurrencyPair.Base,

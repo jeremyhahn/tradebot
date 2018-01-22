@@ -6,13 +6,13 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 )
 
-type ITrade interface {
+type ITradeDAO interface {
 	Get(symbol string) string
 }
 
 type TradeDAO struct {
 	ctx *common.Context
-	IAutoTrade
+	ITradeDAO
 }
 
 type Trade struct {
