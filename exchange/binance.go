@@ -64,12 +64,20 @@ type Binance struct {
 }
 
 func NewBinance(exchange *dao.UserCoinExchange, logger *logging.Logger, currencyPair *common.CurrencyPair) common.Exchange {
+	var cp *common.CurrencyPair
+	if currencyPair.Quote == "USD" {
+		cp = &common.CurrencyPair{
+			Base:  currencyPair.Base,
+			Quote: "USDT"}
+	} else {
+		cp = currencyPair
+	}
 	return &Binance{
 		client:       binance.NewClient(exchange.Key, exchange.Secret),
 		logger:       logger,
 		name:         "binance",
-		currencyPair: currencyPair,
-		tradingFee:   .01}
+		tradingFee:   .01,
+		currencyPair: cp}
 }
 
 func (b *Binance) GetBalances() ([]common.Coin, float64) {
@@ -92,7 +100,7 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 
 		if bal > 0 {
 
-			b.logger.Debugf("[Binance.GetBalances] Getting ticker for %s", balance.Asset)
+			b.logger.Debugf("[Binance.GetBalances] Getting ticker for %s-%s", b.currencyPair.Base, balance.Asset)
 
 			bitcoin := b.getBitcoin()
 			bitcoinPrice := b.parseBitcoinPrice(bitcoin)
