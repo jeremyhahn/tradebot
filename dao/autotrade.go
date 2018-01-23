@@ -1,8 +1,6 @@
 package dao
 
 import (
-	"fmt"
-
 	"github.com/jeremyhahn/tradebot/common"
 )
 
@@ -72,7 +70,6 @@ func (dao *AutoTradeDAO) Find(user *common.User) []IAutoTradeCoin {
 	if err := dao.ctx.DB.Model(daoUser).Related(&coins).Error; err != nil {
 		dao.ctx.Logger.Errorf("[AutoTradeDAO.Find] Error: %s", err.Error())
 	}
-	fmt.Printf("%+v\n", coins)
 	var icoins []IAutoTradeCoin
 	for _, coin := range coins {
 		icoins = append(icoins, &coin)
@@ -82,8 +79,8 @@ func (dao *AutoTradeDAO) Find(user *common.User) []IAutoTradeCoin {
 
 func (dao *AutoTradeDAO) GetTrades(user *common.User) []Trade {
 	var trades []Trade
-	autoTradeCoin := &AutoTradeCoin{UserID: user.Id}
-	if err := dao.ctx.DB.Model(autoTradeCoin).Related(&trades).Error; err != nil {
+	daoUser := &User{Id: user.Id, Username: user.Username}
+	if err := dao.ctx.DB.Model(daoUser).Related(&trades).Error; err != nil {
 		dao.ctx.Logger.Errorf("[AutoTradeDAO.GetTrades] Error: %s", err.Error())
 	}
 	return trades

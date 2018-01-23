@@ -84,6 +84,12 @@ func (dao *UserDAO) Create(user *User) bool {
 	return dao.ctx.DB.NewRecord(user)
 }
 
+func (dao *UserDAO) Save(user *User) {
+	if err := dao.ctx.DB.Save(user).Error; err != nil {
+		dao.ctx.Logger.Errorf("[UserDAO.Save] Error:%s", err.Error())
+	}
+}
+
 func (dao *UserDAO) GetWallets(user *common.User) []UserWallet {
 	var wallets []UserWallet
 	daoUser := &User{Id: user.Id, Username: user.Username}

@@ -133,32 +133,21 @@ func (strategy *DefaultTradingStrategy) countSignals(data *common.ChartData) (in
 	return buySignals, sellSignals
 }
 
-func (strategy *DefaultTradingStrategy) minSellPrice(currentPrice, tradingFee float64) float64 {
-	var absMinPrice, price, tax, profitMargin float64
-	if currentPrice > strategy.lastTrade.Price {
-		price = currentPrice
-	} else {
-		price = strategy.lastTrade.Price
-	}
+func (strategy *DefaultTradingStrategy) minSellPrice(tradingFee float64) float64 {
+	var price, tax, profitMargin float64
 	if strategy.config.profitMarginMinPercent > 0 {
 		profitMargin = strategy.lastTrade.Price * strategy.config.profitMarginMinPercent
 	} else {
 		profitMargin = strategy.config.profitMarginMin
 	}
-	absMinPrice = strategy.lastTrade.Price + profitMargin
-	if currentPrice > absMinPrice {
-		price = currentPrice
-	} else {
-		price = absMinPrice
-	}
+	price = strategy.lastTrade.Price + profitMargin
 	diff := price - strategy.lastTrade.Price
 	if strategy.config.tax > 0 && diff > 0 {
 		tax = diff * strategy.config.tax
 	}
 	fee := price * tradingFee
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.minSellPrice] price: %f, profitMargin: %f, fee: %f,tax: %f",
-		price, profitMargin, fee, tax)
-
+	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.minSellPrice] lastTradePrice: %f, price: %f, profitMargin: %f, fee: %f,tax: %f",
+		strategy.lastTrade.Price, price, profitMargin, fee, tax)
 	return price + fee + tax
 }
 
@@ -219,15 +208,15 @@ func (strategy *DefaultTradingStrategy) buy(chart common.ChartService) {
 func (strategy *DefaultTradingStrategy) sell(chart common.ChartService) {
 	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.sell] $$$ SELL SIGNAL $$$")
 	data := chart.GetData()
-	_, quoteAmount := strategy.getTradeAmounts(chart)
+	baseAmount, _ := strategy.getTradeAmounts(chart)
 	if strategy.lastTrade.Type == "sell" {
 		strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.sell] Aborting. Buy position required.")
 		return
 	}
-	minTradePrice := strategy.minSellPrice(data.Price, chart.GetExchange().GetTradingFee())
+	minTradePrice := strategy.minSellPrice(chart.GetExchange().GetTradingFee())
 	if data.Price <= minTradePrice {
 		strategy.ctx.Logger.Debugf(
-			"[DefaultTradingStrategy.sell] Aborting. Price does not meet minimum trade requirements. Price=%d, MinRequirement=%d",
+			"[DefaultTradingStrategy.sell] Aborting. Does not meet minimum trade requirements. Price=%f, MinRequirement=%f",
 			data.Price, minTradePrice)
 		return
 	}
@@ -239,7 +228,7 @@ func (strategy *DefaultTradingStrategy) sell(chart common.ChartService) {
 		Date:      time.Now(),
 		Type:      "sell",
 		Price:     data.Price,
-		Amount:    quoteAmount,
+		Amount:    baseAmount,
 		ChartData: strategy.chartJSON(data)})
 	strategy.autoTradeDAO.Save(strategy.autoTradeCoin)
 }

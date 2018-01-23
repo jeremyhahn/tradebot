@@ -1,9 +1,5 @@
 package test
 
-import "github.com/jeremyhahn/tradebot/common"
-
-var TEST_CONTEXT *common.Context
-
 var TEST_USERNAME = "test"
 var TEST_DBPATH = "/tmp/tradebot-integration-testing.db"
 
