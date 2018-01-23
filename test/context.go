@@ -11,6 +11,8 @@ import (
 	logging "github.com/op/go-logging"
 )
 
+var TEST_CONTEXT *common.Context
+
 func NewUnitTestContext() *common.Context {
 	backend, _ := logging.NewSyslogBackend(common.APPNAME)
 	logging.SetBackend(backend)
@@ -22,7 +24,7 @@ func NewUnitTestContext() *common.Context {
 			Username: TEST_USERNAME}}
 }
 
-func NewTestContext() *common.Context {
+func NewIntegrationTestContext() *common.Context {
 
 	backend, _ := logging.NewSyslogBackend(common.APPNAME)
 	logging.SetBackend(backend)
@@ -38,8 +40,9 @@ func NewTestContext() *common.Context {
 		DB:     db,
 		Logger: logger,
 		User: &common.User{
-			Id:       1,
-			Username: TEST_USERNAME}}
+			Id:            1,
+			Username:      TEST_USERNAME,
+			LocalCurrency: "USD"}}
 
 	var wallets []dao.UserWallet
 	wallets = append(wallets, dao.UserWallet{
@@ -69,7 +72,7 @@ func NewTestContext() *common.Context {
 	Secret: BITHUMB_SECRET})*/
 
 	userDAO := dao.NewUserDAO(TEST_CONTEXT)
-	userDAO.Create(&dao.User{Username: TEST_USERNAME, Exchanges: exchanges, Wallets: wallets})
+	userDAO.Save(&dao.User{Username: TEST_USERNAME, Exchanges: exchanges, Wallets: wallets})
 
 	/*exchangeDAO := exchange.NewExchangeDAO(TEST_CONTEXT)
 	exchangeDAO.Create(&exchange.CoinExchange{

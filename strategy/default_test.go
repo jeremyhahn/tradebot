@@ -127,7 +127,7 @@ func TestDefaultTradingStrategy_getTradeAmounts_WithoutTradeSizePercent(t *testi
 	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO))
 	chart := new(MockChartService)
 	buyAmount, quoteAmount := strategy.getTradeAmounts(chart)
-	assert.Equal(t, 25.01020304, buyAmount)
+	assert.Equal(t, 1.0, buyAmount)
 	assert.Equal(t, 50.25, quoteAmount)
 }
 
@@ -148,7 +148,7 @@ func TestDefaultTradingStrategy_getTradeAmounts_WithTradeSizePercent(t *testing.
 		requiredSellSignals:    2})
 	chart := new(MockChartService)
 	buyAmount, quoteAmount := strategy.getTradeAmounts(chart)
-	assert.Equal(t, 2.5010203040000003, buyAmount)
+	assert.Equal(t, 0.10, buyAmount)
 	assert.Equal(t, 5.025, quoteAmount)
 }
 
@@ -194,7 +194,7 @@ func (cs *MockChartService) GetExchange() common.Exchange {
 }
 
 func (mcs *MockExchange) GetBalances() ([]common.Coin, float64) {
-	btc := 25.01020304
+	btc := 1.0
 	usd := 50.25
 	ltc := 75.50
 	var coins []common.Coin
