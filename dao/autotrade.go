@@ -21,6 +21,7 @@ type AutoTradeDAO struct {
 }
 
 type IAutoTradeCoin interface {
+	GetId() uint
 	GetTrades() []Trade
 	SetTrades(trades []Trade)
 	AddTrade(trade *Trade)
@@ -109,6 +110,10 @@ func (dao *AutoTradeDAO) FindByCurrency(user *common.User, currencyPair *common.
 		dao.ctx.Logger.Errorf("[AutoTradeDAO.FindByCurrency] Error: %s", err.Error())
 	}
 	return trades
+}
+
+func (atc *AutoTradeCoin) GetId() uint {
+	return atc.ID
 }
 
 func (atc *AutoTradeCoin) GetTrades() []Trade {

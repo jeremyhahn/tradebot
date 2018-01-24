@@ -16,6 +16,7 @@ type DefaultTradingStrategy struct {
 	ctx           *common.Context
 	autoTradeDAO  dao.IAutoTradeDAO
 	signalLogDAO  dao.ISignalLogDAO
+	profitDAO     dao.IProfitDAO
 	autoTradeCoin dao.IAutoTradeCoin
 	config        *DefaultTradingStrategyConfig
 	lastTrade     *dao.Trade
@@ -37,13 +38,14 @@ type DefaultTradingStrategyConfig struct {
 }
 
 func NewDefaultTradingStrategy(ctx *common.Context, autoTradeCoin dao.IAutoTradeCoin,
-	autoTradeDAO dao.IAutoTradeDAO, signalLogDAO dao.ISignalLogDAO) *DefaultTradingStrategy {
+	autoTradeDAO dao.IAutoTradeDAO, signalLogDAO dao.ISignalLogDAO, profitDAO dao.IProfitDAO) *DefaultTradingStrategy {
 	return &DefaultTradingStrategy{
 		Name:          "DefaultTradingStrategy",
 		ctx:           ctx,
 		autoTradeCoin: autoTradeCoin,
 		autoTradeDAO:  autoTradeDAO,
 		signalLogDAO:  signalLogDAO,
+		profitDAO:     profitDAO,
 		config: &DefaultTradingStrategyConfig{
 			rsiOverSold:            30,
 			rsiOverBought:          70,
@@ -58,13 +60,15 @@ func NewDefaultTradingStrategy(ctx *common.Context, autoTradeCoin dao.IAutoTrade
 }
 
 func CreateDefaultTradingStrategy(ctx *common.Context, autoTradeCoin dao.IAutoTradeCoin,
-	autoTradeDAO dao.IAutoTradeDAO, signalLogDAO dao.ISignalLogDAO, config *DefaultTradingStrategyConfig) *DefaultTradingStrategy {
+	autoTradeDAO dao.IAutoTradeDAO, signalLogDAO dao.ISignalLogDAO, profitDAO dao.IProfitDAO,
+	config *DefaultTradingStrategyConfig) *DefaultTradingStrategy {
 	return &DefaultTradingStrategy{
 		Name:          "DefaultTradingStrategy",
 		ctx:           ctx,
 		autoTradeCoin: autoTradeCoin,
 		autoTradeDAO:  autoTradeDAO,
 		signalLogDAO:  signalLogDAO,
+		profitDAO:     profitDAO,
 		config:        config}
 }
 
@@ -133,21 +137,29 @@ func (strategy *DefaultTradingStrategy) countSignals(data *common.ChartData) (in
 	return buySignals, sellSignals
 }
 
+func (strategy *DefaultTradingStrategy) calculateFeeAndTax(price, tradingFee float64) (float64, float64) {
+	var tax float64
+	diff := price - strategy.lastTrade.Price
+	if strategy.config.tax > 0 && diff > 0 {
+		tax = diff * strategy.config.tax
+	}
+	fee := price * tradingFee
+	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.calculateFeeAndTax] lastTradePrice: %f, price: %f, fee: %f,tax: %f",
+		strategy.lastTrade.Price, price, fee, tax)
+	return fee, tax
+}
+
 func (strategy *DefaultTradingStrategy) minSellPrice(tradingFee float64) float64 {
-	var price, tax, profitMargin float64
+	var price, profitMargin, fee, tax float64
 	if strategy.config.profitMarginMinPercent > 0 {
 		profitMargin = strategy.lastTrade.Price * strategy.config.profitMarginMinPercent
 	} else {
 		profitMargin = strategy.config.profitMarginMin
 	}
 	price = strategy.lastTrade.Price + profitMargin
-	diff := price - strategy.lastTrade.Price
-	if strategy.config.tax > 0 && diff > 0 {
-		tax = diff * strategy.config.tax
-	}
-	fee := price * tradingFee
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.minSellPrice] lastTradePrice: %f, price: %f, profitMargin: %f, fee: %f,tax: %f",
-		strategy.lastTrade.Price, price, profitMargin, fee, tax)
+	fee, tax = strategy.calculateFeeAndTax(price, tradingFee)
+	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.minSellPrice] lastTradePrice: %f, price: %f, fee: %f,tax: %f",
+		strategy.lastTrade.Price, price, fee, tax)
 	return price + fee + tax
 }
 
@@ -213,14 +225,16 @@ func (strategy *DefaultTradingStrategy) sell(chart common.ChartService) {
 		strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.sell] Aborting. Buy position required.")
 		return
 	}
-	minTradePrice := strategy.minSellPrice(chart.GetExchange().GetTradingFee())
-	if data.Price <= minTradePrice {
+	tradeFee := chart.GetExchange().GetTradingFee()
+	minPrice := strategy.minSellPrice(tradeFee)
+	if data.Price <= minPrice {
 		strategy.ctx.Logger.Debugf(
-			"[DefaultTradingStrategy.sell] Aborting. Does not meet minimum trade requirements. Price=%f, MinRequirement=%f",
-			data.Price, minTradePrice)
+			"[DefaultTradingStrategy.sell] Aborting. Does not meet minimum trade requirements. Price=%f, MinPrice=%f",
+			data.Price, minPrice)
 		return
 	}
-	strategy.autoTradeCoin.AddTrade(&dao.Trade{
+	fee, tax := strategy.calculateFeeAndTax(data.Price, tradeFee)
+	trade := &dao.Trade{
 		UserID:    strategy.ctx.User.Id,
 		Exchange:  data.Exchange,
 		Base:      data.CurrencyPair.Base,
@@ -229,8 +243,21 @@ func (strategy *DefaultTradingStrategy) sell(chart common.ChartService) {
 		Type:      "sell",
 		Price:     data.Price,
 		Amount:    baseAmount,
-		ChartData: strategy.chartJSON(data)})
+		ChartData: strategy.chartJSON(data)}
+	strategy.autoTradeCoin.AddTrade(trade)
 	strategy.autoTradeDAO.Save(strategy.autoTradeCoin)
+
+	trades := strategy.autoTradeCoin.GetTrades()
+	lastTrade := trades[len(trades)-1]
+	strategy.profitDAO.Save(&dao.Profit{
+		UserID:   strategy.ctx.User.Id,
+		TradeID:  lastTrade.ID,
+		Quantity: baseAmount,
+		Bought:   strategy.lastTrade.Price,
+		Sold:     data.Price,
+		Fee:      fee,
+		Tax:      tax,
+		Total:    data.Price - strategy.lastTrade.Price - fee - tax})
 }
 
 func (strategy *DefaultTradingStrategy) chartJSON(data *common.ChartData) string {

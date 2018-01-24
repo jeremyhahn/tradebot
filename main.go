@@ -40,6 +40,7 @@ func main() {
 	exchangeDAO := dao.NewExchangeDAO(ctx)
 	autoTradeDAO := dao.NewAutoTradeDAO(ctx)
 	signalDAO := dao.NewSignalLogDAO(ctx)
+	profitDAO := dao.NewProfitDAO(ctx)
 	for _, autoTradeCoin := range autoTradeDAO.Find(ctx.User) {
 		ctx.Logger.Debugf("[Tradebot.Main] Loading AutoTrade currency pair: %s-%s\n", autoTradeCoin.GetBase(), autoTradeCoin.GetQuote())
 		currencyPair := &common.CurrencyPair{
@@ -48,7 +49,7 @@ func main() {
 			LocalCurrency: ctx.User.LocalCurrency}
 		exchangeService := service.NewExchangeService(ctx, exchangeDAO)
 		exchange := exchangeService.NewExchange(ctx.User, autoTradeCoin.GetExchange(), currencyPair)
-		strategy := strategy.NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, signalDAO)
+		strategy := strategy.NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, signalDAO, profitDAO)
 		chart := service.NewChartService(ctx, exchange, strategy, autoTradeCoin.GetPeriod())
 		ctx.Logger.Debugf("[Tradebot.Main] Chart: %+v\n", chart)
 		services = append(services, chart)

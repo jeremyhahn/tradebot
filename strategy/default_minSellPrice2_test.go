@@ -32,17 +32,18 @@ func TestDefaultTradingStrategy_minSellPrice_LastPriceGreater(t *testing.T) {
 	autoTradeCoin := new(MockAutoTradeCoin)
 	autoTradeDAO := new(MockAutoTradeDAO_MinSellPrice2)
 	autoTradeDAO.On("GetLastTrade", autoTradeCoin).Return(autoTradeDAO.GetLastTrade(autoTradeCoin)).Once()
-	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), &DefaultTradingStrategyConfig{
-		rsiOverSold:            30,
-		rsiOverBought:          70,
-		tax:                    0,
-		stopLoss:               0,
-		stopLossPercent:        .20,
-		profitMarginMin:        0,
-		profitMarginMinPercent: .10,
-		tradeSizePercent:       0,
-		requiredBuySignals:     2,
-		requiredSellSignals:    2})
+	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO,
+		new(MockSignalLogDAO), new(MockProfitDAO), &DefaultTradingStrategyConfig{
+			rsiOverSold:            30,
+			rsiOverBought:          70,
+			tax:                    0,
+			stopLoss:               0,
+			stopLossPercent:        .20,
+			profitMarginMin:        0,
+			profitMarginMinPercent: .10,
+			tradeSizePercent:       0,
+			requiredBuySignals:     2,
+			requiredSellSignals:    2})
 	strategy.OnPriceChange(chart)
 	tradingFee := chart.GetExchange().GetTradingFee()
 	minPrice := strategy.minSellPrice(tradingFee)
@@ -62,17 +63,18 @@ func TestDefaultTradingStrategy_minSellPrice_NoProfitPercent(t *testing.T) {
 	autoTradeCoin := new(MockAutoTradeCoin)
 	autoTradeDAO := new(MockAutoTradeDAO_MinSellPrice2)
 	autoTradeDAO.On("GetLastTrade", autoTradeCoin).Return(autoTradeDAO.GetLastTrade(autoTradeCoin)).Once()
-	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), &DefaultTradingStrategyConfig{
-		rsiOverSold:            30,
-		rsiOverBought:          70,
-		tax:                    0,
-		stopLoss:               0,
-		stopLossPercent:        .20,
-		profitMarginMin:        500,
-		profitMarginMinPercent: 0,
-		tradeSizePercent:       0,
-		requiredBuySignals:     2,
-		requiredSellSignals:    2})
+	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO,
+		new(MockSignalLogDAO), new(MockProfitDAO), &DefaultTradingStrategyConfig{
+			rsiOverSold:            30,
+			rsiOverBought:          70,
+			tax:                    0,
+			stopLoss:               0,
+			stopLossPercent:        .20,
+			profitMarginMin:        500,
+			profitMarginMinPercent: 0,
+			tradeSizePercent:       0,
+			requiredBuySignals:     2,
+			requiredSellSignals:    2})
 	strategy.OnPriceChange(chart)
 	minPrice := strategy.minSellPrice(chart.GetExchange().GetTradingFee())
 	assert.Equal(t, float64(18000), strategy.lastTrade.Price)
@@ -91,17 +93,18 @@ func TestDefaultTradingStrategy_minSellPrice_DoesntIncludeTax(t *testing.T) {
 	autoTradeCoin := new(MockAutoTradeCoin)
 	autoTradeDAO := new(MockAutoTradeDAO_MinSellPrice2)
 	autoTradeDAO.On("GetLastTrade", autoTradeCoin).Return(autoTradeDAO.GetLastTrade(autoTradeCoin)).Once()
-	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), &DefaultTradingStrategyConfig{
-		rsiOverSold:            30,
-		rsiOverBought:          70,
-		tax:                    .20,
-		stopLoss:               0,
-		stopLossPercent:        .20,
-		profitMarginMin:        500,
-		profitMarginMinPercent: 0,
-		tradeSizePercent:       0,
-		requiredBuySignals:     2,
-		requiredSellSignals:    2})
+	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO,
+		new(MockSignalLogDAO), new(MockProfitDAO), &DefaultTradingStrategyConfig{
+			rsiOverSold:            30,
+			rsiOverBought:          70,
+			tax:                    .20,
+			stopLoss:               0,
+			stopLossPercent:        .20,
+			profitMarginMin:        500,
+			profitMarginMinPercent: 0,
+			tradeSizePercent:       0,
+			requiredBuySignals:     2,
+			requiredSellSignals:    2})
 	strategy.OnPriceChange(chart)
 	minPrice := strategy.minSellPrice(chart.GetExchange().GetTradingFee())
 	assert.Equal(t, float64(18000), strategy.lastTrade.Price)
@@ -120,17 +123,18 @@ func TestDefaultTradingStrategy_minSellPrice_IncludesTax(t *testing.T) {
 	autoTradeCoin := new(MockAutoTradeCoin)
 	autoTradeDAO := new(MockAutoTradeDAO_MinSellPrice2_2)
 	autoTradeDAO.On("GetLastTrade", autoTradeCoin).Return(autoTradeDAO.GetLastTrade(autoTradeCoin)).Once()
-	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), &DefaultTradingStrategyConfig{
-		rsiOverSold:            30,
-		rsiOverBought:          70,
-		tax:                    .20,
-		stopLoss:               0,
-		stopLossPercent:        .20,
-		profitMarginMin:        500,
-		profitMarginMinPercent: 0,
-		tradeSizePercent:       0,
-		requiredBuySignals:     2,
-		requiredSellSignals:    2})
+	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO,
+		new(MockSignalLogDAO), new(MockProfitDAO), &DefaultTradingStrategyConfig{
+			rsiOverSold:            30,
+			rsiOverBought:          70,
+			tax:                    .20,
+			stopLoss:               0,
+			stopLossPercent:        .20,
+			profitMarginMin:        500,
+			profitMarginMinPercent: 0,
+			tradeSizePercent:       0,
+			requiredBuySignals:     2,
+			requiredSellSignals:    2})
 	strategy.OnPriceChange(chart)
 	minPrice := strategy.minSellPrice(chart.GetExchange().GetTradingFee())
 	assert.Equal(t, float64(9000), strategy.lastTrade.Price)

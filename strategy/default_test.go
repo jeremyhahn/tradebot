@@ -25,6 +25,11 @@ type MockSignalLogDAO struct {
 	mock.Mock
 }
 
+type MockProfitDAO struct {
+	dao.IProfitDAO
+	mock.Mock
+}
+
 type MockAutoTradeDAO struct {
 	dao.IAutoTradeDAO
 	mock.Mock
@@ -40,7 +45,7 @@ func TestDefaultTradingStrategy_SignalCount(t *testing.T) {
 	ctx := test.NewUnitTestContext()
 	autoTradeCoin := new(MockAutoTradeCoin)
 	autoTradeDAO := new(MockAutoTradeDAO)
-	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO))
+	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), new(MockProfitDAO))
 
 	buySignals, sellSignals := strategy.countSignals(&common.ChartData{
 		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
@@ -124,7 +129,7 @@ func TestDefaultTradingStrategy_getTradeAmounts_WithoutTradeSizePercent(t *testi
 	ctx := test.NewUnitTestContext()
 	autoTradeCoin := new(MockAutoTradeCoin)
 	autoTradeDAO := new(MockAutoTradeDAO)
-	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO))
+	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), new(MockProfitDAO))
 	chart := new(MockChartService)
 	buyAmount, quoteAmount := strategy.getTradeAmounts(chart)
 	assert.Equal(t, 1.0, buyAmount)
@@ -135,17 +140,18 @@ func TestDefaultTradingStrategy_getTradeAmounts_WithTradeSizePercent(t *testing.
 	ctx := test.NewUnitTestContext()
 	autoTradeCoin := new(MockAutoTradeCoin)
 	autoTradeDAO := new(MockAutoTradeDAO)
-	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), &DefaultTradingStrategyConfig{
-		rsiOverSold:            30,
-		rsiOverBought:          70,
-		tax:                    0,
-		stopLoss:               0,
-		stopLossPercent:        .20,
-		profitMarginMin:        0,
-		profitMarginMinPercent: .10,
-		tradeSizePercent:       .10,
-		requiredBuySignals:     2,
-		requiredSellSignals:    2})
+	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO,
+		new(MockSignalLogDAO), new(MockProfitDAO), &DefaultTradingStrategyConfig{
+			rsiOverSold:            30,
+			rsiOverBought:          70,
+			tax:                    0,
+			stopLoss:               0,
+			stopLossPercent:        .20,
+			profitMarginMin:        0,
+			profitMarginMinPercent: .10,
+			tradeSizePercent:       .10,
+			requiredBuySignals:     2,
+			requiredSellSignals:    2})
 	chart := new(MockChartService)
 	buyAmount, quoteAmount := strategy.getTradeAmounts(chart)
 	assert.Equal(t, 0.10, buyAmount)
@@ -222,41 +228,5 @@ func (mdao *MockAutoTradeDAO) GetLastTrade(autoTradeCoin dao.IAutoTradeCoin) *da
 
 func (mdao *MockAutoTradeDAO) Save(dao dao.IAutoTradeCoin) {}
 func (mdao *MockSignalLogDAO) Save(dao *dao.SignalLog)     {}
+func (mdao *MockProfitDAO) Save(dao *dao.Profit)           {}
 func (mdao *MockAutoTradeCoin) AddTrade(trade *dao.Trade)  {}
-
-/*
-func createCandlesticks() []common.Candlestick {
-	var candles []common.Candlestick
-	candles = append(candles, common.Candlestick{Close: 100.00})
-	candles = append(candles, common.Candlestick{Close: 200.00})
-	candles = append(candles, common.Candlestick{Close: 300.00})
-	candles = append(candles, common.Candlestick{Close: 400.00})
-	candles = append(candles, common.Candlestick{Close: 500.00})
-	candles = append(candles, common.Candlestick{Close: 600.00})
-	candles = append(candles, common.Candlestick{Close: 700.00})
-	candles = append(candles, common.Candlestick{Close: 800.00})
-	candles = append(candles, common.Candlestick{Close: 900.00})
-	candles = append(candles, common.Candlestick{Close: 1000.00})
-	candles = append(candles, common.Candlestick{Close: 1100.00})
-	candles = append(candles, common.Candlestick{Close: 1200.00})
-	candles = append(candles, common.Candlestick{Close: 1300.00})
-	candles = append(candles, common.Candlestick{Close: 1400.00})
-	candles = append(candles, common.Candlestick{Close: 1500.00})
-	candles = append(candles, common.Candlestick{Close: 1600.00})
-	candles = append(candles, common.Candlestick{Close: 1700.00})
-	candles = append(candles, common.Candlestick{Close: 1800.00})
-	candles = append(candles, common.Candlestick{Close: 1900.00})
-	candles = append(candles, common.Candlestick{Close: 2000.00})
-	candles = append(candles, common.Candlestick{Close: 2100.00})
-	candles = append(candles, common.Candlestick{Close: 2200.00})
-	candles = append(candles, common.Candlestick{Close: 2300.00})
-	candles = append(candles, common.Candlestick{Close: 2400.00})
-	candles = append(candles, common.Candlestick{Close: 2500.00})
-	candles = append(candles, common.Candlestick{Close: 2600.00})
-	candles = append(candles, common.Candlestick{Close: 2700.00})
-	candles = append(candles, common.Candlestick{Close: 2800.00})
-	candles = append(candles, common.Candlestick{Close: 2900.00})
-	candles = append(candles, common.Candlestick{Close: 3000.00})
-	return candles
-}
-*/

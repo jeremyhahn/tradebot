@@ -21,7 +21,7 @@ func TestDefaultTradingStrategy_minSellPrice_Default(t *testing.T) {
 	autoTradeCoin := new(MockAutoTradeCoin)
 	autoTradeDAO := new(MockAutoTradeDAO_MinSellPrice1)
 	autoTradeDAO.On("GetLastTrade", autoTradeCoin).Return(autoTradeDAO.GetLastTrade(autoTradeCoin)).Once()
-	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO))
+	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), new(MockProfitDAO))
 	strategy.OnPriceChange(chart)
 	minPrice := strategy.minSellPrice(chart.GetExchange().GetTradingFee())
 	assert.Equal(t, float64(10000), strategy.lastTrade.Price)
