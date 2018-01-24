@@ -20,8 +20,9 @@ func NewUnitTestContext() *common.Context {
 	return &common.Context{
 		Logger: logger,
 		User: &common.User{
-			Id:       1,
-			Username: TEST_USERNAME}}
+			Id:            1,
+			Username:      TEST_USERNAME,
+			LocalCurrency: "USD"}}
 }
 
 func NewIntegrationTestContext() *common.Context {
@@ -72,7 +73,7 @@ func NewIntegrationTestContext() *common.Context {
 	Secret: BITHUMB_SECRET})*/
 
 	userDAO := dao.NewUserDAO(TEST_CONTEXT)
-	userDAO.Save(&dao.User{Username: TEST_USERNAME, Exchanges: exchanges, Wallets: wallets})
+	userDAO.Save(&dao.User{Username: TEST_USERNAME, LocalCurrency: "USD", Exchanges: exchanges, Wallets: wallets})
 
 	/*exchangeDAO := exchange.NewExchangeDAO(TEST_CONTEXT)
 	exchangeDAO.Create(&exchange.CoinExchange{
