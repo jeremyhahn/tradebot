@@ -2,8 +2,6 @@ package strategy
 
 import (
 	"encoding/json"
-	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -20,6 +18,7 @@ type DefaultTradingStrategy struct {
 	autoTradeCoin dao.IAutoTradeCoin
 	config        *DefaultTradingStrategyConfig
 	lastTrade     *dao.Trade
+	Chart         chan common.ChartService
 	service.TradingStrategy
 }
 
@@ -34,13 +33,13 @@ type DefaultTradingStrategyConfig struct {
 	requiredBuySignals     int
 	requiredSellSignals    int
 	tradeSize              float64
-	tradeSizePercent       float64
 }
 
 func NewDefaultTradingStrategy(ctx *common.Context, autoTradeCoin dao.IAutoTradeCoin,
 	autoTradeDAO dao.IAutoTradeDAO, signalLogDAO dao.ISignalLogDAO, profitDAO dao.IProfitDAO) *DefaultTradingStrategy {
 	return &DefaultTradingStrategy{
 		Name:          "DefaultTradingStrategy",
+		Chart:         make(chan common.ChartService),
 		ctx:           ctx,
 		autoTradeCoin: autoTradeCoin,
 		autoTradeDAO:  autoTradeDAO,
@@ -49,12 +48,12 @@ func NewDefaultTradingStrategy(ctx *common.Context, autoTradeCoin dao.IAutoTrade
 		config: &DefaultTradingStrategyConfig{
 			rsiOverSold:            30,
 			rsiOverBought:          70,
-			tax:                    0,
+			tax:                    .40,
 			stopLoss:               0,
 			stopLossPercent:        .20,
 			profitMarginMin:        0,
 			profitMarginMinPercent: .10,
-			tradeSizePercent:       0,
+			tradeSize:              0,
 			requiredBuySignals:     2,
 			requiredSellSignals:    2}}
 }
@@ -98,41 +97,41 @@ func (strategy *DefaultTradingStrategy) countSignals(data *common.ChartData) (in
 	var sellSignals int
 	if data.RSILive < strategy.config.rsiOverSold {
 		buySignals++
-		strategy.signalLogDAO.Save(&dao.SignalLog{
-			UserID:     strategy.ctx.User.Id,
-			Date:       time.Now(),
-			Name:       "RSI",
-			Type:       "buy",
-			Price:      data.Price,
-			SignalData: strconv.FormatFloat(data.RSILive, 'f', 8, 64)})
+		/*strategy.signalLogDAO.Save(&dao.SignalLog{
+		UserID:     strategy.ctx.User.Id,
+		Date:       time.Now(),
+		Name:       "RSI",
+		Type:       "buy",
+		Price:      data.Price,
+		SignalData: strconv.FormatFloat(data.RSILive, 'f', 8, 64)})*/
 	} else if data.RSILive > strategy.config.rsiOverBought {
 		sellSignals++
-		strategy.signalLogDAO.Save(&dao.SignalLog{
-			UserID:     strategy.ctx.User.Id,
-			Date:       time.Now(),
-			Name:       "RSI",
-			Type:       "sell",
-			Price:      data.Price,
-			SignalData: strconv.FormatFloat(data.RSILive, 'f', 8, 64)})
+		/*strategy.signalLogDAO.Save(&dao.SignalLog{
+		UserID:     strategy.ctx.User.Id,
+		Date:       time.Now(),
+		Name:       "RSI",
+		Type:       "sell",
+		Price:      data.Price,
+		SignalData: strconv.FormatFloat(data.RSILive, 'f', 8, 64)})*/
 	}
 	if data.Price > data.BollingerUpperLive {
 		sellSignals++
-		strategy.signalLogDAO.Save(&dao.SignalLog{
-			UserID:     strategy.ctx.User.Id,
-			Date:       time.Now(),
-			Name:       "Bollinger",
-			Type:       "sell",
-			Price:      data.Price,
-			SignalData: fmt.Sprintf("%f,%f,%f", data.BollingerUpperLive, data.BollingerMiddleLive, data.BollingerLowerLive)})
+		/*strategy.signalLogDAO.Save(&dao.SignalLog{
+		UserID:     strategy.ctx.User.Id,
+		Date:       time.Now(),
+		Name:       "Bollinger",
+		Type:       "sell",
+		Price:      data.Price,
+		SignalData: fmt.Sprintf("%f,%f,%f", data.BollingerUpperLive, data.BollingerMiddleLive, data.BollingerLowerLive)})*/
 	} else if data.Price < data.BollingerLowerLive {
 		buySignals++
-		strategy.signalLogDAO.Save(&dao.SignalLog{
-			UserID:     strategy.ctx.User.Id,
-			Date:       time.Now(),
-			Name:       "Bollinger",
-			Type:       "buy",
-			Price:      data.Price,
-			SignalData: fmt.Sprintf("%f,%f,%f", data.BollingerUpperLive, data.BollingerMiddleLive, data.BollingerLowerLive)})
+		/*strategy.signalLogDAO.Save(&dao.SignalLog{
+		UserID:     strategy.ctx.User.Id,
+		Date:       time.Now(),
+		Name:       "Bollinger",
+		Type:       "buy",
+		Price:      data.Price,
+		SignalData: fmt.Sprintf("%f,%f,%f", data.BollingerUpperLive, data.BollingerMiddleLive, data.BollingerLowerLive)})*/
 	}
 	return buySignals, sellSignals
 }
@@ -169,15 +168,15 @@ func (strategy *DefaultTradingStrategy) getTradeAmounts(chart common.ChartServic
 	coins, _ := chart.GetExchange().GetBalances()
 	for _, coin := range coins {
 		if coin.Currency == currencyPair.Base {
-			if strategy.config.tradeSizePercent > 0 {
-				baseAmount = coin.Available * strategy.config.tradeSizePercent
+			if strategy.config.tradeSize > 0 {
+				baseAmount = coin.Available * strategy.config.tradeSize
 			} else {
 				baseAmount = coin.Available
 			}
 		}
 		if coin.Currency == currencyPair.Quote {
-			if strategy.config.tradeSizePercent > 0 {
-				quoteAmount = coin.Available * strategy.config.tradeSizePercent
+			if strategy.config.tradeSize > 0 {
+				quoteAmount = coin.Available * strategy.config.tradeSize
 			} else {
 				quoteAmount = coin.Available
 			}

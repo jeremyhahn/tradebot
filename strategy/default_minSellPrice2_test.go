@@ -41,7 +41,7 @@ func TestDefaultTradingStrategy_minSellPrice_LastPriceGreater(t *testing.T) {
 			stopLossPercent:        .20,
 			profitMarginMin:        0,
 			profitMarginMinPercent: .10,
-			tradeSizePercent:       0,
+			tradeSize:              0,
 			requiredBuySignals:     2,
 			requiredSellSignals:    2})
 	strategy.OnPriceChange(chart)
@@ -72,7 +72,7 @@ func TestDefaultTradingStrategy_minSellPrice_NoProfitPercent(t *testing.T) {
 			stopLossPercent:        .20,
 			profitMarginMin:        500,
 			profitMarginMinPercent: 0,
-			tradeSizePercent:       0,
+			tradeSize:              0,
 			requiredBuySignals:     2,
 			requiredSellSignals:    2})
 	strategy.OnPriceChange(chart)
@@ -102,7 +102,7 @@ func TestDefaultTradingStrategy_minSellPrice_DoesntIncludeTax(t *testing.T) {
 			stopLossPercent:        .20,
 			profitMarginMin:        500,
 			profitMarginMinPercent: 0,
-			tradeSizePercent:       0,
+			tradeSize:              0,
 			requiredBuySignals:     2,
 			requiredSellSignals:    2})
 	strategy.OnPriceChange(chart)
@@ -132,7 +132,7 @@ func TestDefaultTradingStrategy_minSellPrice_IncludesTax(t *testing.T) {
 			stopLossPercent:        .20,
 			profitMarginMin:        500,
 			profitMarginMinPercent: 0,
-			tradeSizePercent:       0,
+			tradeSize:              0,
 			requiredBuySignals:     2,
 			requiredSellSignals:    2})
 	strategy.OnPriceChange(chart)

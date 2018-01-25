@@ -156,7 +156,7 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 	return coins, sum
 }
 
-func (b *Binance) GetTradeHistory(start, end time.Time, granularity int) []common.Candlestick {
+func (b *Binance) GetPriceHistory(start, end time.Time, granularity int) []common.Candlestick {
 	b.logger.Debug("[Binance.GetTradeHistory] Getting trade history")
 	candlesticks := make([]common.Candlestick, 0)
 	interval := fmt.Sprintf("%dm", granularity/60)
@@ -175,6 +175,21 @@ func (b *Binance) GetTradeHistory(start, end time.Time, granularity int) []commo
 			Period: granularity,
 			Volume: volume})
 	}
+	return candlesticks
+}
+
+func (b *Binance) GetTradeHistory() []common.Candlestick {
+	var candlesticks []common.Candlestick
+
+	orders, err := b.client.NewListOrdersService().Symbol("ADABTC").
+		Do(context.Background())
+	if err != nil {
+		fmt.Println(err)
+	}
+	for _, o := range orders {
+		fmt.Println(o)
+	}
+
 	return candlesticks
 }
 
