@@ -158,7 +158,8 @@ type Exchange interface {
 	GetPriceUSD() float64
 	GetPrice() float64
 	GetSatoshis() float64
-	GetTradeHistory(start, end time.Time, granularity int) []Candlestick
+	GetPriceHistory(start, end time.Time, granularity int) []Candlestick
+	GetTradeHistory() []Candlestick
 	GetCurrencyPair() CurrencyPair
 	FormattedCurrencyPair() string
 	GetBalances() ([]Coin, float64)

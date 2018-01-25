@@ -32,6 +32,24 @@ func main() {
 
 	ws := websocket.NewWebsocketServer(ctx, 8080, marketcapService)
 	go ws.Start()
+	go ws.Run()
+
+	/*
+		cp := &common.CurrencyPair{
+			Base:          "BTC",
+			Quote:         "USD",
+			LocalCurrency: "USD"}
+		//gdax := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx)).NewExchange(ctx.User, "gdax", cp)
+		//bittrex := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx)).NewExchange(ctx.User, "bittrex", cp)
+		binance := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx)).NewExchange(ctx.User, "binance", cp)
+		//gdax.GetTradeHistory()
+		fmt.Println()
+		fmt.Println()
+		//bittrex.GetTradeHistory()
+		fmt.Println()
+		fmt.Println()
+		binance.GetTradeHistory()
+		os.Exit(1)*/
 
 	//tradeService := service.NewTradeService(ctx, marketcapService)
 	//tradeService.Trade()

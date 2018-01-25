@@ -42,7 +42,7 @@ func NewGDAX(_gdax *dao.UserCoinExchange, logger *logging.Logger, currencyPair *
 		tradingFee:   0.025}
 }
 
-func (_gdax *GDAX) GetTradeHistory(start, end time.Time, granularity int) []common.Candlestick {
+func (_gdax *GDAX) GetPriceHistory(start, end time.Time, granularity int) []common.Candlestick {
 	_gdax.respectRateLimit()
 	_gdax.logger.Debug("[GDAX.GetTradeHistory] Getting trade history")
 	var candlesticks []common.Candlestick
@@ -60,7 +60,7 @@ func (_gdax *GDAX) GetTradeHistory(start, end time.Time, granularity int) []comm
 			for i := 0; i < days; i++ {
 				newStart := start.AddDate(0, 0, i)
 				newEnd := start.AddDate(0, 0, i).Add(time.Hour*23 + time.Minute*59 + time.Second*59)
-				sticks := _gdax.GetTradeHistory(newStart, newEnd, granularity)
+				sticks := _gdax.GetPriceHistory(newStart, newEnd, granularity)
 				//bytes, _ := json.MarshalIndent(sticks, "", "    ")
 				//fmt.Println(string(bytes))
 				candlesticks = append(candlesticks, sticks...)
@@ -69,7 +69,7 @@ func (_gdax *GDAX) GetTradeHistory(start, end time.Time, granularity int) []comm
 		}
 		_gdax.logger.Errorf("[GDAX.GetTradeHistory] %s", err.Error())
 		time.Sleep(time.Second * 1)
-		return _gdax.GetTradeHistory(start, end, granularity)
+		return _gdax.GetPriceHistory(start, end, granularity)
 	}
 	for _, r := range rates {
 		candlesticks = append(candlesticks, common.Candlestick{
@@ -83,6 +83,32 @@ func (_gdax *GDAX) GetTradeHistory(start, end time.Time, granularity int) []comm
 			Low:          r.Low,
 			Volume:       r.Volume})
 	}
+	return candlesticks
+}
+
+func (_gdax *GDAX) GetTradeHistory() []common.Candlestick {
+	var candlesticks []common.Candlestick
+
+	var ledger []gdax.LedgerEntry
+
+	accounts, err := _gdax.gdax.GetAccounts()
+	if err != nil {
+		println(err.Error())
+	}
+
+	for _, a := range accounts {
+		cursor := _gdax.gdax.ListAccountLedger(a.Id)
+		for cursor.HasMore {
+			if err := cursor.NextPage(&ledger); err != nil {
+				fmt.Println(err.Error())
+			}
+
+			for _, e := range ledger {
+				fmt.Printf("%+v\n", e)
+			}
+		}
+	}
+
 	return candlesticks
 }
 

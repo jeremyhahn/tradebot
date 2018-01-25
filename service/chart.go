@@ -61,7 +61,7 @@ func (chart *ChartServiceImpl) loadCandlesticks() []common.Candlestick {
 	chart.ctx.Logger.Debugf("[ChartService.Stream] Getting %s %s trade history from %s - %s ",
 		chart.Exchange.GetName(), chart.Exchange.FormattedCurrencyPair(), yesterday, now)
 
-	candlesticks := chart.Exchange.GetTradeHistory(yesterday, now, chart.period)
+	candlesticks := chart.Exchange.GetPriceHistory(yesterday, now, chart.period)
 	if len(candlesticks) < 20 {
 		chart.ctx.Logger.Errorf("[ChartService.Stream] Failed to load initial candlesticks from %s. Total records: %d",
 			chart.Exchange.GetName(), len(candlesticks))
@@ -112,17 +112,13 @@ func (chart *ChartServiceImpl) Stream() {
 	go chart.Exchange.SubscribeToLiveFeed(priceChange)
 
 	chart.priceStream.SubscribeToPrice(chart)
-	chart.priceStream.SubscribeToPeriod(chart)
 
 	for {
 		chart.priceStream.Listen(priceChange)
+		if chart.strategy != nil {
+			chart.strategy.OnPriceChange(chart)
+		}
 	}
-}
-
-func (chart *ChartServiceImpl) OnPeriodChange(candle *common.Candlestick) {
-	chart.RSI.OnPeriodChange(candle)
-	chart.Bband.OnPeriodChange(candle)
-	chart.MACD.OnPeriodChange(candle)
 }
 
 func (chart *ChartServiceImpl) OnPriceChange(newPrice *common.PriceChange) {
@@ -148,11 +144,6 @@ func (chart *ChartServiceImpl) OnPriceChange(newPrice *common.PriceChange) {
 	chart.Data.MACDHistogramLive = macdHistogram
 	chart.Data.OnBalanceVolume = chart.OBV.GetValue()
 	chart.Data.OnBalanceVolumeLive = chart.OBV.Calculate(newPrice.Price)
-	//bytes, _ := json.MarshalIndent(chart.Data, "", "    ")
-	//chart.ctx.Logger.Debugf("[ChartService.OnPriceChange] ChartData: %+v\n", chart.Data)
-	if chart.strategy != nil {
-		chart.strategy.OnPriceChange(chart)
-	}
 }
 
 func (chart *ChartServiceImpl) reverseCandles(candles []common.Candlestick) []common.Candlestick {

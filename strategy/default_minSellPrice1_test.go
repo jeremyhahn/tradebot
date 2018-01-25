@@ -24,13 +24,42 @@ func TestDefaultTradingStrategy_minSellPrice_Default(t *testing.T) {
 	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), new(MockProfitDAO))
 	strategy.OnPriceChange(chart)
 	minPrice := strategy.minSellPrice(chart.GetExchange().GetTradingFee())
-	assert.Equal(t, float64(10000), strategy.lastTrade.Price)
-	assert.Equal(t, float64(10000), chart.GetData().Price)
+	assert.Equal(t, 10000.0, strategy.lastTrade.Price)
+	assert.Equal(t, 10000.0, chart.GetData().Price)
 	assert.Equal(t, 0.025, chart.GetExchange().GetTradingFee())  // 10000 * 0.025 = 250
 	assert.Equal(t, .10, strategy.config.profitMarginMinPercent) // 1000
-	assert.Equal(t, float64(0), strategy.config.profitMarginMin)
-	assert.Equal(t, float64(0), strategy.config.tax)
-	assert.Equal(t, float64(11275), minPrice)
+	assert.Equal(t, 0.0, strategy.config.profitMarginMin)
+	assert.Equal(t, 0.4, strategy.config.tax)
+	assert.Equal(t, 11675.0, minPrice)
+	autoTradeDAO.AssertExpectations(t)
+}
+
+func TestDefaultTradingStrategy_minSellPrice_NoTax(t *testing.T) {
+	ctx := test.NewUnitTestContext()
+	chart := new(MockChartService)
+	autoTradeCoin := new(MockAutoTradeCoin)
+	autoTradeDAO := new(MockAutoTradeDAO_MinSellPrice1)
+	autoTradeDAO.On("GetLastTrade", autoTradeCoin).Return(autoTradeDAO.GetLastTrade(autoTradeCoin)).Once()
+	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), new(MockProfitDAO), &DefaultTradingStrategyConfig{
+		rsiOverSold:            30,
+		rsiOverBought:          70,
+		tax:                    0,
+		stopLoss:               0,
+		stopLossPercent:        .20,
+		profitMarginMin:        0,
+		profitMarginMinPercent: .10,
+		tradeSize:              0,
+		requiredBuySignals:     2,
+		requiredSellSignals:    2})
+	strategy.OnPriceChange(chart)
+	minPrice := strategy.minSellPrice(chart.GetExchange().GetTradingFee())
+	assert.Equal(t, 10000.0, strategy.lastTrade.Price)
+	assert.Equal(t, 10000.0, chart.GetData().Price)
+	assert.Equal(t, 0.025, chart.GetExchange().GetTradingFee())  // 10000 * 0.025 = 250
+	assert.Equal(t, .10, strategy.config.profitMarginMinPercent) // 1000
+	assert.Equal(t, 0.0, strategy.config.profitMarginMin)
+	assert.Equal(t, 0.0, strategy.config.tax)
+	assert.Equal(t, 11275.0, minPrice)
 	autoTradeDAO.AssertExpectations(t)
 }
 

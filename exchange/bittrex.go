@@ -62,7 +62,7 @@ func (b *Bittrex) SubscribeToLiveFeed(priceChange chan common.PriceChange) {
 	}
 }
 
-func (b *Bittrex) GetTradeHistory(start, end time.Time, granularity int) []common.Candlestick {
+func (b *Bittrex) GetPriceHistory(start, end time.Time, granularity int) []common.Candlestick {
 	b.logger.Debug("[Bittrex.GetTradeHistory] Getting trade history")
 	candlesticks := make([]common.Candlestick, 0)
 	marketHistory, err := b.client.GetMarketHistory(b.FormattedCurrencyPair())
@@ -76,6 +76,20 @@ func (b *Bittrex) GetTradeHistory(start, end time.Time, granularity int) []commo
 		}
 		candlesticks = append(candlesticks, common.Candlestick{Close: f})
 	}
+	return candlesticks
+}
+
+func (b *Bittrex) GetTradeHistory() []common.Candlestick {
+	var candlesticks []common.Candlestick
+
+	orderBook, _ := b.client.GetOrderBook("BTC-ADA", "both")
+	for _, buy := range orderBook.Buy {
+		fmt.Printf("%+v\n", buy)
+	}
+	for _, sell := range orderBook.Sell {
+		fmt.Printf("%+v\n", sell)
+	}
+
 	return candlesticks
 }
 

@@ -149,7 +149,7 @@ func TestDefaultTradingStrategy_getTradeAmounts_WithTradeSizePercent(t *testing.
 			stopLossPercent:        .20,
 			profitMarginMin:        0,
 			profitMarginMinPercent: .10,
-			tradeSizePercent:       .10,
+			tradeSize:              .10,
 			requiredBuySignals:     2,
 			requiredSellSignals:    2})
 	chart := new(MockChartService)

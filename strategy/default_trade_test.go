@@ -55,7 +55,7 @@ func TestDefaultTradingStrategy_Trade(t *testing.T) {
 			stopLossPercent:        .20,
 			profitMarginMin:        1000,
 			profitMarginMinPercent: 0,
-			tradeSizePercent:       0,
+			tradeSize:              0,
 			requiredBuySignals:     2,
 			requiredSellSignals:    2})
 
