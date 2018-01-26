@@ -26,6 +26,9 @@ const LeftDrawer = (props) => {
 			<MenuItem leftIcon={<Avatar src={"images/avatars/128/portfolio.png"} />}
 			    onTouchTap={ handleClose } containerElement={<Link to="/portfolio" />} primaryText="Portfolio" />
 
+			<MenuItem leftIcon={<Avatar src={"images/avatars/128/orders.png"} />}
+			    onTouchTap={ handleClose } containerElement={<Link to="/orders" />} primaryText="Orders" />
+
 			<MenuItem leftIcon={<Avatar src={"images/avatars/128/exchange.png"} />}
 					    onTouchTap={ handleClose } containerElement={<Link to="/exchanges" />} primaryText="Exchanges" />
 

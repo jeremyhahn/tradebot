@@ -32,7 +32,7 @@ type GDAX struct {
 
 func NewGDAX(_gdax *dao.UserCoinExchange, logger *logging.Logger, currencyPair *common.CurrencyPair) common.Exchange {
 	return &GDAX{
-		gdax:         gdax.NewClient(_gdax.Secret, _gdax.Key, _gdax.Passphrase),
+		gdax:         gdax.NewClient(_gdax.Secret, _gdax.Key, _gdax.Extra),
 		logger:       logger,
 		name:         "gdax",
 		apiCallCount: 0,
@@ -61,8 +61,6 @@ func (_gdax *GDAX) GetPriceHistory(start, end time.Time, granularity int) []comm
 				newStart := start.AddDate(0, 0, i)
 				newEnd := start.AddDate(0, 0, i).Add(time.Hour*23 + time.Minute*59 + time.Second*59)
 				sticks := _gdax.GetPriceHistory(newStart, newEnd, granularity)
-				//bytes, _ := json.MarshalIndent(sticks, "", "    ")
-				//fmt.Println(string(bytes))
 				candlesticks = append(candlesticks, sticks...)
 			}
 			return candlesticks
@@ -86,43 +84,51 @@ func (_gdax *GDAX) GetPriceHistory(start, end time.Time, granularity int) []comm
 	return candlesticks
 }
 
-func (_gdax *GDAX) GetTradeHistory() []common.Candlestick {
-	var candlesticks []common.Candlestick
-
+func (_gdax *GDAX) GetOrderHistory() []common.Order {
+	var orders []common.Order
 	var ledger []gdax.LedgerEntry
-
 	accounts, err := _gdax.gdax.GetAccounts()
 	if err != nil {
-		println(err.Error())
+		_gdax.logger.Errorf("[GDAX.GetOrderHistory] %s", err.Error())
 	}
-
 	for _, a := range accounts {
 		cursor := _gdax.gdax.ListAccountLedger(a.Id)
 		for cursor.HasMore {
 			if err := cursor.NextPage(&ledger); err != nil {
-				fmt.Println(err.Error())
+				_gdax.logger.Errorf("[GDAX.GetOrderHistory] %s", err.Error())
 			}
-
 			for _, e := range ledger {
-				fmt.Printf("%+v\n", e)
+				var cp *common.CurrencyPair
+				if e.Type != "transfer" {
+					pieces := strings.Split(e.Details.ProductId, "-")
+					base, quote := pieces[0], pieces[1]
+					cp = &common.CurrencyPair{
+						Base:  base,
+						Quote: quote}
+				} else {
+					cp = _gdax.currencyPair
+				}
+				orders = append(orders, common.Order{
+					Exchange: "gdax",
+					Date:     e.CreatedAt.Time(),
+					Type:     e.Type,
+					Currency: cp,
+					Quantity: e.Amount,
+					Price:    e.Balance})
 			}
 		}
 	}
-
-	return candlesticks
+	return orders
 }
 
 func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
-
 	cacheTime := time.Now().Unix()
 	cacheDiff := cacheTime - _gdax.lastBalanceCall
 	if cacheDiff <= 3600 && len(_gdax.balances) > 0 {
 		_gdax.logger.Debug("[GDAX.GetBalances] Returning cached balances")
 		return _gdax.balances, _gdax.netWorth
 	}
-
 	_gdax.respectRateLimit()
-
 	_gdax.logger.Debugf("[GDAX] Getting %s balances", _gdax.currencyPair.Base)
 	var coins []common.Coin
 	sum := 0.0
@@ -173,7 +179,7 @@ func (_gdax *GDAX) SubscribeToLiveFeed(priceChannel chan common.PriceChange) {
 	var wsDialer ws.Dialer
 	wsConn, _, err := wsDialer.Dial("wss://ws-feed.gdax.com", nil)
 	if err != nil {
-		println(err.Error())
+		_gdax.logger.Errorf("[GDAX.SubscribeToLiveFeed] %s", err.Error())
 	}
 
 	subscribe := map[string]string{
@@ -190,7 +196,7 @@ func (_gdax *GDAX) SubscribeToLiveFeed(priceChannel chan common.PriceChange) {
 
 		if err := wsConn.ReadJSON(&message); err != nil {
 			_gdax.logger.Errorf("[GDAX.SubscribeToLiveFeed] %s", err.Error())
-			break
+			_gdax.SubscribeToLiveFeed(priceChannel)
 		}
 
 		if message.Type == "match" && message.Reason == "filled" {

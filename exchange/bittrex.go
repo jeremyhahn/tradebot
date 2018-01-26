@@ -19,6 +19,7 @@ type Bittrex struct {
 	name         string
 	currencyPair *common.CurrencyPair
 	tradingFee   float64
+	tradePairs   []common.CurrencyPair
 	common.Exchange
 }
 
@@ -79,18 +80,24 @@ func (b *Bittrex) GetPriceHistory(start, end time.Time, granularity int) []commo
 	return candlesticks
 }
 
-func (b *Bittrex) GetTradeHistory() []common.Candlestick {
-	var candlesticks []common.Candlestick
-
-	orderBook, _ := b.client.GetOrderBook("BTC-ADA", "both")
-	for _, buy := range orderBook.Buy {
-		fmt.Printf("%+v\n", buy)
+func (b *Bittrex) GetOrderHistory() []common.Order {
+	var orders []common.Order
+	orderHistory, err := b.client.GetOrderHistory(b.FormattedCurrencyPair())
+	if err != nil {
+		b.logger.Errorf("[Bittrex.GetOrderHistory] %s", err.Error())
 	}
-	for _, sell := range orderBook.Sell {
-		fmt.Printf("%+v\n", sell)
+	for _, o := range orderHistory {
+		q, _ := o.Quantity.Float64()
+		p, _ := o.Price.Float64()
+		orders = append(orders, common.Order{
+			Exchange: "bittrex",
+			Date:     o.TimeStamp.Time,
+			Type:     o.OrderType,
+			Currency: b.currencyPair,
+			Quantity: q,
+			Price:    p})
 	}
-
-	return candlesticks
+	return orders
 }
 
 func (b *Bittrex) GetBalances() ([]common.Coin, float64) {

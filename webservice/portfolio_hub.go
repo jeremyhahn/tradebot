@@ -1,4 +1,4 @@
-package websocket
+package webservice
 
 import (
 	"github.com/jeremyhahn/tradebot/common"

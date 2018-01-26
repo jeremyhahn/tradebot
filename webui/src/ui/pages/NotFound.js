@@ -3,7 +3,7 @@
 import React from 'react';
 import Paper from 'material-ui/Paper';
 
-const Settings = (props) => {
+const NotFound = (props) => {
 
 	return (
 		<Paper style={{ padding: 20, }} zDepth={1} rounded={false}>
@@ -14,4 +14,4 @@ const Settings = (props) => {
 
 }
 
-export default Settings;
+export default NotFound;

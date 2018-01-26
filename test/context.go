@@ -55,18 +55,20 @@ func NewIntegrationTestContext() *common.Context {
 
 	var exchanges []dao.UserCoinExchange
 	exchanges = append(exchanges, dao.UserCoinExchange{
-		Name:       "gdax",
-		Key:        GDAX_APIKEY,
-		Secret:     GDAX_SECRET,
-		Passphrase: GDAX_PASSPHRASE})
+		Name:   "gdax",
+		Key:    GDAX_APIKEY,
+		Secret: GDAX_SECRET,
+		Extra:  GDAX_PASSPHRASE})
 	exchanges = append(exchanges, dao.UserCoinExchange{
 		Name:   "bittrex",
 		Key:    BITTREX_APIKEY,
-		Secret: BITTREX_SECRET})
+		Secret: BITTREX_SECRET,
+		Extra:  BITTREX_EXTRA})
 	exchanges = append(exchanges, dao.UserCoinExchange{
 		Name:   "binance",
 		Key:    BINANCE_APIKEY,
-		Secret: BINANCE_SECRET})
+		Secret: BINANCE_SECRET,
+		Extra:  BINANCE_EXTRA})
 	/*exchanges = append(exchanges, dao.UserCoinExchange{
 	Name:   "bithumb",
 	Key:    BITHUMB_APIKEY,
