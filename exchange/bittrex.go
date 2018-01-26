@@ -94,7 +94,7 @@ func (b *Bittrex) GetOrderHistory() []common.Order {
 			Exchange: "bittrex",
 			Date:     o.TimeStamp.Time,
 			Type:     o.OrderType,
-			Currency: b.currencyPair,
+			Currency: b.FormattedCurrencyPair(),
 			Quantity: q,
 			Price:    p})
 	}
