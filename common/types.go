@@ -18,13 +18,13 @@ const (
 )
 
 type Order struct {
-	Id       string        `json:"id"`
-	Exchange string        `json:"exchange"`
-	Date     time.Time     `json:"date"`
-	Type     string        `json:"type"`
-	Currency *CurrencyPair `json:"currency_pair"`
-	Quantity float64       `json:"quantity"`
-	Price    float64       `json:"price"`
+	Id       string    `json:"id"`
+	Exchange string    `json:"exchange"`
+	Date     time.Time `json:"date"`
+	Type     string    `json:"type"`
+	Currency string    `json:"currency"`
+	Quantity float64   `json:"quantity"`
+	Price    float64   `json:"price"`
 }
 
 type ChartService interface {

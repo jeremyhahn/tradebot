@@ -113,7 +113,7 @@ func (_gdax *GDAX) GetOrderHistory() []common.Order {
 					Exchange: "gdax",
 					Date:     e.CreatedAt.Time(),
 					Type:     e.Type,
-					Currency: cp,
+					Currency: _gdax.formatCurrencyPair(cp),
 					Quantity: e.Amount,
 					Price:    e.Balance})
 			}
@@ -263,6 +263,10 @@ func (_gdax *GDAX) GetName() string {
 
 func (_gdax *GDAX) FormattedCurrencyPair() string {
 	return fmt.Sprintf("%s-%s", _gdax.currencyPair.Base, _gdax.currencyPair.Quote)
+}
+
+func (_gdax *GDAX) formatCurrencyPair(currencyPair *common.CurrencyPair) string {
+	return fmt.Sprintf("%s-%s", currencyPair.Base, currencyPair.Quote)
 }
 
 func (_gdax *GDAX) GetTradingFee() float64 {

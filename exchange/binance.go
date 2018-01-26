@@ -197,7 +197,7 @@ func (b *Binance) GetOrderHistory() []common.Order {
 			Id:       strconv.FormatInt(int64(o.ID), 10),
 			Exchange: "binance",
 			Type:     orderType,
-			Currency: b.currencyPair,
+			Currency: b.FormattedCurrencyPair(),
 			//Date:     time.Unix(o.Time, 0),
 			Quantity: qty,
 			Price:    p})
