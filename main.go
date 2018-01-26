@@ -4,8 +4,7 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/service"
-	"github.com/jeremyhahn/tradebot/strategy"
-	"github.com/jeremyhahn/tradebot/websocket"
+	"github.com/jeremyhahn/tradebot/webservice"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
@@ -29,54 +28,36 @@ func main() {
 	ctx.User = userDAO.GetById(1)
 
 	marketcapService := service.NewMarketCapService(logger)
+	exchangeService := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx))
 
-	ws := websocket.NewWebsocketServer(ctx, 8080, marketcapService)
+	ws := webservice.NewWebServer(ctx, 8080, marketcapService, exchangeService)
 	go ws.Start()
-	go ws.Run()
+	ws.Run()
 
 	/*
-		cp := &common.CurrencyPair{
-			Base:          "BTC",
-			Quote:         "USD",
-			LocalCurrency: "USD"}
-		//gdax := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx)).NewExchange(ctx.User, "gdax", cp)
-		//bittrex := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx)).NewExchange(ctx.User, "bittrex", cp)
-		binance := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx)).NewExchange(ctx.User, "binance", cp)
-		//gdax.GetTradeHistory()
-		fmt.Println()
-		fmt.Println()
-		//bittrex.GetTradeHistory()
-		fmt.Println()
-		fmt.Println()
-		binance.GetTradeHistory()
-		os.Exit(1)*/
+		var services []common.ChartService
+		exchangeDAO := dao.NewExchangeDAO(ctx)
+		autoTradeDAO := dao.NewAutoTradeDAO(ctx)
+		signalDAO := dao.NewSignalLogDAO(ctx)
+		profitDAO := dao.NewProfitDAO(ctx)
+		for _, autoTradeCoin := range autoTradeDAO.Find(ctx.User) {
+			ctx.Logger.Debugf("[Main] Loading AutoTrade currency pair: %s-%s\n", autoTradeCoin.GetBase(), autoTradeCoin.GetQuote())
+			currencyPair := &common.CurrencyPair{
+				Base:          autoTradeCoin.GetBase(),
+				Quote:         autoTradeCoin.GetQuote(),
+				LocalCurrency: ctx.User.LocalCurrency}
+			exchangeService := service.NewExchangeService(ctx, exchangeDAO)
+			exchange := exchangeService.NewExchange(ctx.User, autoTradeCoin.GetExchangeName(), currencyPair)
+			strategy := strategy.NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, signalDAO, profitDAO)
+			chart := service.NewChartService(ctx, exchange, strategy, autoTradeCoin.GetPeriod())
+			ctx.Logger.Debugf("[Main] Chart: %+v\n", chart)
+			services = append(services, chart)
+		}
 
-	//tradeService := service.NewTradeService(ctx, marketcapService)
-	//tradeService.Trade()
-
-	var services []common.ChartService
-	exchangeDAO := dao.NewExchangeDAO(ctx)
-	autoTradeDAO := dao.NewAutoTradeDAO(ctx)
-	signalDAO := dao.NewSignalLogDAO(ctx)
-	profitDAO := dao.NewProfitDAO(ctx)
-	for _, autoTradeCoin := range autoTradeDAO.Find(ctx.User) {
-		ctx.Logger.Debugf("[Tradebot.Main] Loading AutoTrade currency pair: %s-%s\n", autoTradeCoin.GetBase(), autoTradeCoin.GetQuote())
-		currencyPair := &common.CurrencyPair{
-			Base:          autoTradeCoin.GetBase(),
-			Quote:         autoTradeCoin.GetQuote(),
-			LocalCurrency: ctx.User.LocalCurrency}
-		exchangeService := service.NewExchangeService(ctx, exchangeDAO)
-		exchange := exchangeService.NewExchange(ctx.User, autoTradeCoin.GetExchange(), currencyPair)
-		strategy := strategy.NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, signalDAO, profitDAO)
-		chart := service.NewChartService(ctx, exchange, strategy, autoTradeCoin.GetPeriod())
-		ctx.Logger.Debugf("[Tradebot.Main] Chart: %+v\n", chart)
-		services = append(services, chart)
-	}
-
-	for _, chart := range services {
-		chart.Stream()
-	}
-
+		for _, chart := range services {
+			chart.Stream()
+		}
+	*/
 }
 
 func InitSQLite() *gorm.DB {

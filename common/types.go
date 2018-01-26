@@ -17,6 +17,15 @@ const (
 	CANDLESTICK_MIN_LOAD  = 250
 )
 
+type Order struct {
+	Exchange string        `json:"exchange"`
+	Date     time.Time     `json:"date"`
+	Type     string        `json:"type"`
+	Currency *CurrencyPair `json:"currency_pair"`
+	Quantity float64       `json:"quantity"`
+	Price    float64       `json:"price"`
+}
+
 type ChartService interface {
 	Stream()
 	GetExchange() Exchange
@@ -159,7 +168,7 @@ type Exchange interface {
 	GetPrice() float64
 	GetSatoshis() float64
 	GetPriceHistory(start, end time.Time, granularity int) []Candlestick
-	GetTradeHistory() []Candlestick
+	GetOrderHistory() []Order
 	GetCurrencyPair() CurrencyPair
 	FormattedCurrencyPair() string
 	GetBalances() ([]Coin, float64)

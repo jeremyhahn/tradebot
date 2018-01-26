@@ -28,7 +28,7 @@ type IAutoTradeCoin interface {
 	GetBase() string
 	GetQuote() string
 	GetPeriod() int
-	GetExchange() string
+	GetExchangeName() string
 }
 
 type AutoTradeCoin struct {
@@ -140,6 +140,6 @@ func (atc *AutoTradeCoin) GetPeriod() int {
 	return atc.Period
 }
 
-func (atc *AutoTradeCoin) GetExchange() string {
+func (atc *AutoTradeCoin) GetExchangeName() string {
 	return atc.Exchange
 }

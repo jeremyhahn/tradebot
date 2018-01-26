@@ -29,12 +29,12 @@ type UserWallet struct {
 }
 
 type UserCoinExchange struct {
-	UserID     uint
-	Name       string `gorm:"primary_key"`
-	URL        string `gorm:"not null" sql:"type:varchar(255)"`
-	Key        string `gorm:"not null" sql:"type:varchar(255)"`
-	Secret     string `gorm:"not null" sql:"type:text"`
-	Passphrase string `gorm:"not null" sql:"type:varchar(255)"`
+	UserID uint
+	Name   string `gorm:"primary_key"`
+	URL    string `gorm:"not null" sql:"type:varchar(255)"`
+	Key    string `gorm:"not null" sql:"type:varchar(255)"`
+	Secret string `gorm:"not null" sql:"type:text"`
+	Extra  string `gorm:"not null" sql:"type:varchar(255)"`
 }
 
 func NewUserDAO(ctx *common.Context) *UserDAO {

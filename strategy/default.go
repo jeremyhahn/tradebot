@@ -53,7 +53,7 @@ func NewDefaultTradingStrategy(ctx *common.Context, autoTradeCoin dao.IAutoTrade
 			stopLossPercent:        .20,
 			profitMarginMin:        0,
 			profitMarginMinPercent: .10,
-			tradeSize:              0,
+			tradeSize:              1,
 			requiredBuySignals:     2,
 			requiredSellSignals:    2}}
 }

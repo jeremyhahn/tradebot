@@ -20,6 +20,7 @@ import Portfolio from 'app/ui/pages/Portfolio';
 import Exchanges from 'app/ui/pages/Exchanges';
 import Settings from 'app/ui/pages/Settings';
 import Chart from 'app/ui/pages/Chart';
+import OrderHistory from 'app/ui/pages/OrderHistory';
 import { install } from 'offline-plugin/runtime';
 
 render(
@@ -31,6 +32,7 @@ render(
 			<Route exact path="/" component={ Portfolio } />
 			<Switch>
 				<Route exact path="/portfolio" component={ Portfolio } />
+				<Route exact path="/orders" component={ OrderHistory } />
 				<Route exact path="/exchanges" component={ Exchanges } />
 				<Route exact path="/chart" component={ Chart } />
 				<Route exact path="/settings" component={ Settings } />

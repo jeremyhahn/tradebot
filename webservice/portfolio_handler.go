@@ -1,4 +1,4 @@
-package websocket
+package webservice
 
 import (
 	"net/http"
@@ -33,14 +33,14 @@ func (ph *PortfolioHandler) onConnect(w http.ResponseWriter, r *http.Request) {
 		ph.ctx.Logger.Error(err)
 	}
 	if conn == nil {
-		ph.ctx.Logger.Error("[PortfolioHandler.onConnect] Unable to establish websocket connection")
+		ph.ctx.Logger.Error("[PortfolioHandler.onConnect] Unable to establish webservice connection")
 		return
 	}
 
 	var portfolio common.Portfolio
 	err = conn.ReadJSON(&portfolio)
 	if err != nil {
-		ph.ctx.Logger.Errorf("[PortfolioHandler.onConnect] Websocket Read Error: %v", err)
+		ph.ctx.Logger.Errorf("[PortfolioHandler.onConnect] webservice Read Error: %v", err)
 		conn.Close()
 		return
 	}

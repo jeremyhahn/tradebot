@@ -178,19 +178,31 @@ func (b *Binance) GetPriceHistory(start, end time.Time, granularity int) []commo
 	return candlesticks
 }
 
-func (b *Binance) GetTradeHistory() []common.Candlestick {
-	var candlesticks []common.Candlestick
-
-	orders, err := b.client.NewListOrdersService().Symbol("ADABTC").
-		Do(context.Background())
+func (b *Binance) GetOrderHistory() []common.Order {
+	var _orders []common.Order
+	orders, err := b.client.NewListTradesService().Symbol(b.FormattedCurrencyPair()).Do(context.Background())
 	if err != nil {
-		fmt.Println(err)
+		b.logger.Errorf("[Binance.GetOrderHistory] %s", err.Error())
 	}
 	for _, o := range orders {
+		var orderType string
+		if o.IsBuyer {
+			orderType = "buy"
+		} else {
+			orderType = "sell"
+		}
+		qty, _ := strconv.ParseFloat(o.Quantity, 64)
+		p, _ := strconv.ParseFloat(o.Price, 64)
+		_orders = append(_orders, common.Order{
+			Exchange: "binance",
+			Type:     orderType,
+			Currency: b.currencyPair,
+			//Date:     time.Unix(o.Time, 0),
+			Quantity: qty,
+			Price:    p})
 		fmt.Println(o)
 	}
-
-	return candlesticks
+	return _orders
 }
 
 func (b *Binance) SubscribeToLiveFeed(priceChange chan common.PriceChange) {
