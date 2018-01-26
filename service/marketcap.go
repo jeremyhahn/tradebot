@@ -66,12 +66,8 @@ func (m *MarketCapService) GetMarkets() []common.MarketCap {
 			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", jsonErr.Error())
 		}
 
-		fmt.Printf("%+v\n", m.Markets)
-
-		fmt.Printf("Now: %d", now)
-		fmt.Printf("Last: %d", m.lastUpdate)
-		fmt.Printf("Diff: %d", diff)
-
+		fmt.Println("Fetching marketcap")
+		m.logger.Debugf("[NewMarketCap.GetMarkets] Now: %d, Last: %d, Diff: %d, Markets: %+v\n", now, m.lastUpdate, diff, m.Markets)
 		m.lastUpdate = now
 	}
 

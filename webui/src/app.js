@@ -29,7 +29,7 @@ render(
 	<MuiThemeProvider>
 
 		<DefaultLayout>
-			<Route exact path="/" component={ Portfolio } />
+			<Route exact path="/" component={ OrderHistory } />
 			<Switch>
 				<Route exact path="/portfolio" component={ Portfolio } />
 				<Route exact path="/orders" component={ OrderHistory } />

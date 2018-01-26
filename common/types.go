@@ -18,6 +18,7 @@ const (
 )
 
 type Order struct {
+	Id       string        `json:"id"`
 	Exchange string        `json:"exchange"`
 	Date     time.Time     `json:"date"`
 	Type     string        `json:"type"`
