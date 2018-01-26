@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -43,7 +42,6 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	var restResponse RestResponse
 	response, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Printf("respondWithJSON: %s", err.Error())
 		var buf bytes.Buffer
 		restResponse = RestResponse{Error: err.Error()}
 		data, _ := json.Marshal(restResponse)

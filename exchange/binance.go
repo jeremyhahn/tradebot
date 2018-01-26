@@ -194,6 +194,7 @@ func (b *Binance) GetOrderHistory() []common.Order {
 		qty, _ := strconv.ParseFloat(o.Quantity, 64)
 		p, _ := strconv.ParseFloat(o.Price, 64)
 		_orders = append(_orders, common.Order{
+			Id:       strconv.FormatInt(int64(o.ID), 10),
 			Exchange: "binance",
 			Type:     orderType,
 			Currency: b.currencyPair,

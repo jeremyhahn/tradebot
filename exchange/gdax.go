@@ -109,6 +109,7 @@ func (_gdax *GDAX) GetOrderHistory() []common.Order {
 					cp = _gdax.currencyPair
 				}
 				orders = append(orders, common.Order{
+					Id:       strconv.FormatInt(int64(e.Id), 10),
 					Exchange: "gdax",
 					Date:     e.CreatedAt.Time(),
 					Type:     e.Type,

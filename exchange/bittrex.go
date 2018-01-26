@@ -90,6 +90,7 @@ func (b *Bittrex) GetOrderHistory() []common.Order {
 		q, _ := o.Quantity.Float64()
 		p, _ := o.Price.Float64()
 		orders = append(orders, common.Order{
+			Id:       o.OrderUuid,
 			Exchange: "bittrex",
 			Date:     o.TimeStamp.Time,
 			Type:     o.OrderType,
