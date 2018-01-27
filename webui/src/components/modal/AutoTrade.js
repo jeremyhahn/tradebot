@@ -1,11 +1,10 @@
 import React from 'react';
 import {Tabs, Tab} from 'material-ui/Tabs';
 import Dialog from 'material-ui/Dialog';
-import FlatButton from 'material-ui/FlatButton';
+import Button from 'material-ui/Button';
 import TextField from 'material-ui/TextField';
-import Menu from 'material-ui/Menu';
-import MenuItem from 'material-ui/MenuItem';
-import SelectField from 'material-ui/SelectField';
+import { MenuList, MenuItem } from 'material-ui/Menu';
+import Select from 'material-ui/Select';
 import Checkbox from 'material-ui/Checkbox';
 import Loading from 'app/components/Loading';
 
@@ -95,12 +94,12 @@ class AutoTradeModal extends React.Component {
 		 const {values} = this.state;
 
 		const actions = [
-			<FlatButton
+			<Button
 				label="Cancel"
 				primary={ true }
 				onTouchTap={ this.props.close }
 			/>,
-			<FlatButton
+			<Button
 				label="Submit"
 				primary={ true }
 				disabled={ ! this.state.title || ! this.state.url }
@@ -124,15 +123,15 @@ class AutoTradeModal extends React.Component {
 
 				{ ! this.state.processing &&
 				<div>
-					<SelectField floatingLabelText="Trading Strategy">
+					<Select floatingLabelText="Trading Strategy">
 						<MenuItem value={1} primaryText="Position Trading" />
 						<MenuItem value={2} primaryText="Swing Trading" />
-					</SelectField>
+					</Select>
 					<div>
 						<p style={styles.indicatorsLabel}>Which financial indicators would you like to use?</p>
-					  <SelectField multiple={true} hintText="Financial Indicator" value={values} onChange={this.handleSelectMenuChange} >
+					  <Select multiple={true} hintText="Financial Indicator" value={values} onChange={this.handleSelectMenuChange} >
               {this.menuItems(values)}
-						</SelectField>
+						</Select>
 					</div>
 				</div>
 			  }

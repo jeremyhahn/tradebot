@@ -2,37 +2,30 @@
 
 import React from 'react';
 import Paper from 'material-ui/Paper';
-import { List } from 'material-ui/List';
-import Subheader from 'material-ui/Subheader';
-import Coin from 'app/components/Coin';
-import FloatingActionButton from 'material-ui/FloatingActionButton';
-import ContentAdd from 'material-ui/svg-icons/content/add';
-import Avatar from 'material-ui/Avatar'
+import List, { ListItem, ListItemText } from 'material-ui/List';
+import ListSubheader from 'material-ui/List/ListSubheader';
+import Loading from 'app/components/Loading';
 import EmptyExchangeList from 'app/components/EmptyExchangeList';
 import ExchangeModal from 'app/components/modal/Exchange';
-import Loading from 'app/components/Loading';
 import AutoTradeModal from 'app/components/modal/AutoTrade'
-import BuySellModal from 'app/components/modal/BuySell'
-
-const netWorthDiv = {
-	float: 'right',
-	marginRight: '35px'
-}
-
-const netWorthHeader = {
-	fontWeight: 'bold'
-}
+import BuySellDialog from 'app/components/dialogs/BuySell'
+import Coin from 'app/components/Coin';
+import Avatar from 'material-ui/Avatar';
+import Typography from 'material-ui/Typography';
 
 class Portfolio extends React.Component {
 
 	constructor(props) {
 		super(props);
 		this.state = {
+			anchorEl: null,
 			addExchangeModal: false,
 			autoTradeModal: false,
 			sellModal: false,
 			loading: true,
-			portfolio: {},
+			portfolio: {
+				exchanges: []
+			},
 			netWorth: 0.0
 		};
 		this.handleAddExchangeModalOpen = this.handleAddExchangeModalOpen.bind(this);
@@ -45,6 +38,8 @@ class Portfolio extends React.Component {
 		this.handleBuySellModalClose = this.handleBuySellModalClose.bind(this);
 		this.handleBuySellModalUpdate = this.handleBuySellModalUpdate.bind(this);
 		this.loadExchanges = this.loadExchanges.bind(this);
+		this.handleMenuClick = this.handleMenuClick.bind(this);
+		this.handleMenuClose = this.handleMenuClose.bind(this);
 	}
 
 	componentDidMount() {
@@ -125,6 +120,16 @@ class Portfolio extends React.Component {
 		console.log("handleBuySellModalModalUpdate() fired")
 	}
 
+	handleMenuClick = event => {
+		console.log('handleMenuClick')
+		this.setState({ anchorEl: event.currentTarget })
+	}
+
+	handleMenuClose = () => {
+		console.log('handleMenuClose')
+		this.setState({ anchorEl: null })
+	}
+
 	render() {
 
 		if ( this.state.loading ) {
@@ -150,35 +155,50 @@ class Portfolio extends React.Component {
 
 			<div>
 
-				<div style={netWorthDiv}>
-			    <Subheader style={netWorthHeader}>Net worth: { this.state.netWorth.formatMoney() }</Subheader>
+				<div style={{float: 'right', paddingTop: '25px', marginRight: '35px'}}>
+					<Typography type="subheading" gutterBottom>Net worth: { this.state.netWorth.formatMoney() }</Typography>
 			  </div>
 
-				<Paper style={{ padding: 20, }} zDepth={1} rounded={false}>
+				<Paper style={{ paddingTop: 40, }}>
 
-	        { this.state.portfolio.exchanges.map( exchange =>
+					{ this.state.portfolio.exchanges.map( exchange =>
 
 						<List key={exchange.name}>
-						  <Subheader style={{ textTransform: 'uppercase' }}>{
-								exchange.name + " - " + exchange.satoshis + " BTC - " + exchange.total.formatMoney() }
-							</Subheader>
-						  {
-									exchange.coins.map( coin =>
-									  <Coin buySellHandler={this.handleBuySellModalOpen}
-										      autoTradeHandler={this.handleAutoTradeModalOpen}
-													key={ coin.currency } data={ coin } /> )
-							}
+							<ListSubheader style={{ textTransform: 'uppercase' }}>
+								{ exchange.name + " - " + exchange.satoshis + " BTC - " + exchange.total.formatMoney()}
+							</ListSubheader>
+
+							{
+								exchange.coins.map( coin =>
+									<Coin buySellHandler={this.handleBuySellModalOpen}
+												autoTradeHandler={this.handleAutoTradeModalOpen}
+												key={ coin.currency } data={ coin }
+												anchorEl={this.state.anchorEl}
+												menuClickHandler={this.handleMenuClick}
+												menuCloseHandler={this.handleMenuClose} />
+							)}
 					  </List>
 					)}
 
-					{ this.state.portfolio.wallets.map( wallet =>
 
-						<List key={wallet.currency}>
-						  <Subheader style={{ textTransform: 'uppercase' }}>{
-								wallet.currency + " Wallet - " + wallet.balance + " - " + wallet.net_worth.formatMoney() }
-							</Subheader>
-					  </List>
-					)}
+					{ this.state.portfolio.wallets &&
+
+						<List>
+						<ListSubheader style={{ textTransform: 'uppercase' }}>Wallets</ListSubheader>
+						{ this.state.portfolio.wallets.map( wallet =>
+							<ListItem key={wallet.currency} button>
+								<Avatar src={"images/crypto/128/" + wallet.currency.toLowerCase() + ".png"} />
+								<ListItemText primary={wallet.currency} secondary={wallet.balance  + " (" + wallet.net_worth.formatMoney() +")" } />
+							</ListItem>
+						)}
+						</List>
+
+					}
+
+					<BuySellDialog
+						open={ this.state.sellModal }
+						close={ this.handleBuySellModalClose }
+						update={ this.handleBuySellModalUpdate } />
 
 					<ExchangeModal
 						open={ this.state.addExchangeModal }
@@ -189,11 +209,6 @@ class Portfolio extends React.Component {
 						open={ this.state.autoTradeModal }
 						close={ this.handleAutoTradeModalClose }
 						update={ this.handleAutoTradeModalUpdate } />
-
-					<BuySellModal
-						open={ this.state.sellModal }
-						close={ this.handleBuySellModalClose }
-						update={ this.handleBuySellModalUpdate } />
 
 				</Paper>
 

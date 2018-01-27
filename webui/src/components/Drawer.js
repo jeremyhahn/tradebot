@@ -3,10 +3,25 @@
 import React from 'react';
 
 import Drawer from 'material-ui/Drawer';
-import MenuItem from 'material-ui/MenuItem';
+import ListSubheader from 'material-ui/List/ListSubheader';
+import List, {
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+} from 'material-ui/List';
+import { MenuList, MenuItem } from 'material-ui/Menu';
 import { Link } from 'react-router-dom';
 import Avatar from 'material-ui/Avatar';
-import Subheader from 'material-ui/Subheader';
+import { withStyles } from 'material-ui/styles';
+
+const styles = {
+  list: {
+    width: 250,
+  },
+  listFull: {
+    width: 'auto',
+  },
+};
 
 const LeftDrawer = (props) => {
 
@@ -14,33 +29,58 @@ const LeftDrawer = (props) => {
 		return props.change(false);
 	}
 
+	const { classes } = props;
+
+  const navigate = page => {
+    props.navigate(page)
+  }
+
 	return (
-		<Drawer
-			docked={ false }
-			width={ 200 }
-			open={ props.open }
-			onRequestChange={ (status) => props.change(status) }>
 
-			<Subheader>Navigation</Subheader>
+		<Drawer open={ props.open }>
 
-			<MenuItem leftIcon={<Avatar src={"images/avatars/128/portfolio.png"} />}
-			    onTouchTap={ handleClose } containerElement={<Link to="/portfolio" />} primaryText="Portfolio" />
+			<List className={classes.root} subheader={<ListSubheader>Navigation</ListSubheader>}>
 
-			<MenuItem leftIcon={<Avatar src={"images/avatars/128/orders.png"} />}
-			    onTouchTap={ handleClose } containerElement={<Link to="/orders" />} primaryText="Orders" />
+				<ListItem onTouchTap={ handleClose } onClick={function() {navigate('/portfolio')} } button>
+					<ListItemAvatar>
+					  <Avatar src={"images/avatars/128/portfolio.png"} />
+					</ListItemAvatar>
+					<ListItemText primary="Portfolio"/>
+				</ListItem>
 
-			<MenuItem leftIcon={<Avatar src={"images/avatars/128/exchange.png"} />}
-					    onTouchTap={ handleClose } containerElement={<Link to="/exchanges" />} primaryText="Exchanges" />
+        <ListItem onTouchTap={ handleClose } onClick={function() {navigate('/trades')}} button>
+					<ListItemAvatar>
+					  <Avatar src={"images/avatars/128/trade.png"} />
+					</ListItemAvatar>
+					<ListItemText primary="Trades"/>
+				</ListItem>
 
-			<MenuItem leftIcon={<Avatar src={"images/avatars/128/chart.png"} />}
-				    onTouchTap={ handleClose } containerElement={<Link to="/chart" />} primaryText="Chart" />
+        <ListItem onTouchTap={ handleClose } onClick={function() {navigate('/orders')}} button>
+					<ListItemAvatar>
+					  <Avatar src={"images/avatars/128/orders.png"} />
+					</ListItemAvatar>
+					<ListItemText primary="Orders"/>
+				</ListItem>
 
-			<MenuItem leftIcon={<Avatar src={"images/avatars/128/settings.png"} />}
-			    onTouchTap={ handleClose } containerElement={<Link to="/settings" />} primaryText="Settings" />
+        <ListItem onTouchTap={ handleClose } onClick={function() {navigate('/exchanges')}} button>
+					<ListItemAvatar>
+					  <Avatar src={"images/avatars/128/exchange.png"} />
+					</ListItemAvatar>
+					<ListItemText primary="Exchanges"/>
+				</ListItem>
+
+        <ListItem onTouchTap={ handleClose } onClick={function() {navigate('/settings')}} button>
+					<ListItemAvatar>
+					  <Avatar src={"images/avatars/128/settings.png"} />
+					</ListItemAvatar>
+					<ListItemText primary="Settings"/>
+				</ListItem>
+
+			</List>
 
 		</Drawer>
 	)
 
 }
 
-export default LeftDrawer;
+export default withStyles(styles)(LeftDrawer);

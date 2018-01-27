@@ -7,10 +7,10 @@ const DefaultLayout = (props) => {
 
 	return (
 		<div>
-			<Header title="Tradebot" />
-			<div className="component--content">
-				{ props.children }
-			</div>
+			<Header title="Tradebot"/>
+				<div className="component--content">
+					{ props.children }
+				</div>
 		</div>
 	)
 }

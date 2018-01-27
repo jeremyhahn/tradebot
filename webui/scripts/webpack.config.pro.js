@@ -55,7 +55,9 @@ const WebpackConfig = {
 							'env',
 							{ modules: false }
 						],
-						'react'
+						'react',
+						'babel-preset-es2015',
+						'babel-preset-stage-0'
 					],
 					plugins: [ 'syntax-dynamic-import' ]
 				}
@@ -152,4 +154,3 @@ const WebpackConfig = {
 };
 
 module.exports = WebpackConfig;
-

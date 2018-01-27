@@ -1,13 +1,13 @@
 'use strict';
 
 import React from 'react';
-import ActionInfo from 'material-ui/svg-icons/action/info'
-import { List, ListItem } from 'material-ui/List';
+import ActionInfo from 'material-ui-icons/Info'
+import Menu, { MenuList, MenuItem } from 'material-ui/Menu';
+import List, { ListItem, ListItemSecondaryAction, ListItemText } from 'material-ui/List';
 import { withRouter } from 'react-router-dom';
-import IconMenu from 'material-ui/IconMenu';
-import MenuItem from 'material-ui/MenuItem';
+import ListIcon from 'material-ui-icons/List';
 import IconButton from 'material-ui/IconButton';
-import MoreVertIcon from 'material-ui/svg-icons/navigation/more-vert';
+import MoreVertIcon from 'material-ui-icons/MoreVert';
 import Avatar from 'material-ui/Avatar';
 
 const Coin = (props) => {
@@ -19,20 +19,29 @@ const Coin = (props) => {
 	}
 
 	return (
-	    <ListItem key={data.currency}
-					primaryText={ data.currency }
-					secondaryText={data.available  + " ($" + data.total +")" }
-					onTouchTap={ handleTap }
-					leftAvatar={<Avatar src={"images/crypto/128/" + data.currency.toLowerCase() + ".png"} />}
-					rightIcon={<IconMenu
-				      iconButtonElement={<IconButton><MoreVertIcon /></IconButton>}
-				      anchorOrigin={{horizontal: 'left', vertical: 'top'}}
-				      targetOrigin={{horizontal: 'left', vertical: 'top'}}>
-								<MenuItem onClick={props.autoTradeHandler} primaryText="Auto Trade" disabled={data.currency == 'USD'} />
-					      <MenuItem onClick={props.buySellHandler} primaryText="Buy / Sell" />
-					      <MenuItem disabled={true} primaryText="View Chart" />
-								<MenuItem primaryText="View Details" />
-			    	</IconMenu>}/>
+			<ListItem key={data.currency} button>
+				<Avatar src={"images/crypto/128/" + data.currency.toLowerCase() + ".png"} />
+				<ListItemText primary={data.currency} secondary={data.available  + " ($" + data.total +")" } />
+				<ListItemSecondaryAction>
+				<IconButton
+          aria-label="More"
+          aria-owns={props.anchorEl ? data.currency.toLowerCase() + 'coin-menu' : null}
+          aria-haspopup="true"
+          onClick={props.menuClickHandler}>
+          <MoreVertIcon />
+        </IconButton>
+				<Menu
+				  id={data.currency.toLowerCase() + "coin-menu"}
+				  anchorEl={props.anchorEl}
+					open={Boolean(props.anchorEl)}
+					onClose={props.menuCloseHandler}>
+				    <MenuItem onClick={props.autoTradeHandler} disabled={data.currency == 'USD'}>Auto Trade</MenuItem>
+						<MenuItem onClick={props.buySellHandler}>Buy / Sell</MenuItem>
+						<MenuItem disabled={true}>View Chart</MenuItem>
+						<MenuItem>View Details</MenuItem>
+        </Menu>
+				</ListItemSecondaryAction>
+			</ListItem>
 	)
 }
 
