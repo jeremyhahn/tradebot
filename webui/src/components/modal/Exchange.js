@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Dialog from 'material-ui/Dialog';
-import FlatButton from 'material-ui/FlatButton';
+import Button from 'material-ui/Button';
 import TextField from 'material-ui/TextField';
 import Loading from 'app/components/Loading';
 
@@ -50,12 +50,12 @@ class ExchangeModal extends React.Component {
 	render() {
 
 		const actions = [
-			<FlatButton
+			<Button
 				label="Cancel"
 				primary={ true }
 				onTouchTap={ this.props.close }
 			/>,
-			<FlatButton
+			<Button
 				label="Submit"
 				primary={ true }
 				disabled={ ! this.state.title || ! this.state.url }

@@ -1,14 +1,15 @@
 'use strict';
 
 import React from 'react';
-import RefreshIndicator from 'material-ui/RefreshIndicator';
+import { CircularProgress } from 'material-ui/Progress';
 
 const Loading = (props) => {
 
-	const style = {
+	const style = theme => ({
 		container: {
 			textAlign: 'center',
-			marginTop: 60,
+			marginTop: 260,
+			marginLeft: '50%'
 		},
 		refresh: {
 			display: 'inline-block',
@@ -16,18 +17,15 @@ const Loading = (props) => {
 		},
 		text: {
 			marginTop: 10
-		}
-	};
+		},
+		progress: {
+	    margin: `0 ${theme.spacing.unit * 2}px`,
+	  }
+	});
 
 	return (
 		<div style={ style.container }>
-			<RefreshIndicator
-				size={40}
-				left={10}
-				top={0}
-				status="loading"
-				style={ style.refresh }
-			/>
+		  <CircularProgress className={style.progress} size={50} />
 			{ props.text &&
 				<div style={ style.text }>{ props.text }</div>
 			}

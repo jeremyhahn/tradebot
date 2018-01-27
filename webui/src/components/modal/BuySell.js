@@ -1,91 +1,103 @@
 import React from 'react';
-import {Tabs, Tab} from 'material-ui/Tabs';
-import FlatButton from 'material-ui/FlatButton';
-import Menu from 'material-ui/Menu';
-import MenuItem from 'material-ui/MenuItem';
-import Dialog from 'material-ui/Dialog';
+import PropTypes from 'prop-types';
+import { withStyles } from 'material-ui/styles';
+import Tabs, { Tab } from 'material-ui/Tabs';
+import Button from 'material-ui/Button';
 import Loading from 'app/components/Loading';
+import Typography from 'material-ui/Typography';
+import Dialog, { DialogTitle } from 'material-ui/Dialog';
 
-const styles = {
-  headline: {
-    fontSize: 24,
-    paddingTop: 16,
-    marginBottom: 12,
-    fontWeight: 400,
-  }
+function TabContainer(props) {
+  return (
+    <Typography component="div" style={{ padding: 8 * 3 }}>
+      {props.children}
+    </Typography>
+  );
+}
+
+TabContainer.propTypes = {
+  children: PropTypes.node.isRequired,
 };
+
+const styles = theme => ({
+  root: {
+    flexGrow: 1,
+    marginTop: theme.spacing.unit * 3,
+    backgroundColor: theme.palette.background.paper,
+  },
+});
 
 class BuySellModal extends React.Component {
 
   constructor(props) {
     super(props);
     this.state = {
-      slideIndex: 0
+      value: 0
     };
   }
 
+  handleChange = (event, value) => {
+    this.setState({ value });
+  };
+
+  handleClose = () => {
+    this.props.onClose(this.props.selectedValue);
+  };
+
   render() {
 
+    const { classes } = this.props;
+    const { value } = this.state;
+
 		const actions = [
-			<FlatButton
+			<Button
 				label="Cancel"
 				primary={ true }
 				onTouchTap={ this.props.close }
 			/>,
-			<FlatButton
+			<Button
 				label="Submit"
 				primary={ true }
-				disabled={ ! this.state.title || ! this.state.url }
+				disabled={ ! this.state.title || !this.state.url }
 				onTouchTap={ this.submit }
 			/>,
 		];
 
     return (
 
-      <Dialog
-				title="Sell"
-				actions={ actions }
-				modal={ true }
-				open={ this.props.open }>
+        <Dialog
+  				title="Sell"
+  				actions={ actions }
+  				open={ this.props.open }
+          onClose={this.handleClose} >
 
-				{ this.state.processing &&
-					<div>
-						<Loading />
-					</div>
-				}
+          <DialogTitle id="buy-sell-title">Buy & Sell</DialogTitle>
 
-				{ ! this.state.processing &&
-          <Tabs>
-    		    <Tab label="Market" >
-    		      <div>
-    		        <h2 style={styles.headline}>Tab One</h2>
-    		        <p>
-    		          Create a new market order.
-    		        </p>
-    		      </div>
-    		    </Tab>
-    		    <Tab label="Limit" >
-    		      <div>
-    		        <h2 style={styles.headline}>Tab Two</h2>
-    		        <p>
-    		          TODO: Create new limit order.
-    		        </p>
-    		      </div>
-    		    </Tab>
-    		    <Tab label="Stop" data-route="/home">
-    		      <div>
-    		        <h2 style={styles.headline}>Tab Three</h2>
-    		        <p>
-    		          TODO: Create a new stop order.
-    		        </p>
-    		      </div>
-    		    </Tab>
-    		  </Tabs>
-			  }
+  				{ this.state.processing &&
+  					<div>
+  						<Loading />
+  					</div>
+  				}
 
-			</Dialog>
+  				{ ! this.state.processing &&
+            <Tabs value={value} onChange={this.handleChange}>
+              <Tab label="Item One" />
+              <Tab label="Item Two" />
+              <Tab label="Item Three" href="#basic-tabs" />
+            </Tabs>
+  			  }
+
+          {value === 0 && <TabContainer>Item One</TabContainer>}
+          {value === 1 && <TabContainer>Item Two</TabContainer>}
+          {value === 2 && <TabContainer>Item Three</TabContainer>}
+
+  			</Dialog>
     );
   }
 }
 
-export default BuySellModal;
+BuySellModal.propTypes = {
+  classes: PropTypes.object.isRequired,
+};
+
+export default withStyles(styles)(BuySellModal);
