@@ -30,8 +30,31 @@ func TestBollingerBands(t *testing.T) {
 	candlesticks = append(candlesticks, common.Candlestick{Close: 89.13})
 	candlesticks = append(candlesticks, common.Candlestick{Close: 90.70})
 
-	sma := CreateSimpleMovingAverage(candlesticks, 20)
-	bollinger := NewBollingerBand(sma)
+	bollinger := NewBollingerBands(candlesticks)
+
+	if bollinger.GetName() != "BollingerBands" {
+		t.Errorf("[Bollinger] Got incorrect name: %s, expected: %s", bollinger.GetName(), "BollingerBands")
+	}
+
+	if bollinger.GetDisplayName() != "Bollinger Bands®" {
+		t.Errorf("[Bollinger] Got incorrect display name: %s, expected: %s", bollinger.GetDisplayName(), "Bollinger Bands®")
+	}
+
+	params := bollinger.GetDefaultParameters()
+	if params[0] != "20" {
+		t.Errorf("[Bollinger] Got incorrect default parameter[0]: %s, expected: %s", params[0], "20")
+	}
+	if params[1] != "2" {
+		t.Errorf("[Bollinger] Got incorrect default parameter[1]: %s, expected: %s", params[1], "2")
+	}
+
+	params = bollinger.GetParameters()
+	if params[0] != "20" {
+		t.Errorf("[Bollinger] Got incorrect parameter[0]: %s, expected: %s", params[0], "20")
+	}
+	if params[1] != "2.000000" {
+		t.Errorf("[Bollinger] Got incorrect parameter[1]: %s, expected: %s", params[1], "2.000000")
+	}
 
 	actual := bollinger.StandardDeviation()
 	expected := 1.29
@@ -167,8 +190,7 @@ func TestBollingerBands_Calculate(t *testing.T) {
 	candlesticks = append(candlesticks, common.Candlestick{Close: 89.13})
 	candlesticks = append(candlesticks, common.Candlestick{Close: 90.70})
 
-	sma := CreateSimpleMovingAverage(candlesticks, 20)
-	bollinger := NewBollingerBand(sma)
+	bollinger := NewBollingerBands(candlesticks)
 
 	upper, middle, lower := bollinger.Calculate(92.90)
 	actual := 0.0

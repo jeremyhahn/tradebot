@@ -1,155 +1,210 @@
 package service
 
 import (
+	"encoding/json"
+	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/indicators"
+	"github.com/jeremyhahn/tradebot/dao"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
-type TradingStrategy interface {
-	OnPriceChange(chart common.ChartService)
-}
-
 type ChartServiceImpl struct {
-	ctx           *common.Context
-	priceStream   *PriceStream
-	priceChannel  chan common.PriceChange
-	candleChannel chan common.Candlestick
-	chartChannel  chan *common.ChartData
-	period        int
-	strategy      TradingStrategy
-	Exchange      common.Exchange
-	OBV           *indicators.OBV
-	RSI           *indicators.RSI
-	Bband         *indicators.Bollinger
-	MACD          *indicators.MACD
-	Data          *common.ChartData
+	ctx          *common.Context
+	dao          dao.ChartDAO
+	entity       dao.IChart
+	price        float64
+	priceStream  *PriceStream
+	priceChannel chan common.PriceChange
+	closeChan    chan bool
+	period       int
+	candlesticks []common.Candlestick
+	Exchange     common.Exchange
+	Indicators   map[string]common.Indicator
 	common.ChartService
 }
 
-func NewChartService(ctx *common.Context, exchange common.Exchange, strategy TradingStrategy, period int) common.ChartService {
-	return &ChartServiceImpl{
-		Exchange:    exchange,
-		strategy:    strategy,
+func NewChartService(ctx *common.Context, chartDAO dao.ChartDAO, entity dao.IChart, exchange common.Exchange) common.ChartService {
+	indicators := chartDAO.GetIndicators(entity)
+	service := &ChartServiceImpl{
 		ctx:         ctx,
-		Data:        &common.ChartData{},
-		period:      period,
-		priceStream: NewPriceStream(period)}
+		dao:         chartDAO,
+		entity:      entity,
+		Exchange:    exchange,
+		Indicators:  make(map[string]common.Indicator, len(indicators)),
+		priceStream: NewPriceStream(entity.GetPeriod()),
+		closeChan:   make(chan bool, 1)}
+	service.load()
+	for _, indicator := range indicators {
+		service.Indicators[indicator.Name] = service.createIndicator(&indicator)
+	}
+	return service
 }
 
-func (chart *ChartServiceImpl) GetExchange() common.Exchange {
-	return chart.Exchange
+func (service *ChartServiceImpl) Find() []common.Chart {
+	var charts []common.Chart
+	_charts := service.dao.Find(service.ctx.User)
+	for _, chart := range _charts {
+		var indicators []common.Indicator
+		var trades []common.Trade
+		for _, i := range chart.GetIndicators() {
+			indicators = append(indicators, common.Indicator{
+				Id:         i.Id,
+				ChartID:    i.ChartID,
+				Name:       i.Name,
+				Parameters: i.Parameters})
+		}
+		for _, trade := range chart.GetTrades() {
+			trades = append(trades, common.Trade{
+				ID:        trade.ID,
+				UserID:    trade.UserID,
+				ChartID:   chart.ID,
+				Date:      trade.Date,
+				Exchange:  trade.Exchange,
+				Type:      trade.Type,
+				Base:      trade.Base,
+				Quote:     trade.Quote,
+				Amount:    trade.Amount,
+				Price:     trade.Price,
+				ChartData: trade.ChartData})
+		}
+		charts = append(charts, common.Chart{
+			ID:         chart.ID,
+			Base:       chart.Base,
+			Quote:      chart.Quote,
+			Exchange:   chart.Exchange,
+			Period:     chart.Period,
+			Indicators: indicators,
+			Trades:     trades})
+	}
+	return charts
 }
 
-func (chart *ChartServiceImpl) GetData() *common.ChartData {
-	return chart.Data
+func (service *ChartServiceImpl) GetExchange() common.Exchange {
+	return service.Exchange
 }
 
-func (chart *ChartServiceImpl) GetCurrencyPair() common.CurrencyPair {
-	return chart.Exchange.GetCurrencyPair()
+func (service *ChartServiceImpl) GetCurrencyPair() common.CurrencyPair {
+	return service.Exchange.GetCurrencyPair()
 }
 
-func (chart *ChartServiceImpl) loadCandlesticks() []common.Candlestick {
+func (service *ChartServiceImpl) GetPrice() float64 {
+	return service.price
+}
+
+func (service *ChartServiceImpl) GetChart() *common.Chart {
+	var trades []common.Trade
+	var indicators []common.Indicator
+	for _, entity := range service.entity.GetTrades() {
+		trades = append(trades, common.Trade{
+			ID:        entity.ID,
+			UserID:    service.ctx.User.Id,
+			ChartID:   entity.ChartID,
+			Date:      entity.Date,
+			Exchange:  entity.Exchange,
+			Type:      entity.Type,
+			Base:      entity.Base,
+			Quote:     entity.Quote,
+			Amount:    entity.Amount,
+			Price:     entity.Price,
+			ChartData: entity.ChartData})
+	}
+	for _, i := range service.entity.GetIndicators() {
+		indicators = append(indicators, common.Indicator{
+			Id:         i.Id,
+			ChartID:    i.ChartID,
+			Name:       i.Name,
+			Parameters: i.Parameters})
+	}
+	return &common.Chart{
+		ID:         service.entity.GetId(),
+		Exchange:   service.entity.GetExchangeName(),
+		Base:       service.entity.GetBase(),
+		Quote:      service.entity.GetQuote(),
+		Period:     service.entity.GetPeriod(),
+		Indicators: indicators,
+		Trades:     trades}
+}
+
+func (service *ChartServiceImpl) GetIndicators() []common.FinancialIndicator {
+	var indicators []common.FinancialIndicator
+	daoChart := &dao.Chart{ID: service.entity.GetId()}
+	for _, indicator := range service.dao.GetIndicators(daoChart) {
+		indicators = append(indicators, service.createIndicator(&indicator))
+	}
+	return indicators
+}
+
+func (service *ChartServiceImpl) GetIndicator(name string) common.FinancialIndicator {
+	var indicator common.FinancialIndicator
+	if i, ok := service.Indicators[name]; ok {
+		indicator = i
+	}
+	return indicator
+}
+
+func (service *ChartServiceImpl) Stream(strategyHandler func(chart common.ChartService)) {
+	service.ctx.Logger.Infof("[ChartService.Stream] Streaming %s %s chart data.",
+		service.Exchange.GetName(), service.Exchange.FormattedCurrencyPair())
+	service.load()
+	for _, indicator := range service.Indicators {
+		service.priceStream.SubscribeToPeriod(indicator)
+	}
+	priceChange := make(chan common.PriceChange)
+	go service.Exchange.SubscribeToLiveFeed(priceChange)
+	for {
+		select {
+		case <-service.closeChan:
+			service.ctx.Logger.Debug("[ChartServiceImpl.Stream] Closing stream")
+			return
+		default:
+			priceChange := service.priceStream.Listen(priceChange)
+			service.price = priceChange.Price
+			strategyHandler(service)
+		}
+	}
+}
+
+func (service *ChartServiceImpl) StopStream() {
+	service.ctx.Logger.Debugf("[ChartServiceImpl.StopStream]")
+	service.closeChan <- true
+}
+
+func (service *ChartServiceImpl) ToJSON() string {
+	service.ctx.Logger.Debugf("[ChartServiceImpl.ToJSON]")
+	data, _ := json.Marshal(service.GetChart())
+	return string(data)
+}
+
+func (service *ChartServiceImpl) load() {
 
 	t := time.Now()
 	year, month, day := t.Date()
 	yesterday := time.Date(year, month, day-1, 0, 0, 0, 0, t.Location())
 	now := time.Now()
 
-	chart.ctx.Logger.Debugf("[ChartService.Stream] Getting %s %s trade history from %s - %s ",
-		chart.Exchange.GetName(), chart.Exchange.FormattedCurrencyPair(), yesterday, now)
+	service.ctx.Logger.Debugf("[ChartService.Stream] Getting %s %s trade history from %s - %s ",
+		service.Exchange.GetName(), service.Exchange.FormattedCurrencyPair(), yesterday, now)
 
-	candlesticks := chart.Exchange.GetPriceHistory(yesterday, now, chart.period)
+	candlesticks := service.Exchange.GetPriceHistory(yesterday, now, service.period)
 	if len(candlesticks) < 20 {
-		chart.ctx.Logger.Errorf("[ChartService.Stream] Failed to load initial candlesticks from %s. Total records: %d",
-			chart.Exchange.GetName(), len(candlesticks))
-		return nil
+		service.ctx.Logger.Errorf("[ChartService.Stream] Failed to load initial candlesticks from %s. Total records: %d",
+			service.Exchange.GetName(), len(candlesticks))
+		return
 	}
 
-	return candlesticks
+	var reversed []common.Candlestick
+	for i := len(candlesticks) - 1; i > 0; i-- {
+		reversed = append(reversed, candlesticks[i])
+	}
+
+	service.candlesticks = reversed
 }
 
-func (chart *ChartServiceImpl) Stream() {
-
-	chart.ctx.Logger.Infof("[ChartService.Stream] Streaming %s %s chart data.",
-		chart.Exchange.GetName(), chart.Exchange.FormattedCurrencyPair())
-
-	candles := chart.loadCandlesticks()
-	chart.ctx.Logger.Debugf("[ChartService.Stream] Prewarming indicators with %d candlesticks", len(candles))
-	candlesticks := chart.reverseCandles(candles)
-
-	rsiSma := indicators.NewSimpleMovingAverage(candlesticks[:14])
-	chart.RSI = indicators.NewRelativeStrengthIndex(rsiSma)
-	for _, c := range candlesticks[14:] {
-		chart.RSI.OnPeriodChange(&c)
-	}
-	chart.priceStream.SubscribeToPeriod(chart.RSI)
-
-	bollingerSma := indicators.NewSimpleMovingAverage(candlesticks[:20])
-	chart.Bband = indicators.NewBollingerBand(bollingerSma)
-	for _, c := range candlesticks[20:] {
-		chart.Bband.OnPeriodChange(&c)
-	}
-	chart.priceStream.SubscribeToPeriod(chart.Bband)
-
-	macdEma1 := indicators.NewExponentialMovingAverage(candlesticks[:10])
-	macdEma2 := indicators.NewExponentialMovingAverage(candlesticks[:26])
-	for _, c := range candlesticks[10:26] {
-		macdEma1.OnPeriodChange(&c)
-	}
-	chart.MACD = indicators.NewMovingAverageConvergenceDivergence(macdEma1, macdEma2, 9)
-	for _, c := range candlesticks[26:] {
-		chart.MACD.OnPeriodChange(&c)
-	}
-	chart.priceStream.SubscribeToPeriod(chart.MACD)
-
-	chart.OBV = indicators.NewOnBalanceVolume(candlesticks)
-	chart.priceStream.SubscribeToPeriod(chart.OBV)
-
-	priceChange := make(chan common.PriceChange)
-	go chart.Exchange.SubscribeToLiveFeed(priceChange)
-
-	chart.priceStream.SubscribeToPrice(chart)
-
-	for {
-		chart.priceStream.Listen(priceChange)
-		if chart.strategy != nil {
-			chart.strategy.OnPriceChange(chart)
-		}
-	}
-}
-
-func (chart *ChartServiceImpl) OnPriceChange(newPrice *common.PriceChange) {
-	bUpper, bMiddle, bLower := chart.Bband.Calculate(newPrice.Price)
-	macdValue, macdSignal, macdHistogram := chart.MACD.Calculate(newPrice.Price)
-	chart.Data.CurrencyPair = chart.Exchange.GetCurrencyPair()
-	chart.Data.Price = newPrice.Price
-	chart.Data.Exchange = chart.Exchange.GetName()
-	chart.Data.Satoshis = newPrice.Satoshis
-	chart.Data.RSI = chart.RSI.GetValue()
-	chart.Data.RSILive = chart.RSI.Calculate(newPrice.Price)
-	chart.Data.BollingerUpper = chart.Bband.GetUpper()
-	chart.Data.BollingerMiddle = chart.Bband.GetMiddle()
-	chart.Data.BollingerLower = chart.Bband.GetLower()
-	chart.Data.BollingerUpperLive = bUpper
-	chart.Data.BollingerMiddleLive = bMiddle
-	chart.Data.BollingerLowerLive = bLower
-	chart.Data.MACDValue = chart.MACD.GetValue()
-	chart.Data.MACDSignal = chart.MACD.GetSignalLine()
-	chart.Data.MACDHistogram = chart.MACD.GetHistogram()
-	chart.Data.MACDValueLive = macdValue
-	chart.Data.MACDSignalLive = macdSignal
-	chart.Data.MACDHistogramLive = macdHistogram
-	chart.Data.OnBalanceVolume = chart.OBV.GetValue()
-	chart.Data.OnBalanceVolumeLive = chart.OBV.Calculate(newPrice.Price)
-}
-
-func (chart *ChartServiceImpl) reverseCandles(candles []common.Candlestick) []common.Candlestick {
-	var newCandles []common.Candlestick
-	for i := len(candles) - 1; i > 0; i-- {
-		newCandles = append(newCandles, candles[i])
-	}
-	return newCandles
+func (service *ChartServiceImpl) createIndicator(dao *dao.Indicator) common.Indicator {
+	fqcn := fmt.Sprintf("indicators.%s", dao.Name)
+	service.ctx.Logger.Debugf("[ChartServiceImpl.createIndicator] Creating indicator: %s", fqcn)
+	return reflect.New(reflect.TypeOf(fqcn)).Elem().Interface().(common.Indicator)
 }

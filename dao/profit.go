@@ -2,20 +2,21 @@ package dao
 
 import "github.com/jeremyhahn/tradebot/common"
 
-type IProfitDAO interface {
+type ProfitDAO interface {
 	Create(profit *Profit)
 	Save(profit *Profit)
 }
 
-type ProfitDAO struct {
+type ProfitDAOImpl struct {
 	ctx   *common.Context
 	Items []Profit
-	IProfitDAO
+	ProfitDAO
 }
 
 type Profit struct {
-	UserID   uint
-	TradeID  uint `gorm:"foreign_key"`
+	ID       uint `gorm:"primary_key"`
+	UserID   uint `gorm:"unique_index:idx_profit"`
+	TradeID  uint `gorm:"foreign_key;unique_index:idx_profit"`
 	Quantity float64
 	Bought   float64
 	Sold     float64
@@ -24,28 +25,28 @@ type Profit struct {
 	Total    float64
 }
 
-func NewProfitDAO(ctx *common.Context) *ProfitDAO {
+func NewProfitDAO(ctx *common.Context) ProfitDAO {
 	var profits []Profit
 	ctx.DB.AutoMigrate(&Profit{})
 	if err := ctx.DB.Find(&profits).Error; err != nil {
 		ctx.Logger.Error(err)
 	}
-	return &ProfitDAO{ctx: ctx, Items: profits}
+	return &ProfitDAOImpl{ctx: ctx, Items: profits}
 }
 
-func (dao *ProfitDAO) Create(profit *Profit) {
+func (dao *ProfitDAOImpl) Create(profit *Profit) {
 	if err := dao.ctx.DB.Create(profit).Error; err != nil {
-		dao.ctx.Logger.Errorf("[ProfitDAO.Create] Error:%s", err.Error())
+		dao.ctx.Logger.Errorf("[ProfitDAOImpl.Create] Error:%s", err.Error())
 	}
 }
 
-func (dao *ProfitDAO) Save(profit *Profit) {
+func (dao *ProfitDAOImpl) Save(profit *Profit) {
 	if err := dao.ctx.DB.Save(profit).Error; err != nil {
-		dao.ctx.Logger.Errorf("[ProfitDAO.Save] Error:%s", err.Error())
+		dao.ctx.Logger.Errorf("[ProfitDAOImpl.Save] Error:%s", err.Error())
 	}
 }
 
-func (dao *ProfitDAO) GetByTrade(trade *Trade) *Profit {
+func (dao *ProfitDAOImpl) GetByTrade(trade *Trade) *Profit {
 	var profit Profit
 	if err := dao.ctx.DB.Model(trade).Related(&profit).Error; err != nil {
 		dao.ctx.Logger.Errorf("[AutoTradeDAO.GetTrades] Error: %s", err.Error())

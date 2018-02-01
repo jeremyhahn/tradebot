@@ -24,6 +24,24 @@ func TestExponentialMovingAverage(t *testing.T) {
 
 	ema := NewExponentialMovingAverage(candlesticks)
 
+	if ema.GetName() != "ExponentialMovingAverage" {
+		t.Errorf("[ExponentialMovingAverage] Got incorrect name: %s, expected: %s", ema.GetName(), "ExponentialMovingAverage")
+	}
+
+	if ema.GetDisplayName() != "Exponential Moving Average (EMA)" {
+		t.Errorf("[ExponentialMovingAverage] Got incorrect display name: %s, expected: %s", ema.GetDisplayName(), "Exponential Moving Average (EMA)")
+	}
+
+	params := ema.GetDefaultParameters()
+	if params[0] != "20" {
+		t.Errorf("[ExponentialMovingAverage] Got incorrect default parameter[0]: %s, expected: %s", params[0], "20")
+	}
+
+	params = ema.GetParameters()
+	if params[0] != "10" {
+		t.Errorf("[ExponentialMovingAverage] Got incorrect parameter[0]: %s, expected: %s", params[0], "10")
+	}
+
 	/*
 		actual := ema.GetMultiplier()
 		expected := 0.181818

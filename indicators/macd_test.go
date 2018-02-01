@@ -9,106 +9,70 @@ import (
 
 // http://investexcel.net/how-to-calculate-macd-in-excel/
 func TestMovingAverageConvergenceDivergence(t *testing.T) {
-	var ema1candles, ema2candles []common.Candlestick
-
+	var candles []common.Candlestick
 	// 12 day EMA
-	ema1candles = append(ema1candles, common.Candlestick{Close: 459.99})
-	ema1candles = append(ema1candles, common.Candlestick{Close: 448.85})
-	ema1candles = append(ema1candles, common.Candlestick{Close: 446.06})
-	ema1candles = append(ema1candles, common.Candlestick{Close: 450.81})
-	ema1candles = append(ema1candles, common.Candlestick{Close: 442.80})
-	ema1candles = append(ema1candles, common.Candlestick{Close: 448.97})
-	ema1candles = append(ema1candles, common.Candlestick{Close: 444.57})
-	ema1candles = append(ema1candles, common.Candlestick{Close: 441.4})
-	ema1candles = append(ema1candles, common.Candlestick{Close: 430.47})
-	ema1candles = append(ema1candles, common.Candlestick{Close: 420.05})
-	ema1candles = append(ema1candles, common.Candlestick{Close: 431.14})
-	ema1candles = append(ema1candles, common.Candlestick{Close: 425.66})
-
+	candles = append(candles, common.Candlestick{Close: 459.99})
+	candles = append(candles, common.Candlestick{Close: 448.85})
+	candles = append(candles, common.Candlestick{Close: 446.06})
+	candles = append(candles, common.Candlestick{Close: 450.81})
+	candles = append(candles, common.Candlestick{Close: 442.80})
+	candles = append(candles, common.Candlestick{Close: 448.97})
+	candles = append(candles, common.Candlestick{Close: 444.57})
+	candles = append(candles, common.Candlestick{Close: 441.4})
+	candles = append(candles, common.Candlestick{Close: 430.47})
+	candles = append(candles, common.Candlestick{Close: 420.05})
+	candles = append(candles, common.Candlestick{Close: 431.14})
+	candles = append(candles, common.Candlestick{Close: 425.66})
 	// 26 day EMA
-	ema2candles = ema1candles
-	ema2candles = append(ema2candles, common.Candlestick{Close: 430.58})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 431.72})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 437.87})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 428.43})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 428.35})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 432.50})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 443.66})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 455.72})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 454.49})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 452.08})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 452.73})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 461.91})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 463.58})
-	ema2candles = append(ema2candles, common.Candlestick{Close: 461.14})
+	candles = append(candles, common.Candlestick{Close: 430.58})
+	candles = append(candles, common.Candlestick{Close: 431.72})
+	candles = append(candles, common.Candlestick{Close: 437.87})
+	candles = append(candles, common.Candlestick{Close: 428.43})
+	candles = append(candles, common.Candlestick{Close: 428.35})
+	candles = append(candles, common.Candlestick{Close: 432.50})
+	candles = append(candles, common.Candlestick{Close: 443.66})
+	candles = append(candles, common.Candlestick{Close: 455.72})
+	candles = append(candles, common.Candlestick{Close: 454.49})
+	candles = append(candles, common.Candlestick{Close: 452.08})
+	candles = append(candles, common.Candlestick{Close: 452.73})
+	candles = append(candles, common.Candlestick{Close: 461.91})
+	candles = append(candles, common.Candlestick{Close: 463.58})
+	candles = append(candles, common.Candlestick{Close: 461.14})
 
-	ema1 := NewExponentialMovingAverage(ema1candles)
-	ema2 := NewExponentialMovingAverage(ema2candles)
+	macd := NewMovingAverageConvergenceDivergence(candles)
 
-	// EMA1 tests
-	actual := ema1.GetAverage()
-	expected := 440.8975
-	if util.RoundFloat(actual, 4) != expected {
-		t.Errorf("[MACD-EMA] Got incorrect SMA average: %f, expected: %f", actual, expected)
+	if macd.GetName() != "MovingAverageConvergenceDivergence" {
+		t.Errorf("[MovingAverageConvergenceDivergence] Got incorrect name: %s, expected: %s", macd.GetName(), "MovingAverageConvergenceDivergence")
 	}
 
-	ema1.Add(&common.Candlestick{Close: 430.58})
-	actual = util.RoundFloat(ema1.GetAverage(), 6)
-	expected = 439.310192
-	if actual != expected {
-		t.Errorf("[MACD-EMA] Got incorrect SMA average: %f, expected: %f", actual, expected)
+	if macd.GetDisplayName() != "Moving Average Convergence Divergence (MACD)" {
+		t.Errorf("[MovingAverageConvergenceDivergence] Got incorrect display name: %s, expected: %s", macd.GetDisplayName(), "Moving Average Convergence Divergence (MACD)")
 	}
 
-	ema1.Add(&common.Candlestick{Close: 431.72})
-	actual = util.RoundFloat(ema1.GetAverage(), 6)
-	expected = 438.142470
-	if actual != expected {
-		t.Errorf("[MACD-EMA] Got incorrect SMA average: %f, expected: %f", actual, expected)
+	params := macd.GetDefaultParameters()
+	if params[0] != "12" {
+		t.Errorf("[RelativeStrengthIndex] Got incorrect default parameter[0]: %s, expected: %s", params[0], "12")
+	}
+	if params[1] != "26" {
+		t.Errorf("[RelativeStrengthIndex] Got incorrect default parameter[1]: %s, expected: %s", params[1], "26")
+	}
+	if params[2] != "9" {
+		t.Errorf("[RelativeStrengthIndex] Got incorrect default parameter[2]: %s, expected: %s", params[2], "9")
 	}
 
-	ema1.Add(&common.Candlestick{Close: 437.87})
-	actual = util.RoundFloat(ema1.GetAverage(), 6)
-	expected = 438.100552
-	if actual != expected {
-		t.Errorf("[MACD-EMA] Got incorrect SMA average: %f, expected: %f", actual, expected)
+	params = macd.GetParameters()
+	if params[0] != "12" {
+		t.Errorf("[RelativeStrengthIndex] Got incorrect parameter[0]: %s, expected: %s", params[0], "12")
 	}
-
-	ema1.Add(&common.Candlestick{Close: 428.43})
-	actual = util.RoundFloat(ema1.GetAverage(), 6)
-	expected = 436.612775
-	if actual != expected {
-		t.Errorf("[MACD-EMA] Got incorrect SMA average: %f, expected: %f", actual, expected)
+	if params[1] != "26" {
+		t.Errorf("[RelativeStrengthIndex] Got incorrect parameter[1]: %s, expected: %s", params[1], "26")
 	}
-
-	ema1.Add(&common.Candlestick{Close: 428.35})
-	actual = util.RoundFloat(ema1.GetAverage(), 6)
-	expected = 435.341579
-	if actual != expected {
-		t.Errorf("[MACD-EMA] Got incorrect SMA average: %f, expected: %f", actual, expected)
+	if params[2] != "9" {
+		t.Errorf("[RelativeStrengthIndex] Got incorrect parameter[2]: %s, expected: %s", params[2], "9")
 	}
-
-	// EMA2 tests
-	actual = util.RoundFloat(ema2.GetAverage(), 6)
-	expected = 443.289615
-	if actual != expected {
-		t.Errorf("[MACD-EMA] Got incorrect SMA average: %f, expected: %f", actual, expected)
-	}
-
-	// Add data difference between EMA2 and EMA1 to EMA1
-	ema1.Add(&common.Candlestick{Close: 432.5})
-	ema1.Add(&common.Candlestick{Close: 443.66})
-	ema1.Add(&common.Candlestick{Close: 455.72})
-	ema1.Add(&common.Candlestick{Close: 454.49})
-	ema1.Add(&common.Candlestick{Close: 452.08})
-	ema1.Add(&common.Candlestick{Close: 452.73})
-	ema1.Add(&common.Candlestick{Close: 461.91})
-	ema1.Add(&common.Candlestick{Close: 463.58})
-	ema1.Add(&common.Candlestick{Close: 461.14})
-
-	macd := NewMovingAverageConvergenceDivergence(ema1, ema2, 9)
 
 	macd1 := util.RoundFloat(macd.GetValue(), 6)
-	expected = 8.275270
+	expected := 8.275270
 	if macd1 != expected {
 		t.Errorf("[MACD] Got incorrect average: %f, expected: %f", macd1, expected)
 	}
@@ -169,7 +133,7 @@ func TestMovingAverageConvergenceDivergence(t *testing.T) {
 		t.Errorf("[MACD] Got incorrect value: %f, expected: %f", macd9, expected)
 	}
 
-	actual = util.RoundFloat(macd.GetSignalLine(), 6)
+	actual := util.RoundFloat(macd.GetSignalLine(), 6)
 	expected = 3.037526
 	actualHistogram := util.RoundFloat(macd.GetHistogram(), 6)
 	expectedHistogram := -5.108084

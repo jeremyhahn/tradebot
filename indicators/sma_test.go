@@ -23,6 +23,24 @@ func TestSimpleMovingAverage(t *testing.T) {
 
 	sma := NewSimpleMovingAverage(candlesticks)
 
+	if sma.GetName() != "SimpleMovingAverage" {
+		t.Errorf("[SimpleMovingAverage] Got incorrect name: %s, expected: %s", sma.GetName(), "SimpleMovingAverage")
+	}
+
+	if sma.GetDisplayName() != "Simple Moving Average (SMA)" {
+		t.Errorf("[SimpleMovingAverage] Got incorrect display name: %s, expected: %s", sma.GetDisplayName(), "Simple Moving Average (SMA)")
+	}
+
+	params := sma.GetDefaultParameters()
+	if params[0] != "20" {
+		t.Errorf("[SimpleMovingAverage] Got incorrect default parameter[0]: %s, expected: %s", params[0], "20")
+	}
+
+	params = sma.GetParameters()
+	if params[0] != "10" {
+		t.Errorf("[SimpleMovingAverage] Got incorrect parameter[0]: %s, expected: %s", params[0], "10")
+	}
+
 	actual := util.RoundFloat(sma.GetAverage(), 2)
 	expected := 66.39
 	if actual != expected {
@@ -54,7 +72,8 @@ func TestSimpleMovingAverage(t *testing.T) {
 func TestSimpleMovingAverageUsingAdd(t *testing.T) {
 	var candlesticks []common.Candlestick
 
-	sma := CreateSimpleMovingAverage(candlesticks, 10)
+	params := []string{"10"}
+	sma := CreateSimpleMovingAverage(candlesticks, params)
 
 	sma.Add(&common.Candlestick{Close: 67.50})
 	sma.Add(&common.Candlestick{Close: 66.50})

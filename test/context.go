@@ -2,6 +2,7 @@ package test
 
 import (
 	"os"
+	"sync"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
@@ -12,6 +13,7 @@ import (
 )
 
 var TEST_CONTEXT *common.Context
+var TEST_LOCK sync.Mutex
 
 func NewUnitTestContext() *common.Context {
 	backend, _ := logging.NewSyslogBackend(common.APPNAME)
@@ -26,6 +28,8 @@ func NewUnitTestContext() *common.Context {
 }
 
 func NewIntegrationTestContext() *common.Context {
+
+	TEST_LOCK.Lock()
 
 	backend, _ := logging.NewSyslogBackend(common.APPNAME)
 	logging.SetBackend(backend)
@@ -122,6 +126,7 @@ func NewIntegrationTestContext() *common.Context {
 func CleanupMockContext() {
 	if TEST_CONTEXT != nil {
 		TEST_CONTEXT.DB.Close()
+		TEST_LOCK.Unlock()
 		os.Remove(TEST_DBPATH)
 	}
 }

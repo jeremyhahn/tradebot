@@ -17,6 +17,70 @@ const (
 	CANDLESTICK_MIN_LOAD  = 250
 )
 
+type ProfitService interface {
+	Save(profit *Profit)
+	Find()
+}
+
+type Profit struct {
+	UserID   uint    `json:"id"`
+	TradeID  uint    `json:"trade_id"`
+	Quantity float64 `json:"quantity"`
+	Bought   float64 `json:"bought"`
+	Sold     float64 `json:"sold"`
+	Fee      float64 `json:"fee"`
+	Tax      float64 `json:"tax"`
+	Total    float64 `json:"total"`
+}
+
+type TradeService interface {
+	Save(trade *Trade)
+	GetLastTrade(chart *Chart) *Trade
+}
+
+type TradingStrategy interface {
+	OnPriceChange(chart ChartService)
+	GetRequiredIndicators() []string
+}
+
+type Trade struct {
+	ID        uint      `json:"id"`
+	ChartID   uint      `json:"chart_id"`
+	UserID    uint      `json:"user_id"`
+	Base      string    `json:"base"`
+	Quote     string    `json:"quote"`
+	Exchange  string    `json:"exchange"`
+	Date      time.Time `json:"date"`
+	Type      string    `json:"type"`
+	Price     float64   `json:"price"`
+	Amount    float64   `json:"amount"`
+	ChartData string    `json:"chart_data"`
+}
+
+type ChartService interface {
+	GetExchange() Exchange
+	GetChart() *Chart
+	GetCurrencyPair() CurrencyPair
+	GetIndicators() []FinancialIndicator
+	GetIndicator(name string) FinancialIndicator
+	GetPrice() float64
+	Stream(strategyHandler func(chart ChartService))
+	StopStream()
+	OnPriceChange(newPrice *PriceChange)
+	OnPeriodChange(candle *Candlestick)
+	ToJson() string
+}
+
+type Chart struct {
+	ID         uint        `json:"id"`
+	Base       string      `json:"base"`
+	Quote      string      `json:"quote"`
+	Exchange   string      `json:"exchange"`
+	Period     int         `json:"period"`
+	Indicators []Indicator `json:"indicators"`
+	Trades     []Trade     `json:"trades"`
+}
+
 type Order struct {
 	Id       string    `json:"id"`
 	Exchange string    `json:"exchange"`
@@ -25,15 +89,6 @@ type Order struct {
 	Currency string    `json:"currency"`
 	Quantity float64   `json:"quantity"`
 	Price    float64   `json:"price"`
-}
-
-type ChartService interface {
-	Stream()
-	GetExchange() Exchange
-	GetData() *ChartData
-	OnPeriodChange(candle *Candlestick)
-	OnPriceChange(newPrice *PriceChange)
-	GetCurrencyPair() CurrencyPair
 }
 
 type Context struct {
@@ -180,6 +235,26 @@ type Exchange interface {
 	GetTradingFee() float64
 }
 
-type Indicator interface {
+type RSI interface {
+	Calculate(price float64) float64
+}
+
+type BBands interface {
+	Calculate(price float64) (float64, float64, float64)
+}
+
+type FinancialIndicator interface {
+	GetDefaultParameters() []string
+	GetParameters() []string
+	GetDisplayName() string
+	GetName() string
 	PeriodListener
+}
+
+type Indicator struct {
+	Id         uint   `json:"id"`
+	ChartID    uint   `json:"chart_id"`
+	Name       string `json:"name"`
+	Parameters string `json:"parameters"`
+	FinancialIndicator
 }
