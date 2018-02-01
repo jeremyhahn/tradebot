@@ -2,6 +2,7 @@ package strategy
 
 import (
 	"testing"
+	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
@@ -35,35 +36,33 @@ type MockChartService_Trade2 struct {
 	mock.Mock
 }
 
-type MockAutoTradeDAO_Trade struct {
-	dao.IAutoTradeDAO
+type MockChartDAO_Trade struct {
+	dao.ChartDAO
 	mock.Mock
 }
 
 func TestDefaultTradingStrategy_Trade(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
-	autoTradeCoin := createAutoTradeCoin()
-	autoTradeDAO := dao.NewAutoTradeDAO(ctx)
+	chartService := new(MockChartService)
+	chart := new(MockChart)
+	chartDAO := new(MockChartDAO_Trade)
 	profitDAO := dao.NewProfitDAO(ctx)
-
-	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO,
-		new(MockSignalLogDAO), profitDAO, &DefaultTradingStrategyConfig{
-			rsiOverSold:            30,
-			rsiOverBought:          70,
-			tax:                    .40,
-			stopLoss:               0,
-			stopLossPercent:        .20,
-			profitMarginMin:        1000,
-			profitMarginMinPercent: 0,
-			tradeSize:              0,
-			requiredBuySignals:     2,
-			requiredSellSignals:    2})
+	strategy := CreateDefaultTradingStrategy(ctx, chart, chartDAO, profitDAO, &DefaultTradingStrategyConfig{
+		rsiOverSold:            30,
+		rsiOverBought:          70,
+		tax:                    .40,
+		stopLoss:               0,
+		stopLossPercent:        .20,
+		profitMarginMin:        1000,
+		profitMarginMinPercent: 0,
+		tradeSize:              0,
+		requiredBuySignals:     2,
+		requiredSellSignals:    2})
 
 	// Buy
-	chart := new(MockChartService)
-	strategy.OnPriceChange(chart)
-	coins, _ := chart.GetExchange().GetBalances()
-	trade := autoTradeDAO.GetLastTrade(autoTradeCoin)
+	strategy.OnPriceChange(chartService)
+	coins, _ := chartService.GetExchange().GetBalances()
+	trade := chartDAO.GetLastTrade(chart)
 	assert.Equal(t, "buy", trade.Type)
 	assert.Equal(t, coins[1].Available, trade.Amount)
 
@@ -71,10 +70,10 @@ func TestDefaultTradingStrategy_Trade(t *testing.T) {
 	chartTrade2 := new(MockChartService_Trade2)
 	strategy.OnPriceChange(chartTrade2)
 	coins, _ = chartTrade2.GetExchange().GetBalances()
-	trade = autoTradeDAO.GetLastTrade(autoTradeCoin)
+	trade = chartDAO.GetLastTrade(chart)
 	assert.Equal(t, "sell", trade.Type)
 	assert.Equal(t, coins[1].Available, trade.Amount)
-	profit := profitDAO.GetByTrade(autoTradeDAO.GetLastTrade(autoTradeCoin))
+	profit := profitDAO.GetByTrade(chartDAO.GetLastTrade(chart))
 	assert.Equal(t, 1.0, profit.Quantity)
 	assert.Equal(t, 10000.0, profit.Bought)
 	assert.Equal(t, 18500.0, profit.Sold)
@@ -86,34 +85,34 @@ func TestDefaultTradingStrategy_Trade(t *testing.T) {
 	chartTrade3 := new(MockChartService_Trade3)
 	strategy.OnPriceChange(chartTrade3)
 	coins, _ = chartTrade3.GetExchange().GetBalances()
-	trade = autoTradeDAO.GetLastTrade(autoTradeCoin)
+	trade = chartDAO.GetLastTrade(chart)
 	assert.Equal(t, "sell", trade.Type)
-	assert.Equal(t, 2, len(autoTradeDAO.GetTrades(ctx.User)))
+	assert.Equal(t, 2, len(chartDAO.GetTrades(ctx.User)))
 
 	// Buy
 	chartTrade4 := new(MockChartService_Trade4)
 	strategy.OnPriceChange(chartTrade4)
 	coins, _ = chartTrade4.GetExchange().GetBalances()
-	trade = autoTradeDAO.GetLastTrade(autoTradeCoin)
+	trade = chartDAO.GetLastTrade(chart)
 	assert.Equal(t, "buy", trade.Type)
-	assert.Equal(t, 3, len(autoTradeDAO.GetTrades(ctx.User)))
+	assert.Equal(t, 3, len(chartDAO.GetTrades(ctx.User)))
 
 	// Buy rejected; already in a buy position
 	chartTrade5 := new(MockChartService_Trade5)
 	strategy.OnPriceChange(chartTrade5)
 	coins, _ = chartTrade5.GetExchange().GetBalances()
-	trade = autoTradeDAO.GetLastTrade(autoTradeCoin)
+	trade = chartDAO.GetLastTrade(chart)
 	assert.Equal(t, "buy", trade.Type)
-	assert.Equal(t, 3, len(autoTradeDAO.GetTrades(ctx.User)))
+	assert.Equal(t, 3, len(chartDAO.GetTrades(ctx.User)))
 
 	// Sale
 	chartTrade6 := new(MockChartService_Trade6)
 	strategy.OnPriceChange(chartTrade6)
 	coins, _ = chartTrade6.GetExchange().GetBalances()
-	trade = autoTradeDAO.GetLastTrade(autoTradeCoin)
+	trade = chartDAO.GetLastTrade(chart)
 	assert.Equal(t, "sell", trade.Type)
-	assert.Equal(t, 4, len(autoTradeDAO.GetTrades(ctx.User)))
-	profit = profitDAO.GetByTrade(autoTradeDAO.GetLastTrade(autoTradeCoin))
+	assert.Equal(t, 4, len(chartDAO.GetTrades(ctx.User)))
+	profit = profitDAO.GetByTrade(chartDAO.GetLastTrade(chart))
 	assert.Equal(t, 1.0, profit.Quantity)
 	assert.Equal(t, 8000.0, profit.Bought)
 	assert.Equal(t, 16000.0, profit.Sold)
@@ -123,6 +122,36 @@ func TestDefaultTradingStrategy_Trade(t *testing.T) {
 
 	test.CleanupMockContext()
 }
+
+func (mc *MockChart) GetTrades() []dao.Trade {
+	var trades []dao.Trade
+	trades = append(trades, dao.Trade{
+		Date:     time.Now().AddDate(0, 0, -20),
+		Type:     "buy",
+		Base:     "BTC",
+		Quote:    "USD",
+		Exchange: "gdax",
+		Amount:   1,
+		Price:    10000,
+		UserID:   1})
+	trades = append(trades, dao.Trade{
+		Date:     time.Now().AddDate(0, 0, -10),
+		Type:     "sell",
+		Base:     "BTC",
+		Quote:    "USD",
+		Exchange: "gdax",
+		Amount:   1,
+		Price:    12000,
+		UserID:   1})
+	return trades
+}
+
+func (mdao *MockChartDAO_Trade) GetLastTrade(chart dao.IChart) *dao.Trade {
+	trades := chart.GetTrades()
+	return &trades[len(trades)-1]
+}
+
+func (mdao *MockChartDAO_Trade) Save(dao dao.IChart) {}
 
 func (mcs *MockChartService_Trade2) GetData() *common.ChartData {
 	return &common.ChartData{
@@ -143,9 +172,9 @@ func (cs *MockChartService_Trade2) GetExchange() common.Exchange {
 	return new(MockExchange)
 }
 
-func createAutoTradeCoin() *dao.AutoTradeCoin {
+func createChartCoin() *dao.Chart {
 	sampleTrades := make([]dao.Trade, 0, 0)
-	return &dao.AutoTradeCoin{
+	return &dao.Chart{
 		UserID:   1,
 		Base:     "BTC",
 		Quote:    "USD",

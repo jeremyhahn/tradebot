@@ -1,174 +1,101 @@
 package service
 
+import (
+	"github.com/jeremyhahn/tradebot/common"
+)
+
 /*
-func TestChartService_Stream(t *testing.T) {
-	ctx := test.NewTestContext()
-	marketcap := NewMarketCapService(ctx.Logger)
-
-	if len(marketcap.GetMarkets()) <= 0 {
-		t.Fatal("[TestMarketCapService.GetMarkets] Unable to get market cap list")
-	}
-
-	if len(marketcap.GetMarkets()) <= 0 {
-		t.Fatal("[TestMarketCapService.GetMarkets] Unable to get market cap list")
-	}
-
-	test.CleanupMockContext()
+type MockChartDAO struct {
+	dao.ChartDAO
+	mock.Mock
 }
 
-func TestChartService_GetLastTrade(t *testing.T) {
-	ctx := test.NewTestContext()
-	now := time.Now()
-	sampleTrades := make([]dao.Trade, 0, 5)
-	sampleTrades = append(sampleTrades, dao.Trade{
-		Date:     time.Now().AddDate(0, -1, 0),
-		Type:     "buy",
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Amount:   1,
-		Price:    15000,
-		UserID:   ctx.User.Id})
-	sampleTrades = append(sampleTrades, dao.Trade{
-		Date:     time.Now().AddDate(0, 0, -20),
-		Type:     "sell",
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Amount:   1,
-		Price:    16000,
-		UserID:   ctx.User.Id})
-	sampleTrades = append(sampleTrades, dao.Trade{
-		Date:     time.Now().AddDate(0, 0, -15),
-		Type:     "buy",
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Amount:   1,
-		Price:    12000,
-		UserID:   ctx.User.Id})
-	sampleTrades = append(sampleTrades, dao.Trade{
-		Date:     time.Now().AddDate(0, 0, -5),
-		Type:     "sell",
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Amount:   1,
-		Price:    19000,
-		UserID:   ctx.User.Id})
-	sampleTrades = append(sampleTrades, dao.Trade{
-		Date:     now,
-		Type:     "buy",
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Amount:   1,
-		Price:    9000,
-		UserID:   ctx.User.Id})
-
-	autoTradeCoin := &dao.AutoTradeCoin{
-		UserID:   ctx.User.Id,
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Period:   900,
-		Trades:   sampleTrades}
-
-	autoTradeDAO := dao.NewAutoTradeDAO(ctx)
-	autoTradeDAO.Save(autoTradeCoin)
-	trade := autoTradeDAO.GetLastTrade(autoTradeCoin)
-
-	if trade.AutoTradeID != 1 && trade.Date == now {
-		t.Fatal("[TestChartService_GetLastTrade] Failed to get expected last trade")
-	}
-
-	trades := autoTradeDAO.FindByCurrency(ctx.User, &common.CurrencyPair{
-		Base:          "BTC",
-		Quote:         "USD",
-		LocalCurrency: "USD"})
-
-	if len(trades) != 5 {
-		t.Fatal("[TestChartService_GetLastTrade] Failed to get list of expected trades")
-	}
-
-	test.CleanupMockContext()
+type MockChartEntity struct {
+	dao.IChart
+	mock.Mock
 }
 
-func TestChartService_GetLastTrade(t *testing.T) {
-	ctx := test.NewTestContext()
-	now := time.Now()
-	sampleTrades := make([]dao.Trade, 0, 5)
-	sampleTrades = append(sampleTrades, dao.Trade{
-		Date:     time.Now().AddDate(0, -1, 0),
-		Type:     "buy",
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Amount:   1,
-		Price:    15000,
-		UserID:   ctx.User.Id})
-	sampleTrades = append(sampleTrades, dao.Trade{
-		Date:     time.Now().AddDate(0, 0, -20),
-		Type:     "sell",
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Amount:   1,
-		Price:    16000,
-		UserID:   ctx.User.Id})
-	sampleTrades = append(sampleTrades, dao.Trade{
-		Date:     time.Now().AddDate(0, 0, -15),
-		Type:     "buy",
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Amount:   1,
-		Price:    12000,
-		UserID:   ctx.User.Id})
-	sampleTrades = append(sampleTrades, dao.Trade{
-		Date:     time.Now().AddDate(0, 0, -5),
-		Type:     "sell",
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Amount:   1,
-		Price:    19000,
-		UserID:   ctx.User.Id})
-	sampleTrades = append(sampleTrades, dao.Trade{
-		Date:     now,
-		Type:     "buy",
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Amount:   1,
-		Price:    9000,
-		UserID:   ctx.User.Id})
+type MockExchangeService struct {
+	common.Exchange
+	mock.Mock
+}
 
-	autoTradeCoin := &dao.AutoTradeCoin{
-		UserID:   ctx.User.Id,
-		Base:     "BTC",
-		Quote:    "USD",
-		Exchange: "gdax",
-		Period:   900,
-		Trades:   sampleTrades}
+func TestChartService(t *testing.T) {
+	ctx := test.NewUnitTestContext()
+	chartDAO := new(MockChartDAO)
+	entity := new(MockChartEntity)
+	exchangeService := new(MockExchangeService)
+	chartService := NewChartService(ctx, chartDAO, entity, exchangeService)
+	chartService.Stream(func(chart common.ChartService) {
 
-	autoTradeDAO := dao.NewAutoTradeDAO(ctx)
-	autoTradeDAO.Save(autoTradeCoin)
-	trade := autoTradeDAO.GetLastTrade(autoTradeCoin)
+	})
+}
 
-	if trade.AutoTradeID != 1 && trade.Date == now {
-		t.Fatal("[TestChartService_GetLastTrade] Failed to get expected last trade")
-	}
+func (mcdao *MockChartDAO) GetIndicators(chart dao.IChart) map[string]dao.Indicator {
+	return map[string]dao.Indicator{
+		"TestIndicator": dao.Indicator{
+			Id:         1,
+			ChartID:    1,
+			Name:       "TestIndicator",
+			Parameters: "1,2,3"}}
+}
 
-	trades := autoTradeDAO.FindByCurrency(ctx.User, &common.CurrencyPair{
-		Base:          "BTC",
-		Quote:         "USD",
-		LocalCurrency: "USD"})
+func (mce *MockChartEntity) GetPeriod() int {
+	return 14
+}
 
-	if len(trades) != 5 {
-		t.Fatal("[TestChartService_GetLastTrade] Failed to get list of expected trades")
-	}
+func (eces *MockExchangeService) GetName() string {
+	return "TestExchange"
+}
 
-	test.CleanupMockContext()
+func (eces *MockExchangeService) FormattedCurrencyPair() string {
+	return "BTC-USD"
+}
+
+func (eces *MockExchangeService) GetPriceHistory(time.Time, time.Time, int) []common.Candlestick {
+	return createChartCandles()
 }
 */
+func createChartCandles() []common.Candlestick {
+	var candles []common.Candlestick
+	candles = append(candles, common.Candlestick{Close: 100.00})
+	candles = append(candles, common.Candlestick{Close: 200.00})
+	candles = append(candles, common.Candlestick{Close: 300.00})
+	candles = append(candles, common.Candlestick{Close: 400.00})
+	candles = append(candles, common.Candlestick{Close: 500.00})
+	candles = append(candles, common.Candlestick{Close: 600.00})
+	candles = append(candles, common.Candlestick{Close: 700.00})
+	candles = append(candles, common.Candlestick{Close: 800.00})
+	candles = append(candles, common.Candlestick{Close: 900.00})
+	candles = append(candles, common.Candlestick{Close: 1000.00})
+	candles = append(candles, common.Candlestick{Close: 1100.00})
+	candles = append(candles, common.Candlestick{Close: 1200.00})
+	candles = append(candles, common.Candlestick{Close: 1300.00})
+	candles = append(candles, common.Candlestick{Close: 1400.00})
+	candles = append(candles, common.Candlestick{Close: 1500.00})
+	candles = append(candles, common.Candlestick{Close: 1600.00})
+	candles = append(candles, common.Candlestick{Close: 1700.00})
+	candles = append(candles, common.Candlestick{Close: 1800.00})
+	candles = append(candles, common.Candlestick{Close: 1900.00})
+	candles = append(candles, common.Candlestick{Close: 2000.00})
+	candles = append(candles, common.Candlestick{Close: 2100.00})
+	candles = append(candles, common.Candlestick{Close: 2200.00})
+	candles = append(candles, common.Candlestick{Close: 2300.00})
+	candles = append(candles, common.Candlestick{Close: 2400.00})
+	candles = append(candles, common.Candlestick{Close: 2500.00})
+	candles = append(candles, common.Candlestick{Close: 2600.00})
+	candles = append(candles, common.Candlestick{Close: 2700.00})
+	candles = append(candles, common.Candlestick{Close: 2800.00})
+	candles = append(candles, common.Candlestick{Close: 2900.00})
+	candles = append(candles, common.Candlestick{Close: 3000.00})
+	candles = append(candles, common.Candlestick{Close: 3200.00})
+	candles = append(candles, common.Candlestick{Close: 3300.00})
+	candles = append(candles, common.Candlestick{Close: 3400.00})
+	candles = append(candles, common.Candlestick{Close: 3500.00})
+	candles = append(candles, common.Candlestick{Close: 3600.00})
+	candles = append(candles, common.Candlestick{Close: 3700.00})
+	candles = append(candles, common.Candlestick{Close: 3800.00})
+	candles = append(candles, common.Candlestick{Close: 3900.00})
+	candles = append(candles, common.Candlestick{Close: 4000.00})
+	return candles
+}

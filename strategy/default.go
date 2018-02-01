@@ -5,26 +5,24 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dao"
-	"github.com/jeremyhahn/tradebot/service"
+	"github.com/jeremyhahn/tradebot/indicators"
 )
 
 type DefaultTradingStrategy struct {
 	Name          string
 	ctx           *common.Context
-	autoTradeDAO  dao.IAutoTradeDAO
-	signalLogDAO  dao.ISignalLogDAO
-	profitDAO     dao.IProfitDAO
-	autoTradeCoin dao.IAutoTradeCoin
+	chartService  common.ChartService
+	tradeService  common.TradeService
+	profitService common.ProfitService
 	config        *DefaultTradingStrategyConfig
-	lastTrade     *dao.Trade
+	lastTrade     *common.Trade
 	Chart         chan common.ChartService
-	service.TradingStrategy
+	common.TradingStrategy
 }
 
 type DefaultTradingStrategyConfig struct {
-	rsiOverSold            float64
-	rsiOverBought          float64
+	config                 *DefaultTradingStrategyConfig
+	tradeSize              float64
 	tax                    float64
 	profitMarginMin        float64
 	profitMarginMinPercent float64
@@ -32,22 +30,18 @@ type DefaultTradingStrategyConfig struct {
 	stopLossPercent        float64
 	requiredBuySignals     int
 	requiredSellSignals    int
-	tradeSize              float64
 }
 
-func NewDefaultTradingStrategy(ctx *common.Context, autoTradeCoin dao.IAutoTradeCoin,
-	autoTradeDAO dao.IAutoTradeDAO, signalLogDAO dao.ISignalLogDAO, profitDAO dao.IProfitDAO) *DefaultTradingStrategy {
+func NewDefaultTradingStrategy(ctx *common.Context, chartService common.ChartService,
+	tradeService common.TradeService, profitService common.ProfitService) common.TradingStrategy {
 	return &DefaultTradingStrategy{
 		Name:          "DefaultTradingStrategy",
 		Chart:         make(chan common.ChartService),
 		ctx:           ctx,
-		autoTradeCoin: autoTradeCoin,
-		autoTradeDAO:  autoTradeDAO,
-		signalLogDAO:  signalLogDAO,
-		profitDAO:     profitDAO,
+		chartService:  chartService,
+		tradeService:  tradeService,
+		profitService: profitService,
 		config: &DefaultTradingStrategyConfig{
-			rsiOverSold:            30,
-			rsiOverBought:          70,
 			tax:                    .40,
 			stopLoss:               0,
 			stopLossPercent:        .20,
@@ -58,26 +52,24 @@ func NewDefaultTradingStrategy(ctx *common.Context, autoTradeCoin dao.IAutoTrade
 			requiredSellSignals:    2}}
 }
 
-func CreateDefaultTradingStrategy(ctx *common.Context, autoTradeCoin dao.IAutoTradeCoin,
-	autoTradeDAO dao.IAutoTradeDAO, signalLogDAO dao.ISignalLogDAO, profitDAO dao.IProfitDAO,
-	config *DefaultTradingStrategyConfig) *DefaultTradingStrategy {
+func CreateDefaultTradingStrategy(ctx *common.Context, chartService common.ChartService,
+	tradeService common.TradeService, profitService common.ProfitService,
+	config *DefaultTradingStrategyConfig) common.TradingStrategy {
 	return &DefaultTradingStrategy{
 		Name:          "DefaultTradingStrategy",
 		ctx:           ctx,
-		autoTradeCoin: autoTradeCoin,
-		autoTradeDAO:  autoTradeDAO,
-		signalLogDAO:  signalLogDAO,
-		profitDAO:     profitDAO,
+		chartService:  chartService,
+		tradeService:  tradeService,
+		profitService: profitService,
 		config:        config}
 }
 
 func (strategy *DefaultTradingStrategy) OnPriceChange(chart common.ChartService) {
 
-	data := chart.GetData()
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.OnPriceChange] ChartData: %+v\n", data)
+	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.OnPriceChange] ChartService: %+v\n", chart)
 
-	buySignals, sellSignals := strategy.countSignals(data)
-	strategy.lastTrade = strategy.autoTradeDAO.GetLastTrade(strategy.autoTradeCoin)
+	buySignals, sellSignals := strategy.countSignals(chart.GetPrice())
+	strategy.lastTrade = strategy.tradeService.GetLastTrade(strategy.chartService.GetChart())
 
 	if buySignals == strategy.config.requiredBuySignals {
 		strategy.buy(chart)
@@ -90,48 +82,29 @@ func (strategy *DefaultTradingStrategy) OnPriceChange(chart common.ChartService)
 	}
 
 	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.OnPeriodChange] buySignals=%d, sellSignals=%d", buySignals, sellSignals)
+	return
 }
 
-func (strategy *DefaultTradingStrategy) countSignals(data *common.ChartData) (int, int) {
+func (strategy *DefaultTradingStrategy) GetRequiredIndicators() []string {
+	return []string{"RSI", "BollingerBands", "MACD"}
+}
+
+func (strategy *DefaultTradingStrategy) countSignals(price float64) (int, int) {
 	var buySignals int
 	var sellSignals int
-	if data.RSILive < strategy.config.rsiOverSold {
-		buySignals++
-		/*strategy.signalLogDAO.Save(&dao.SignalLog{
-		UserID:     strategy.ctx.User.Id,
-		Date:       time.Now(),
-		Name:       "RSI",
-		Type:       "buy",
-		Price:      data.Price,
-		SignalData: strconv.FormatFloat(data.RSILive, 'f', 8, 64)})*/
-	} else if data.RSILive > strategy.config.rsiOverBought {
+	rsi := strategy.chartService.GetIndicator("RSI").(*indicators.RelativeStrengthIndex)
+	rsiValue := rsi.Calculate(price)
+	if rsi.IsOverBought(rsiValue) {
 		sellSignals++
-		/*strategy.signalLogDAO.Save(&dao.SignalLog{
-		UserID:     strategy.ctx.User.Id,
-		Date:       time.Now(),
-		Name:       "RSI",
-		Type:       "sell",
-		Price:      data.Price,
-		SignalData: strconv.FormatFloat(data.RSILive, 'f', 8, 64)})*/
+	} else if rsi.IsOverSold(rsiValue) {
+		buySignals++
 	}
-	if data.Price > data.BollingerUpperLive {
+	bollinger := strategy.chartService.GetIndicator("BBands").(*indicators.BollingerBands)
+	upper, _, lower := bollinger.Calculate(price)
+	if price > upper {
 		sellSignals++
-		/*strategy.signalLogDAO.Save(&dao.SignalLog{
-		UserID:     strategy.ctx.User.Id,
-		Date:       time.Now(),
-		Name:       "Bollinger",
-		Type:       "sell",
-		Price:      data.Price,
-		SignalData: fmt.Sprintf("%f,%f,%f", data.BollingerUpperLive, data.BollingerMiddleLive, data.BollingerLowerLive)})*/
-	} else if data.Price < data.BollingerLowerLive {
+	} else if price < lower {
 		buySignals++
-		/*strategy.signalLogDAO.Save(&dao.SignalLog{
-		UserID:     strategy.ctx.User.Id,
-		Date:       time.Now(),
-		Name:       "Bollinger",
-		Type:       "buy",
-		Price:      data.Price,
-		SignalData: fmt.Sprintf("%f,%f,%f", data.BollingerUpperLive, data.BollingerMiddleLive, data.BollingerLowerLive)})*/
 	}
 	return buySignals, sellSignals
 }
@@ -192,7 +165,6 @@ func (strategy *DefaultTradingStrategy) getTradeAmounts(chart common.ChartServic
 
 func (strategy *DefaultTradingStrategy) buy(chart common.ChartService) {
 	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.buy] $$$ BUY SIGNAL $$$")
-	data := chart.GetData()
 	currencyPair := chart.GetCurrencyPair()
 	baseAmount, quoteAmount := strategy.getTradeAmounts(chart)
 	if quoteAmount <= 0 {
@@ -203,22 +175,21 @@ func (strategy *DefaultTradingStrategy) buy(chart common.ChartService) {
 		strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.buy] Aborting. Already in a buy position.")
 		return
 	}
-	strategy.autoTradeCoin.AddTrade(&dao.Trade{
+	strategy.tradeService.Save(&common.Trade{
 		UserID:    strategy.ctx.User.Id,
-		Exchange:  data.Exchange,
+		Exchange:  strategy.chartService.GetExchange().GetName(),
 		Base:      currencyPair.Base,
 		Quote:     currencyPair.Quote,
 		Date:      time.Now(),
 		Type:      "buy",
-		Price:     data.Price,
+		Price:     chart.GetPrice(),
 		Amount:    baseAmount,
-		ChartData: strategy.chartJSON(data)})
-	strategy.autoTradeDAO.Save(strategy.autoTradeCoin)
+		ChartData: chart.ToJson()})
 }
 
 func (strategy *DefaultTradingStrategy) sell(chart common.ChartService) {
 	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.sell] $$$ SELL SIGNAL $$$")
-	data := chart.GetData()
+	price := chart.GetPrice()
 	baseAmount, _ := strategy.getTradeAmounts(chart)
 	if strategy.lastTrade.Type == "sell" {
 		strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.sell] Aborting. Buy position required.")
@@ -226,37 +197,34 @@ func (strategy *DefaultTradingStrategy) sell(chart common.ChartService) {
 	}
 	tradeFee := chart.GetExchange().GetTradingFee()
 	minPrice := strategy.minSellPrice(tradeFee)
-	if data.Price <= minPrice {
+	if price <= minPrice {
 		strategy.ctx.Logger.Debugf(
 			"[DefaultTradingStrategy.sell] Aborting. Does not meet minimum trade requirements. Price=%f, MinPrice=%f",
-			data.Price, minPrice)
+			price, minPrice)
 		return
 	}
-	fee, tax := strategy.calculateFeeAndTax(data.Price, tradeFee)
-	trade := &dao.Trade{
+	fee, tax := strategy.calculateFeeAndTax(price, tradeFee)
+	trade := &common.Trade{
 		UserID:    strategy.ctx.User.Id,
-		Exchange:  data.Exchange,
-		Base:      data.CurrencyPair.Base,
-		Quote:     data.CurrencyPair.Quote,
+		Exchange:  chart.GetExchange().GetName(),
+		Base:      chart.GetCurrencyPair().Base,
+		Quote:     chart.GetCurrencyPair().Quote,
 		Date:      time.Now(),
 		Type:      "sell",
-		Price:     data.Price,
+		Price:     price,
 		Amount:    baseAmount,
-		ChartData: strategy.chartJSON(data)}
-	strategy.autoTradeCoin.AddTrade(trade)
-	strategy.autoTradeDAO.Save(strategy.autoTradeCoin)
+		ChartData: chart.ToJson()}
+	strategy.tradeService.Save(trade)
 
-	trades := strategy.autoTradeCoin.GetTrades()
-	lastTrade := trades[len(trades)-1]
-	strategy.profitDAO.Save(&dao.Profit{
+	strategy.profitService.Save(&common.Profit{
 		UserID:   strategy.ctx.User.Id,
-		TradeID:  lastTrade.ID,
+		TradeID:  trade.ID,
 		Quantity: baseAmount,
 		Bought:   strategy.lastTrade.Price,
-		Sold:     data.Price,
+		Sold:     price,
 		Fee:      fee,
 		Tax:      tax,
-		Total:    data.Price - strategy.lastTrade.Price - fee - tax})
+		Total:    price - strategy.lastTrade.Price - fee - tax})
 }
 
 func (strategy *DefaultTradingStrategy) chartJSON(data *common.ChartData) string {

@@ -24,7 +24,7 @@ func NewPriceStream(period int) *PriceStream {
 		periodListeners: make([]common.PeriodListener, 0)}
 }
 
-func (ps *PriceStream) Listen(priceChange chan common.PriceChange) {
+func (ps *PriceStream) Listen(priceChange chan common.PriceChange) common.PriceChange {
 	newPrice := <-priceChange
 	ps.buffer = append(ps.buffer, newPrice.Price)
 	ps.Volume = ps.Volume + 1
@@ -36,6 +36,7 @@ func (ps *PriceStream) Listen(priceChange chan common.PriceChange) {
 		ps.Start = common.NewCandlestickPeriod(ps.Period)
 		ps.buffer = ps.buffer[:0]
 	}
+	return newPrice
 }
 
 func (ps *PriceStream) SubscribeToPrice(listener common.PriceListener) {

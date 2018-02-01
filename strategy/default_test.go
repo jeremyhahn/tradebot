@@ -20,33 +20,26 @@ type MockExchange struct {
 	mock.Mock
 }
 
-type MockSignalLogDAO struct {
-	dao.ISignalLogDAO
-	mock.Mock
-}
-
 type MockProfitDAO struct {
-	dao.IProfitDAO
+	dao.ProfitDAO
 	mock.Mock
 }
 
-type MockAutoTradeDAO struct {
-	dao.IAutoTradeDAO
+type MockChartDAO struct {
+	dao.ChartDAO
 	mock.Mock
 }
 
-type MockAutoTradeCoin struct {
-	dao.IAutoTradeCoin
+type MockChart struct {
+	dao.IChart
 	mock.Mock
 }
 
 func TestDefaultTradingStrategy_SignalCount(t *testing.T) {
-
 	ctx := test.NewUnitTestContext()
-	autoTradeCoin := new(MockAutoTradeCoin)
-	autoTradeDAO := new(MockAutoTradeDAO)
-	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), new(MockProfitDAO))
-
+	chart := new(MockChart)
+	chartDAO := new(MockChartDAO)
+	strategy := NewDefaultTradingStrategy(ctx, chart, chartDAO, new(MockProfitDAO))
 	buySignals, sellSignals := strategy.countSignals(&common.ChartData{
 		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
 		Exchange:            "Test",
@@ -127,33 +120,32 @@ func TestDefaultTradingStrategy_SignalCount(t *testing.T) {
 
 func TestDefaultTradingStrategy_getTradeAmounts_WithoutTradeSizePercent(t *testing.T) {
 	ctx := test.NewUnitTestContext()
-	autoTradeCoin := new(MockAutoTradeCoin)
-	autoTradeDAO := new(MockAutoTradeDAO)
-	strategy := NewDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO, new(MockSignalLogDAO), new(MockProfitDAO))
-	chart := new(MockChartService)
-	buyAmount, quoteAmount := strategy.getTradeAmounts(chart)
+	chartService := new(MockChartService)
+	chart := new(MockChart)
+	chartDAO := new(MockChartDAO)
+	strategy := NewDefaultTradingStrategy(ctx, chart, chartDAO, new(MockProfitDAO))
+	buyAmount, quoteAmount := strategy.getTradeAmounts(chartService)
 	assert.Equal(t, 1.0, buyAmount)
 	assert.Equal(t, 50.25, quoteAmount)
 }
 
 func TestDefaultTradingStrategy_getTradeAmounts_WithTradeSizePercent(t *testing.T) {
 	ctx := test.NewUnitTestContext()
-	autoTradeCoin := new(MockAutoTradeCoin)
-	autoTradeDAO := new(MockAutoTradeDAO)
-	strategy := CreateDefaultTradingStrategy(ctx, autoTradeCoin, autoTradeDAO,
-		new(MockSignalLogDAO), new(MockProfitDAO), &DefaultTradingStrategyConfig{
-			rsiOverSold:            30,
-			rsiOverBought:          70,
-			tax:                    0,
-			stopLoss:               0,
-			stopLossPercent:        .20,
-			profitMarginMin:        0,
-			profitMarginMinPercent: .10,
-			tradeSize:              .10,
-			requiredBuySignals:     2,
-			requiredSellSignals:    2})
-	chart := new(MockChartService)
-	buyAmount, quoteAmount := strategy.getTradeAmounts(chart)
+	chartService := new(MockChartService)
+	chart := new(MockChart)
+	chartDAO := new(MockChartDAO)
+	strategy := CreateDefaultTradingStrategy(ctx, chart, chartDAO, new(MockProfitDAO), &DefaultTradingStrategyConfig{
+		rsiOverSold:            30,
+		rsiOverBought:          70,
+		tax:                    0,
+		stopLoss:               0,
+		stopLossPercent:        .20,
+		profitMarginMin:        0,
+		profitMarginMinPercent: .10,
+		tradeSize:              .10,
+		requiredBuySignals:     2,
+		requiredSellSignals:    2})
+	buyAmount, quoteAmount := strategy.getTradeAmounts(chartService)
 	assert.Equal(t, 0.10, buyAmount)
 	assert.Equal(t, 5.025, quoteAmount)
 }
@@ -220,13 +212,12 @@ func (mcs *MockExchange) GetTradingFee() float64 {
 	return .025
 }
 
-func (mdao *MockAutoTradeDAO) GetLastTrade(autoTradeCoin dao.IAutoTradeCoin) *dao.Trade {
-	mdao.Called(autoTradeCoin)
-	trades := autoTradeCoin.GetTrades()
+func (mdao *MockChartDAO) GetLastTrade(chart dao.IChart) *dao.Trade {
+	mdao.Called(chart)
+	trades := chart.GetTrades()
 	return &trades[len(trades)-1]
 }
 
-func (mdao *MockAutoTradeDAO) Save(dao dao.IAutoTradeCoin) {}
-func (mdao *MockSignalLogDAO) Save(dao *dao.SignalLog)     {}
-func (mdao *MockProfitDAO) Save(dao *dao.Profit)           {}
-func (mdao *MockAutoTradeCoin) AddTrade(trade *dao.Trade)  {}
+func (mdao *MockChartDAO) Save(dao dao.IChart)    {}
+func (mdao *MockProfitDAO) Save(dao *dao.Profit)  {}
+func (mdao *MockChart) AddTrade(trade *dao.Trade) {}
