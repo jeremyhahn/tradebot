@@ -17,8 +17,7 @@ type TradeDAO interface {
 }
 
 type TradeDAOImpl struct {
-	ctx    *common.Context
-	Trades []Trade
+	ctx *common.Context
 	TradeDAO
 }
 
