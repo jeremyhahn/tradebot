@@ -5,7 +5,7 @@ import (
 )
 
 type AutoTradeService interface {
-	Trade()
+	EndWorldHunger()
 }
 
 type ChartService interface {

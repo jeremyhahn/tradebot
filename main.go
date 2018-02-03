@@ -37,7 +37,7 @@ func main() {
 	tradeService := service.NewTradeService(ctx, tradeDAO)
 	profitService := service.NewProfitService(ctx, profitDAO)
 	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService, profitService, tradeService)
-	autoTradeService.Trade()
+	autoTradeService.EndWorldHunger()
 
 	ws := webservice.NewWebServer(ctx, 8080, marketcapService, exchangeService)
 	go ws.Start()
