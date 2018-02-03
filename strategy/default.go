@@ -1,236 +1,241 @@
 package strategy
 
 import (
-	"encoding/json"
-	"time"
+	"errors"
+	"fmt"
+	"strconv"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/indicators"
 )
 
-type DefaultTradingStrategy struct {
-	Name          string
-	ctx           *common.Context
-	chartService  common.ChartService
-	tradeService  common.TradeService
-	profitService common.ProfitService
-	config        *DefaultTradingStrategyConfig
-	lastTrade     *common.Trade
-	Chart         chan common.ChartService
-	common.TradingStrategy
+type TradingStrategyParams struct {
+	CurrencyPair *common.CurrencyPair
+	Balances     []common.Coin
+	Indicators   map[string]common.FinancialIndicator
+	NewPrice     float64
+	LastTrade    *common.Trade
+	TradeFee     float64
+	Config       []string
 }
 
 type DefaultTradingStrategyConfig struct {
-	config                 *DefaultTradingStrategyConfig
-	tradeSize              float64
-	tax                    float64
-	profitMarginMin        float64
-	profitMarginMinPercent float64
-	stopLoss               float64
-	stopLossPercent        float64
-	requiredBuySignals     int
-	requiredSellSignals    int
+	Tax                    float64
+	TradeSize              float64
+	ProfitMarginMin        float64
+	ProfitMarginMinPercent float64
+	StopLoss               float64
+	StopLossPercent        float64
+	RequiredBuySignals     int
+	RequiredSellSignals    int
 }
 
-func NewDefaultTradingStrategy(ctx *common.Context, chartService common.ChartService,
-	tradeService common.TradeService, profitService common.ProfitService) common.TradingStrategy {
-	return &DefaultTradingStrategy{
-		Name:          "DefaultTradingStrategy",
-		Chart:         make(chan common.ChartService),
-		ctx:           ctx,
-		chartService:  chartService,
-		tradeService:  tradeService,
-		profitService: profitService,
-		config: &DefaultTradingStrategyConfig{
-			tax:                    .40,
-			stopLoss:               0,
-			stopLossPercent:        .20,
-			profitMarginMin:        0,
-			profitMarginMinPercent: .10,
-			tradeSize:              1,
-			requiredBuySignals:     2,
-			requiredSellSignals:    2}}
+type DefaultTradingStrategy struct {
+	name        string
+	params      *TradingStrategyParams
+	config      *DefaultTradingStrategyConfig
+	buySignals  int
+	sellSignals int
+	common.TradingStrategy
 }
 
-func CreateDefaultTradingStrategy(ctx *common.Context, chartService common.ChartService,
-	tradeService common.TradeService, profitService common.ProfitService,
-	config *DefaultTradingStrategyConfig) common.TradingStrategy {
-	return &DefaultTradingStrategy{
-		Name:          "DefaultTradingStrategy",
-		ctx:           ctx,
-		chartService:  chartService,
-		tradeService:  tradeService,
-		profitService: profitService,
-		config:        config}
-}
-
-func (strategy *DefaultTradingStrategy) OnPriceChange(chart common.ChartService) {
-
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.OnPriceChange] ChartService: %+v\n", chart)
-
-	buySignals, sellSignals := strategy.countSignals(chart.GetPrice())
-	strategy.lastTrade = strategy.tradeService.GetLastTrade(strategy.chartService.GetChart())
-
-	if buySignals == strategy.config.requiredBuySignals {
-		strategy.buy(chart)
-		return
+func CreateDefaultTradingStrategy(params *TradingStrategyParams) (common.TradingStrategy, error) {
+	expectedConfigCount := 8
+	var strategyConfig *DefaultTradingStrategyConfig
+	if len(params.Config) <= 0 {
+		strategyConfig = &DefaultTradingStrategyConfig{
+			Tax:                    .40,
+			TradeSize:              1,
+			ProfitMarginMin:        0,
+			ProfitMarginMinPercent: .10,
+			StopLoss:               0,
+			StopLossPercent:        .20,
+			RequiredBuySignals:     2,
+			RequiredSellSignals:    2}
+	} else if len(params.Config) == expectedConfigCount {
+		tax, _ := strconv.ParseFloat(params.Config[0], 64)
+		tradeSize, _ := strconv.ParseFloat(params.Config[1], 64)
+		profitMarginMin, _ := strconv.ParseFloat(params.Config[2], 64)
+		profitMarginMinPercent, _ := strconv.ParseFloat(params.Config[3], 64)
+		stopLoss, _ := strconv.ParseFloat(params.Config[4], 64)
+		stopLossPercent, _ := strconv.ParseFloat(params.Config[5], 64)
+		requiredBuySignals, _ := strconv.ParseInt(params.Config[6], 10, 64)
+		requiredSellSignals, _ := strconv.ParseInt(params.Config[7], 10, 64)
+		strategyConfig = &DefaultTradingStrategyConfig{
+			Tax:                    tax,
+			TradeSize:              tradeSize,
+			ProfitMarginMin:        profitMarginMin,
+			ProfitMarginMinPercent: profitMarginMinPercent,
+			StopLoss:               stopLoss,
+			StopLossPercent:        stopLossPercent,
+			RequiredBuySignals:     int(requiredBuySignals),
+			RequiredSellSignals:    int(requiredSellSignals)}
+	} else {
+		errmsg := fmt.Sprintf("Invalid configuration. Expected %d items, received %d.", len(params.Config), expectedConfigCount)
+		return nil, errors.New(errmsg)
 	}
-
-	if sellSignals == strategy.config.requiredSellSignals {
-		strategy.sell(chart)
-		return
+	strategy := &DefaultTradingStrategy{
+		name:   "DefaultTradingStrategy",
+		params: params,
+		config: strategyConfig}
+	for _, name := range strategy.GetRequiredIndicators() {
+		if _, ok := params.Indicators[name]; !ok {
+			return nil, errors.New(fmt.Sprintf("Strategy requires indicator: %s", name))
+		}
 	}
-
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.OnPeriodChange] buySignals=%d, sellSignals=%d", buySignals, sellSignals)
-	return
+	return strategy, nil
 }
 
 func (strategy *DefaultTradingStrategy) GetRequiredIndicators() []string {
-	return []string{"RSI", "BollingerBands", "MACD"}
+	return []string{"RelativeStrengthIndex", "BollingerBands", "MovingAverageConvergenceDivergence"}
 }
 
-func (strategy *DefaultTradingStrategy) countSignals(price float64) (int, int) {
-	var buySignals int
-	var sellSignals int
-	rsi := strategy.chartService.GetIndicator("RSI").(*indicators.RelativeStrengthIndex)
-	rsiValue := rsi.Calculate(price)
-	if rsi.IsOverBought(rsiValue) {
-		sellSignals++
-	} else if rsi.IsOverSold(rsiValue) {
-		buySignals++
+func (strategy *DefaultTradingStrategy) GetBuySellSignals() (bool, bool, error) {
+	var buy, sell bool
+	strategy.countSignals()
+	if strategy.buySignals == strategy.config.RequiredBuySignals {
+		buy = true
+		err := strategy.buy()
+		if err != nil {
+			return buy, sell, err
+		}
 	}
-	bollinger := strategy.chartService.GetIndicator("BBands").(*indicators.BollingerBands)
-	upper, _, lower := bollinger.Calculate(price)
-	if price > upper {
-		sellSignals++
-	} else if price < lower {
-		buySignals++
+	if strategy.sellSignals == strategy.config.RequiredSellSignals {
+		sell = true
+		err := strategy.sell()
+		if err != nil {
+			return buy, sell, err
+		}
 	}
-	return buySignals, sellSignals
+	return buy, sell, nil
 }
 
-func (strategy *DefaultTradingStrategy) calculateFeeAndTax(price, tradingFee float64) (float64, float64) {
+func (strategy *DefaultTradingStrategy) CalculateFeeAndTax(price float64) (float64, float64) {
 	var tax float64
-	diff := price - strategy.lastTrade.Price
-	if strategy.config.tax > 0 && diff > 0 {
-		tax = diff * strategy.config.tax
+	diff := price - strategy.params.LastTrade.Price
+	if strategy.config.Tax > 0 && diff > 0 {
+		tax = diff * strategy.config.Tax
 	}
-	fee := price * tradingFee
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.calculateFeeAndTax] lastTradePrice: %f, price: %f, fee: %f,tax: %f",
-		strategy.lastTrade.Price, price, fee, tax)
+	fee := price * strategy.params.TradeFee
 	return fee, tax
 }
 
-func (strategy *DefaultTradingStrategy) minSellPrice(tradingFee float64) float64 {
-	var price, profitMargin, fee, tax float64
-	if strategy.config.profitMarginMinPercent > 0 {
-		profitMargin = strategy.lastTrade.Price * strategy.config.profitMarginMinPercent
-	} else {
-		profitMargin = strategy.config.profitMarginMin
-	}
-	price = strategy.lastTrade.Price + profitMargin
-	fee, tax = strategy.calculateFeeAndTax(price, tradingFee)
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.minSellPrice] lastTradePrice: %f, price: %f, fee: %f,tax: %f",
-		strategy.lastTrade.Price, price, fee, tax)
-	return price + fee + tax
-}
-
-func (strategy *DefaultTradingStrategy) getTradeAmounts(chart common.ChartService) (float64, float64) {
+func (strategy *DefaultTradingStrategy) GetTradeAmounts() (float64, float64) {
 	var baseAmount, quoteAmount float64
-	currencyPair := chart.GetCurrencyPair()
-	coins, _ := chart.GetExchange().GetBalances()
-	for _, coin := range coins {
-		if coin.Currency == currencyPair.Base {
-			if strategy.config.tradeSize > 0 {
-				baseAmount = coin.Available * strategy.config.tradeSize
-			} else {
-				baseAmount = coin.Available
+	if strategy.config.TradeSize > 1 {
+		strategy.config.TradeSize = 1
+	}
+	if strategy.config.TradeSize < 0 {
+		strategy.config.TradeSize = 0
+	}
+	for _, coin := range strategy.params.Balances {
+		if coin.Currency == strategy.params.CurrencyPair.Base {
+			if strategy.config.TradeSize > 0 {
+				baseAmount = coin.Available * strategy.config.TradeSize
 			}
 		}
-		if coin.Currency == currencyPair.Quote {
-			if strategy.config.tradeSize > 0 {
-				quoteAmount = coin.Available * strategy.config.tradeSize
-			} else {
-				quoteAmount = coin.Available
+		if coin.Currency == strategy.params.CurrencyPair.Quote {
+			if strategy.config.TradeSize > 0 {
+				quoteAmount = coin.Available * strategy.config.TradeSize
 			}
 		}
 		if baseAmount > 0 && quoteAmount > 0 {
 			break
 		}
 	}
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.getTradeAmounts] Trading funds - baseAmount: %f, quoteAmount: %f",
-		baseAmount, quoteAmount)
 	return baseAmount, quoteAmount
 }
 
-func (strategy *DefaultTradingStrategy) buy(chart common.ChartService) {
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.buy] $$$ BUY SIGNAL $$$")
-	currencyPair := chart.GetCurrencyPair()
-	baseAmount, quoteAmount := strategy.getTradeAmounts(chart)
+func (strategy *DefaultTradingStrategy) minSellPrice() float64 {
+	var profitMargin float64
+	if strategy.config.ProfitMarginMinPercent > 0 {
+		profitMargin = strategy.params.LastTrade.Price * strategy.config.ProfitMarginMinPercent
+	} else {
+		profitMargin = strategy.config.ProfitMarginMin
+	}
+	price := strategy.params.LastTrade.Price + profitMargin
+	fee, tax := strategy.CalculateFeeAndTax(price)
+	return price + fee + tax
+}
+
+func (strategy *DefaultTradingStrategy) countSignals() error {
+	rsi := strategy.params.Indicators["RelativeStrengthIndex"].(indicators.RelativeStrengthIndex)
+	if rsi == nil {
+		return errors.New("RelativeStrengthIndex indicator required")
+	}
+	rsiValue := rsi.Calculate(strategy.params.NewPrice)
+	if rsi.IsOverBought(rsiValue) {
+		strategy.sellSignals++
+	} else if rsi.IsOverSold(rsiValue) {
+		strategy.buySignals++
+	}
+	bollinger := strategy.params.Indicators["BollingerBands"].(indicators.BollingerBands)
+	if rsi == nil {
+		return errors.New("BollingerBands indicator required")
+	}
+	upper, _, lower := bollinger.Calculate(strategy.params.NewPrice)
+	if strategy.params.NewPrice > upper {
+		strategy.sellSignals++
+	} else if strategy.params.NewPrice < lower {
+		strategy.buySignals++
+	}
+	//macd := strategy.params.Indicators["MovingAverageConvergenceDivergence"].(indicators.MovingAverageConvergenceDivergence)
+	//value, signal, histogram := macd.Calculate(strategy.params.NewPrice)
+	return nil
+}
+
+func (strategy *DefaultTradingStrategy) buy() error {
+	_, quoteAmount := strategy.GetTradeAmounts()
 	if quoteAmount <= 0 {
-		strategy.ctx.Logger.Errorf("[DefaultTradingStrategy.buy] Aborting. Out of %s funding!", currencyPair.Quote)
-		return
+		return errors.New(fmt.Sprintf("Out of %s funding!", strategy.params.CurrencyPair.Quote))
 	}
-	if strategy.lastTrade.Type == "buy" {
-		strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.buy] Aborting. Already in a buy position.")
-		return
-	}
-	strategy.tradeService.Save(&common.Trade{
-		UserID:    strategy.ctx.User.Id,
-		Exchange:  strategy.chartService.GetExchange().GetName(),
-		Base:      currencyPair.Base,
-		Quote:     currencyPair.Quote,
-		Date:      time.Now(),
-		Type:      "buy",
-		Price:     chart.GetPrice(),
-		Amount:    baseAmount,
-		ChartData: chart.ToJson()})
+	return nil
 }
 
-func (strategy *DefaultTradingStrategy) sell(chart common.ChartService) {
-	strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.sell] $$$ SELL SIGNAL $$$")
-	price := chart.GetPrice()
-	baseAmount, _ := strategy.getTradeAmounts(chart)
-	if strategy.lastTrade.Type == "sell" {
-		strategy.ctx.Logger.Debugf("[DefaultTradingStrategy.sell] Aborting. Buy position required.")
-		return
+func (strategy *DefaultTradingStrategy) sell() error {
+	if strategy.params.LastTrade.Type == "sell" {
+		return errors.New("Aborting sale. Buy position required")
 	}
-	tradeFee := chart.GetExchange().GetTradingFee()
-	minPrice := strategy.minSellPrice(tradeFee)
-	if price <= minPrice {
-		strategy.ctx.Logger.Debugf(
-			"[DefaultTradingStrategy.sell] Aborting. Does not meet minimum trade requirements. Price=%f, MinPrice=%f",
-			price, minPrice)
-		return
+	minPrice := strategy.minSellPrice()
+	if strategy.params.NewPrice <= minPrice {
+		return errors.New(fmt.Sprintf("Aborting sale. Doesn't meet minimum trade requirements. price=%f, minRequired=%f",
+			strategy.params.NewPrice, minPrice))
 	}
-	fee, tax := strategy.calculateFeeAndTax(price, tradeFee)
-	trade := &common.Trade{
-		UserID:    strategy.ctx.User.Id,
-		Exchange:  chart.GetExchange().GetName(),
-		Base:      chart.GetCurrencyPair().Base,
-		Quote:     chart.GetCurrencyPair().Quote,
-		Date:      time.Now(),
-		Type:      "sell",
-		Price:     price,
-		Amount:    baseAmount,
-		ChartData: chart.ToJson()}
-	strategy.tradeService.Save(trade)
-
-	strategy.profitService.Save(&common.Profit{
-		UserID:   strategy.ctx.User.Id,
-		TradeID:  trade.ID,
-		Quantity: baseAmount,
-		Bought:   strategy.lastTrade.Price,
-		Sold:     price,
-		Fee:      fee,
-		Tax:      tax,
-		Total:    price - strategy.lastTrade.Price - fee - tax})
+	return nil
 }
 
-func (strategy *DefaultTradingStrategy) chartJSON(data *common.ChartData) string {
-	jsonChart, err := json.Marshal(data)
-	if err != nil {
-		strategy.ctx.Logger.Errorf("[DefaultTradingStrategy.chartJSON] Error marshalling chart state: %s", err.Error())
-	}
-	return string(jsonChart)
+func (config *DefaultTradingStrategyConfig) ToSlice() []string {
+	return []string{
+		fmt.Sprintf("%f", config.Tax),
+		fmt.Sprintf("%f", config.TradeSize),
+		fmt.Sprintf("%f", config.ProfitMarginMin),
+		fmt.Sprintf("%f", config.ProfitMarginMinPercent),
+		fmt.Sprintf("%f", config.StopLoss),
+		fmt.Sprintf("%f", config.StopLossPercent),
+		fmt.Sprintf("%d", config.RequiredBuySignals),
+		fmt.Sprintf("%d", config.RequiredSellSignals)}
 }
+
+/*
+func (tsp *TradingStrategyParams) FromString(config string) []string {
+	var _config []string
+	pieces := strings.Split(config, ",")
+	for _, p := range pieces {
+		_config = append(_config, p)
+	}
+	return _config
+}*/
+
+/*
+func (config *DefaultTradingStrategyConfig) ToString() string {
+	return fmt.Sprintf("%f,%f,%f,%f,%f,%f,%d,%d",
+		config.Tax,
+		config.TradeSize,
+		config.ProfitMarginMin,
+		config.ProfitMarginMinPercent,
+		config.StopLoss,
+		config.StopLossPercent,
+		config.RequiredBuySignals,
+		config.RequiredSellSignals)
+}
+*/

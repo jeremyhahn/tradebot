@@ -39,8 +39,10 @@ type TradeService interface {
 }
 
 type TradingStrategy interface {
-	OnPriceChange(chart ChartService)
 	GetRequiredIndicators() []string
+	GetBuySellSignals() (bool, bool, error)
+	CalculateFeeAndTax(price float64) (float64, float64)
+	GetTradeAmounts() (float64, float64)
 }
 
 type Trade struct {
@@ -69,16 +71,6 @@ type ChartService interface {
 	OnPriceChange(newPrice *PriceChange)
 	OnPeriodChange(candle *Candlestick)
 	ToJson() string
-}
-
-type Chart struct {
-	ID         uint        `json:"id"`
-	Base       string      `json:"base"`
-	Quote      string      `json:"quote"`
-	Exchange   string      `json:"exchange"`
-	Period     int         `json:"period"`
-	Indicators []Indicator `json:"indicators"`
-	Trades     []Trade     `json:"trades"`
 }
 
 type Order struct {
@@ -233,14 +225,6 @@ type Exchange interface {
 	GetExchange() CoinExchange
 	GetNetWorth() float64
 	GetTradingFee() float64
-}
-
-type RSI interface {
-	Calculate(price float64) float64
-}
-
-type BBands interface {
-	Calculate(price float64) (float64, float64, float64)
 }
 
 type FinancialIndicator interface {

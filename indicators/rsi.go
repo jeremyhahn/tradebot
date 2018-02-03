@@ -8,13 +8,21 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 )
 
+type RelativeStrengthIndex interface {
+	IsOverSold(rsiValue float64) bool
+	IsOverBought(rsiValue float64) bool
+	GetValue() float64
+	Calculate(price float64) float64
+	common.FinancialIndicator
+}
+
 type RelativeStrengthIndexParams struct {
 	Period     int64
 	OverBought float64
 	OverSold   float64
 }
 
-type RelativeStrengthIndex struct {
+type RelativeStrengthIndexImpl struct {
 	params      *RelativeStrengthIndexParams
 	name        string
 	displayName string
@@ -25,15 +33,15 @@ type RelativeStrengthIndex struct {
 	avgU        float64
 	avgD        float64
 	lastPrice   float64
-	common.FinancialIndicator
+	RelativeStrengthIndex
 }
 
-func NewRelativeStrengthIndex(candles []common.Candlestick) *RelativeStrengthIndex {
+func NewRelativeStrengthIndex(candles []common.Candlestick) RelativeStrengthIndex {
 	params := []string{fmt.Sprintf("%d", len(candles)), "70", "30"}
 	return CreateRelativeStrengthIndex(candles, params)
 }
 
-func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) *RelativeStrengthIndex {
+func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) RelativeStrengthIndex {
 	period, _ := strconv.ParseInt(params[0], 10, 64)
 	overbought, _ := strconv.ParseFloat(params[1], 64)
 	oversold, _ := strconv.ParseFloat(params[2], 64)
@@ -43,7 +51,7 @@ func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) 
 	if candleLen > 0 {
 		lastPrice = candles[candleLen-1].Close
 	}
-	return &RelativeStrengthIndex{
+	return &RelativeStrengthIndexImpl{
 		name:        "RelativeStrengthIndex",
 		displayName: "Relative Strength Index (RSI)",
 		ma:          ma,
@@ -59,7 +67,7 @@ func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) 
 			OverSold:   oversold}}
 }
 
-func (rsi *RelativeStrengthIndex) Calculate(price float64) float64 {
+func (rsi *RelativeStrengthIndexImpl) Calculate(price float64) float64 {
 	var oscillator float64
 	curU := rsi.u
 	curD := rsi.d
@@ -88,7 +96,7 @@ func (rsi *RelativeStrengthIndex) Calculate(price float64) float64 {
 	return oscillator
 }
 
-func (rsi *RelativeStrengthIndex) OnPeriodChange(candle *common.Candlestick) {
+func (rsi *RelativeStrengthIndexImpl) OnPeriodChange(candle *common.Candlestick) {
 	fmt.Println("[RSI] OnPeriodChange: ", candle.Date, candle.Close)
 	rsi.ma.Add(candle)
 	u, d := rsi.ma.GetGainsAndLosses()
@@ -114,33 +122,33 @@ func (rsi *RelativeStrengthIndex) OnPeriodChange(candle *common.Candlestick) {
 	rsi.lastPrice = candle.Close
 }
 
-func (rsi *RelativeStrengthIndex) GetName() string {
+func (rsi *RelativeStrengthIndexImpl) GetName() string {
 	return rsi.name
 }
 
-func (rsi *RelativeStrengthIndex) GetDisplayName() string {
+func (rsi *RelativeStrengthIndexImpl) GetDisplayName() string {
 	return rsi.displayName
 }
 
-func (rsi *RelativeStrengthIndex) GetDefaultParameters() []string {
+func (rsi *RelativeStrengthIndexImpl) GetDefaultParameters() []string {
 	return []string{"14", "70", "30"}
 }
 
-func (rsi *RelativeStrengthIndex) GetParameters() []string {
+func (rsi *RelativeStrengthIndexImpl) GetParameters() []string {
 	return []string{
 		fmt.Sprintf("%d", rsi.params.Period),
 		fmt.Sprintf("%f", rsi.params.OverBought),
 		fmt.Sprintf("%f", rsi.params.OverSold)}
 }
 
-func (rsi *RelativeStrengthIndex) GetValue() float64 {
+func (rsi *RelativeStrengthIndexImpl) GetValue() float64 {
 	return rsi.oscillator
 }
 
-func (rsi *RelativeStrengthIndex) IsOverSold(rsiValue float64) bool {
+func (rsi *RelativeStrengthIndexImpl) IsOverSold(rsiValue float64) bool {
 	return rsiValue < rsi.params.OverSold
 }
 
-func (rsi *RelativeStrengthIndex) IsOverBought(rsiValue float64) bool {
+func (rsi *RelativeStrengthIndexImpl) IsOverBought(rsiValue float64) bool {
 	return rsiValue > rsi.params.OverBought
 }

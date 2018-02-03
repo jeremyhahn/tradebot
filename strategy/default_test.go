@@ -1,223 +1,238 @@
+// +build unit
+
 package strategy
 
 import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/indicators"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-type MockChartService struct {
-	common.ChartService
+type MockRelativeStrengthIndex struct {
+	indicators.RelativeStrengthIndex
 	mock.Mock
 }
 
-type MockExchange struct {
-	common.Exchange
+type MockBollingerBands struct {
+	indicators.BollingerBands
 	mock.Mock
 }
 
-type MockProfitDAO struct {
-	dao.ProfitDAO
+type MockMovingAverageConvergenceDivergence struct {
+	indicators.MovingAverageConvergenceDivergence
 	mock.Mock
 }
 
-type MockChartDAO struct {
-	dao.ChartDAO
-	mock.Mock
+func TestDefaultTradingStrategy_DefaultConfig(t *testing.T) {
+	helper := &test.StrategyTestHelper{}
+	strategyIndicators := map[string]common.FinancialIndicator{
+		"RelativeStrengthIndex":              new(MockRelativeStrengthIndex),
+		"BollingerBands":                     new(MockBollingerBands),
+		"MovingAverageConvergenceDivergence": new(MockMovingAverageConvergenceDivergence)}
+	params := &TradingStrategyParams{
+		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
+		Balances:     helper.CreateBalances(),
+		Indicators:   strategyIndicators,
+		NewPrice:     11000,
+		LastTrade:    helper.CreateLastTrade(),
+		TradeFee:     .025}
+
+	s, err := CreateDefaultTradingStrategy(params)
+	strategy := s.(*DefaultTradingStrategy)
+	assert.Equal(t, nil, err)
+
+	requiredIndicators := strategy.GetRequiredIndicators()
+	assert.Equal(t, "RelativeStrengthIndex", requiredIndicators[0])
+	assert.Equal(t, "BollingerBands", requiredIndicators[1])
+	assert.Equal(t, "MovingAverageConvergenceDivergence", requiredIndicators[2])
+
+	buy, sell, err := strategy.GetBuySellSignals()
+	assert.Equal(t, buy, false)
+	assert.Equal(t, sell, false)
+	assert.Equal(t, err, nil)
 }
 
-type MockChart struct {
-	dao.IChart
-	mock.Mock
+func TestDefaultTradingStrategy_CustomTradeSize_Percentage(t *testing.T) {
+	helper := &test.StrategyTestHelper{}
+	strategyIndicators := map[string]common.FinancialIndicator{
+		"RelativeStrengthIndex":              new(MockRelativeStrengthIndex),
+		"BollingerBands":                     new(MockBollingerBands),
+		"MovingAverageConvergenceDivergence": new(MockMovingAverageConvergenceDivergence)}
+	config := &DefaultTradingStrategyConfig{
+		Tax:                    .40,
+		StopLoss:               0,
+		StopLossPercent:        .20,
+		ProfitMarginMin:        0,
+		ProfitMarginMinPercent: .10,
+		TradeSize:              .1,
+		RequiredBuySignals:     2,
+		RequiredSellSignals:    2}
+	params := &TradingStrategyParams{
+		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
+		Balances:     helper.CreateBalances(),
+		NewPrice:     11000,
+		Indicators:   strategyIndicators,
+		LastTrade:    helper.CreateLastTrade(),
+		TradeFee:     .025,
+		Config:       config.ToSlice()}
+
+	s, err := CreateDefaultTradingStrategy(params)
+	assert.Equal(t, nil, err)
+	strategy := s.(*DefaultTradingStrategy)
+
+	base, quote := strategy.GetTradeAmounts()
+	assert.Equal(t, base, 0.2)
+	assert.Equal(t, quote, 2000.0)
 }
 
-func TestDefaultTradingStrategy_SignalCount(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	chart := new(MockChart)
-	chartDAO := new(MockChartDAO)
-	strategy := NewDefaultTradingStrategy(ctx, chart, chartDAO, new(MockProfitDAO))
-	buySignals, sellSignals := strategy.countSignals(&common.ChartData{
-		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
-		Exchange:            "Test",
-		Price:               13000,
-		RSILive:             50,
-		BollingerUpperLive:  15000,
-		BollingerMiddleLive: 13000,
-		BollingerLowerLive:  11000})
-	assert.Equal(t, buySignals, 0)
-	assert.Equal(t, sellSignals, 0)
+func TestDefaultTradingStrategy_CustomTradeSize_AvailableBalance(t *testing.T) {
+	helper := &test.StrategyTestHelper{}
+	strategyIndicators := map[string]common.FinancialIndicator{
+		"RelativeStrengthIndex":              new(MockRelativeStrengthIndex),
+		"BollingerBands":                     new(MockBollingerBands),
+		"MovingAverageConvergenceDivergence": new(MockMovingAverageConvergenceDivergence)}
+	config := &DefaultTradingStrategyConfig{
+		Tax:                    .40,
+		StopLoss:               0,
+		StopLossPercent:        .20,
+		ProfitMarginMin:        0,
+		ProfitMarginMinPercent: .10,
+		TradeSize:              1,
+		RequiredBuySignals:     2,
+		RequiredSellSignals:    2}
+	params := &TradingStrategyParams{
+		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
+		Balances:     helper.CreateBalances(),
+		NewPrice:     11000,
+		Indicators:   strategyIndicators,
+		LastTrade:    helper.CreateLastTrade(),
+		TradeFee:     .025,
+		Config:       config.ToSlice()}
 
-	buySignals, sellSignals = strategy.countSignals(&common.ChartData{
-		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
-		Exchange:            "Test",
-		Price:               12000,
-		RSILive:             29,
-		BollingerUpperLive:  15000,
-		BollingerMiddleLive: 13000,
-		BollingerLowerLive:  11000})
-	assert.Equal(t, buySignals, 1)
-	assert.Equal(t, sellSignals, 0)
+	s, err := CreateDefaultTradingStrategy(params)
+	strategy := s.(*DefaultTradingStrategy)
+	assert.Equal(t, nil, err)
 
-	buySignals, sellSignals = strategy.countSignals(&common.ChartData{
-		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
-		Exchange:            "Test",
-		Price:               10000,
-		RSILive:             29,
-		BollingerUpperLive:  15000,
-		BollingerMiddleLive: 13000,
-		BollingerLowerLive:  11000})
-	assert.Equal(t, buySignals, 2)
-	assert.Equal(t, sellSignals, 0)
-
-	buySignals, sellSignals = strategy.countSignals(&common.ChartData{
-		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
-		Exchange:            "Test",
-		Price:               15001,
-		RSILive:             50,
-		BollingerUpperLive:  15000,
-		BollingerMiddleLive: 13000,
-		BollingerLowerLive:  11000})
-	assert.Equal(t, buySignals, 0)
-	assert.Equal(t, sellSignals, 1)
-
-	buySignals, sellSignals = strategy.countSignals(&common.ChartData{
-		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
-		Exchange:            "Test",
-		Price:               15001,
-		RSILive:             80,
-		BollingerUpperLive:  15000,
-		BollingerMiddleLive: 13000,
-		BollingerLowerLive:  11000})
-	assert.Equal(t, buySignals, 0)
-	assert.Equal(t, sellSignals, 2)
-
-	buySignals, sellSignals = strategy.countSignals(&common.ChartData{
-		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
-		Exchange:            "Test",
-		Price:               15001,
-		RSILive:             29,
-		BollingerUpperLive:  15000,
-		BollingerMiddleLive: 13000,
-		BollingerLowerLive:  11000})
-	assert.Equal(t, buySignals, 1)
-	assert.Equal(t, sellSignals, 1)
-
-	buySignals, sellSignals = strategy.countSignals(&common.ChartData{
-		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
-		Exchange:            "Test",
-		Price:               10001,
-		RSILive:             80,
-		BollingerUpperLive:  15000,
-		BollingerMiddleLive: 13000,
-		BollingerLowerLive:  11000})
-	assert.Equal(t, buySignals, 1)
-	assert.Equal(t, sellSignals, 1)
+	base, quote := strategy.GetTradeAmounts()
+	assert.Equal(t, base, 2.0)
+	assert.Equal(t, quote, 20000.0)
 }
 
-func TestDefaultTradingStrategy_getTradeAmounts_WithoutTradeSizePercent(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	chartService := new(MockChartService)
-	chart := new(MockChart)
-	chartDAO := new(MockChartDAO)
-	strategy := NewDefaultTradingStrategy(ctx, chart, chartDAO, new(MockProfitDAO))
-	buyAmount, quoteAmount := strategy.getTradeAmounts(chartService)
-	assert.Equal(t, 1.0, buyAmount)
-	assert.Equal(t, 50.25, quoteAmount)
+func TestDefaultTradingStrategy_CustomTradeSize_Zero(t *testing.T) {
+	helper := &test.StrategyTestHelper{}
+	strategyIndicators := map[string]common.FinancialIndicator{
+		"RelativeStrengthIndex":              new(MockRelativeStrengthIndex),
+		"BollingerBands":                     new(MockBollingerBands),
+		"MovingAverageConvergenceDivergence": new(MockMovingAverageConvergenceDivergence)}
+	config := &DefaultTradingStrategyConfig{
+		Tax:                    .40,
+		StopLoss:               0,
+		StopLossPercent:        .20,
+		ProfitMarginMin:        0,
+		ProfitMarginMinPercent: .10,
+		TradeSize:              0,
+		RequiredBuySignals:     2,
+		RequiredSellSignals:    2}
+	params := &TradingStrategyParams{
+		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
+		Balances:     helper.CreateBalances(),
+		NewPrice:     11000,
+		Indicators:   strategyIndicators,
+		LastTrade:    helper.CreateLastTrade(),
+		TradeFee:     .025,
+		Config:       config.ToSlice()}
+
+	s, err := CreateDefaultTradingStrategy(params)
+	strategy := s.(*DefaultTradingStrategy)
+	assert.Equal(t, nil, err)
+
+	base, quote := strategy.GetTradeAmounts()
+	assert.Equal(t, base, 0.0)
+	assert.Equal(t, quote, 0.0)
 }
 
-func TestDefaultTradingStrategy_getTradeAmounts_WithTradeSizePercent(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	chartService := new(MockChartService)
-	chart := new(MockChart)
-	chartDAO := new(MockChartDAO)
-	strategy := CreateDefaultTradingStrategy(ctx, chart, chartDAO, new(MockProfitDAO), &DefaultTradingStrategyConfig{
-		rsiOverSold:            30,
-		rsiOverBought:          70,
-		tax:                    0,
-		stopLoss:               0,
-		stopLossPercent:        .20,
-		profitMarginMin:        0,
-		profitMarginMinPercent: .10,
-		tradeSize:              .10,
-		requiredBuySignals:     2,
-		requiredSellSignals:    2})
-	buyAmount, quoteAmount := strategy.getTradeAmounts(chartService)
-	assert.Equal(t, 0.10, buyAmount)
-	assert.Equal(t, 5.025, quoteAmount)
+func TestDefaultTradingStrategy_CustomTradeSize_GreaterThanOne(t *testing.T) {
+	helper := &test.StrategyTestHelper{}
+	strategyIndicators := map[string]common.FinancialIndicator{
+		"RelativeStrengthIndex":              new(MockRelativeStrengthIndex),
+		"BollingerBands":                     new(MockBollingerBands),
+		"MovingAverageConvergenceDivergence": new(MockMovingAverageConvergenceDivergence)}
+	config := &DefaultTradingStrategyConfig{
+		Tax:                    .40,
+		StopLoss:               0,
+		StopLossPercent:        .20,
+		ProfitMarginMin:        0,
+		ProfitMarginMinPercent: .10,
+		TradeSize:              2,
+		RequiredBuySignals:     2,
+		RequiredSellSignals:    2}
+	params := &TradingStrategyParams{
+		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
+		Balances:     helper.CreateBalances(),
+		NewPrice:     11000,
+		Indicators:   strategyIndicators,
+		LastTrade:    helper.CreateLastTrade(),
+		TradeFee:     .025,
+		Config:       config.ToSlice()}
+
+	s, err := CreateDefaultTradingStrategy(params)
+	strategy := s.(*DefaultTradingStrategy)
+	assert.Equal(t, nil, err)
+
+	base, quote := strategy.GetTradeAmounts()
+	assert.Equal(t, base, 2.0)
+	assert.Equal(t, quote, 20000.0)
 }
 
-// -------------------------------------------------------------------------
-// Helpers
-// -------------------------------------------------------------------------
+func TestDefaultTradingStrategy_CustomTradeSize_LessThanZero(t *testing.T) {
+	helper := &test.StrategyTestHelper{}
+	strategyIndicators := map[string]common.FinancialIndicator{
+		"RelativeStrengthIndex":              new(MockRelativeStrengthIndex),
+		"BollingerBands":                     new(MockBollingerBands),
+		"MovingAverageConvergenceDivergence": new(MockMovingAverageConvergenceDivergence)}
+	config := &DefaultTradingStrategyConfig{
+		Tax:                    .40,
+		StopLoss:               0,
+		StopLossPercent:        .20,
+		ProfitMarginMin:        0,
+		ProfitMarginMinPercent: .10,
+		TradeSize:              -2,
+		RequiredBuySignals:     2,
+		RequiredSellSignals:    2}
+	params := &TradingStrategyParams{
+		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
+		Balances:     helper.CreateBalances(),
+		NewPrice:     11000,
+		Indicators:   strategyIndicators,
+		LastTrade:    helper.CreateLastTrade(),
+		TradeFee:     .025,
+		Config:       config.ToSlice()}
 
-func createChartData() *common.ChartData {
-	return &common.ChartData{
-		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
-		Exchange:            "Test",
-		Price:               10000,
-		RSILive:             29,
-		BollingerUpperLive:  15000,
-		BollingerMiddleLive: 13000,
-		BollingerLowerLive:  11000}
+	s, err := CreateDefaultTradingStrategy(params)
+	strategy := s.(*DefaultTradingStrategy)
+	assert.Equal(t, nil, err)
+
+	base, quote := strategy.GetTradeAmounts()
+	assert.Equal(t, base, 0.0)
+	assert.Equal(t, quote, 0.0)
 }
 
-func createCurrencyPair() common.CurrencyPair {
-	return common.CurrencyPair{
-		Base:          "BTC",
-		Quote:         "USD",
-		LocalCurrency: "USD"}
+func (mrsi *MockRelativeStrengthIndex) Calculate(price float64) float64 {
+	return 31.0
 }
 
-func (mcs *MockChartService) GetData() *common.ChartData {
-	return &common.ChartData{
-		CurrencyPair:        common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
-		Exchange:            "Test",
-		Price:               10000,
-		RSILive:             29,
-		BollingerUpperLive:  15000,
-		BollingerMiddleLive: 13000,
-		BollingerLowerLive:  11000}
+func (mrsi *MockRelativeStrengthIndex) IsOverBought(price float64) bool {
+	return false
 }
 
-func (mcs *MockChartService) GetCurrencyPair() common.CurrencyPair {
-	return createCurrencyPair()
+func (mrsi *MockRelativeStrengthIndex) IsOverSold(price float64) bool {
+	return false
 }
 
-func (cs *MockChartService) GetExchange() common.Exchange {
-	return new(MockExchange)
+func (mrsi *MockBollingerBands) Calculate(price float64) (float64, float64, float64) {
+	return 15000.0, 12500.0, 10000.0
 }
-
-func (mcs *MockExchange) GetBalances() ([]common.Coin, float64) {
-	btc := 1.0
-	usd := 50.25
-	ltc := 75.50
-	var coins []common.Coin
-	coins = append(coins, common.Coin{
-		Currency:  "USD",
-		Available: usd})
-	coins = append(coins, common.Coin{
-		Currency:  "BTC",
-		Available: btc})
-	coins = append(coins, common.Coin{
-		Currency:  "LTC",
-		Available: ltc})
-	return coins, btc + usd + ltc
-}
-
-func (mcs *MockExchange) GetTradingFee() float64 {
-	return .025
-}
-
-func (mdao *MockChartDAO) GetLastTrade(chart dao.IChart) *dao.Trade {
-	mdao.Called(chart)
-	trades := chart.GetTrades()
-	return &trades[len(trades)-1]
-}
-
-func (mdao *MockChartDAO) Save(dao dao.IChart)    {}
-func (mdao *MockProfitDAO) Save(dao *dao.Profit)  {}
-func (mdao *MockChart) AddTrade(trade *dao.Trade) {}

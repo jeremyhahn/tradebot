@@ -24,7 +24,7 @@ func NewAutoTradeService(ctx *common.Context, exchangeService ExchangeService, c
 
 	var chartServices []common.ChartService
 	for _, chart := range chartDAO.Find(ctx.User) {
-		ctx.Logger.Debugf("[NewTradeService] Loading Chart currency pair: %s-%s\n", chart.GetBase(), chart.GetQuote())
+		ctx.Logger.Debugf("[NewAutoTradeService] Loading chart currency pair: %s-%s\n", chart.GetBase(), chart.GetQuote())
 		currencyPair := &common.CurrencyPair{
 			Base:          chart.GetBase(),
 			Quote:         chart.GetQuote(),
@@ -32,7 +32,7 @@ func NewAutoTradeService(ctx *common.Context, exchangeService ExchangeService, c
 		exchange := exchangeService.NewExchange(ctx.User, chart.GetExchangeName(), currencyPair)
 		chartService := NewChartService(ctx, chartDAO, &chart, exchange)
 
-		ctx.Logger.Debugf("[NewTradeService] ChartService: %+v\n", chartService)
+		ctx.Logger.Debugf("[NewAutoTradeService] ChartService: %+v\n", chartService)
 		chartServices = append(chartServices, chartService)
 	}
 	return &AutoTradeServiceImpl{
@@ -42,9 +42,13 @@ func NewAutoTradeService(ctx *common.Context, exchangeService ExchangeService, c
 		profitService: profitService}
 }
 
-func (ts *AutoTradeServiceImpl) Trade() {
+func (ats *AutoTradeServiceImpl) Trade() {
 	for _, chartService := range ts.chartServices {
-		strategy := strategy.NewDefaultTradingStrategy(ts.ctx, chartService, ts.tradeService, ts.profitService)
-		chartService.Stream(strategy.OnPriceChange)
+		strategy := strategy.NewDefaultTradingStrategy(ats.ctx, chartService, ats.tradeService, ats.profitService)
+		chartService.Stream(ats.ChartTick(chartService))
 	}
+}
+
+func (ats *AutoTradeServiceImpl) ChartTick(chartService common.ChartService) {
+	strategy.OnPriceChange(chartService)
 }

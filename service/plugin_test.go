@@ -10,7 +10,7 @@ import (
 
 func TestPluginService_Indicator(t *testing.T) {
 	ctx := test.NewUnitTestContext()
-	pluginService := NewPluginService(ctx, "../plugins", INDICATOR_PLUGIN)
+	pluginService := CreatePluginService(ctx, "../plugins", INDICATOR_PLUGIN)
 	constructor, err := pluginService.GetIndicator("ExampleIndicator.so")
 	if err != nil {
 		assert.Fail(t, err.Error())
