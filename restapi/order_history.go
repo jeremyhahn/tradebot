@@ -27,12 +27,8 @@ func NewOrderHistoryRestService(ctx *common.Context, exchangeService service.Exc
 
 func (ohrs *OrderHistoryRestServiceImpl) GetOrderHistory(w http.ResponseWriter, r *http.Request) {
 	ohrs.ctx.Logger.Debugf("[OrderHistoryRestService.GetOrderHistory]")
-	currencyPair := &common.CurrencyPair{
-		Base:          "BTC",
-		Quote:         "USD",
-		LocalCurrency: "USD"}
 	service := service.NewOrderService(ohrs.ctx, ohrs.exchangeService)
-	history := service.GetOrderHistory(currencyPair)
+	history := service.GetOrderHistory()
 	respondWithJSON(w, http.StatusOK, history)
 }
 

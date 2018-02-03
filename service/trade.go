@@ -5,20 +5,23 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 )
 
-type TradeService struct {
-}
-
 type TradeServiceImpl struct {
 	ctx      *common.Context
 	tradeDAO dao.TradeDAO
-	common.TradeService
+	TradeService
 }
 
-func NewTradeService(ctx *common.Context, tradeDAO dao.TradeDAO) common.TradeService {
+func NewTradeService(ctx *common.Context, tradeDAO dao.TradeDAO) TradeService {
 	return &TradeServiceImpl{
 		ctx:      ctx,
 		tradeDAO: tradeDAO}
 }
+
+/*
+func (ts *TradeServiceImpl) Trade(chartBL businesslogic.ChartBL) {
+	ts.charts = append(ts.charts, chartBL)
+
+}*/
 
 func (ts *TradeServiceImpl) Save(trade *common.Trade) {
 	ts.tradeDAO.Create(&dao.Trade{

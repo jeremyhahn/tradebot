@@ -12,37 +12,29 @@ import (
 )
 
 type Bittrex struct {
-	client       *bittrex.Bittrex
-	logger       *logging.Logger
-	price        float64
-	satoshis     float64
-	name         string
-	currencyPair *common.CurrencyPair
-	tradingFee   float64
-	tradePairs   []common.CurrencyPair
+	ctx        *common.Context
+	client     *bittrex.Bittrex
+	logger     *logging.Logger
+	price      float64
+	satoshis   float64
+	name       string
+	tradingFee float64
+	tradePairs []common.CurrencyPair
 	common.Exchange
 }
 
-func NewBittrex(btx *dao.UserCoinExchange, logger *logging.Logger, currencyPair *common.CurrencyPair) common.Exchange {
-	var cp *common.CurrencyPair
-	if currencyPair.Quote == "USD" {
-		cp = &common.CurrencyPair{
-			Base:  "USDT",
-			Quote: currencyPair.Base}
-	} else {
-		cp = currencyPair
-	}
+func NewBittrex(ctx *common.Context, btx *dao.UserCryptoExchange) common.Exchange {
 	return &Bittrex{
-		client:       bittrex.New(btx.Key, btx.Secret),
-		logger:       logger,
-		name:         "bittrex",
-		currencyPair: cp,
-		tradingFee:   .025}
+		ctx:        ctx,
+		client:     bittrex.New(btx.Key, btx.Secret),
+		logger:     ctx.Logger,
+		name:       "bittrex",
+		tradingFee: .025}
 }
 
-func (b *Bittrex) SubscribeToLiveFeed(priceChange chan common.PriceChange) {
+func (b *Bittrex) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceChange chan common.PriceChange) {
 	for {
-		symbol := b.FormattedCurrencyPair()
+		symbol := b.FormattedCurrencyPair(currencyPair)
 		time.Sleep(10 * time.Second)
 		ticker, err := b.client.GetTicker(symbol)
 		if err != nil {
@@ -57,16 +49,18 @@ func (b *Bittrex) SubscribeToLiveFeed(priceChange chan common.PriceChange) {
 		b.logger.Debugf("[Bittrex.SubscribeToLiveFeed] Sending live price: %.8f", f)
 		b.satoshis = f
 		priceChange <- common.PriceChange{
-			CurrencyPair: b.currencyPair,
+			CurrencyPair: currencyPair,
 			Satoshis:     b.satoshis,
 			Price:        f}
 	}
 }
 
-func (b *Bittrex) GetPriceHistory(start, end time.Time, granularity int) []common.Candlestick {
+func (b *Bittrex) GetPriceHistory(currencyPair *common.CurrencyPair,
+	start, end time.Time, granularity int) []common.Candlestick {
+
 	b.logger.Debug("[Bittrex.GetTradeHistory] Getting trade history")
 	candlesticks := make([]common.Candlestick, 0)
-	marketHistory, err := b.client.GetMarketHistory(b.FormattedCurrencyPair())
+	marketHistory, err := b.client.GetMarketHistory(b.FormattedCurrencyPair(currencyPair))
 	if err != nil {
 		b.logger.Errorf("[Bittrex.GetTradeHistory] %s", err.Error())
 	}
@@ -80,9 +74,10 @@ func (b *Bittrex) GetPriceHistory(start, end time.Time, granularity int) []commo
 	return candlesticks
 }
 
-func (b *Bittrex) GetOrderHistory() []common.Order {
+func (b *Bittrex) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Order {
 	var orders []common.Order
-	orderHistory, err := b.client.GetOrderHistory(b.FormattedCurrencyPair())
+	formattedCurrencyPair := b.FormattedCurrencyPair(currencyPair)
+	orderHistory, err := b.client.GetOrderHistory(formattedCurrencyPair)
 	if err != nil {
 		b.logger.Errorf("[Bittrex.GetOrderHistory] %s", err.Error())
 	}
@@ -94,7 +89,7 @@ func (b *Bittrex) GetOrderHistory() []common.Order {
 			Exchange: "bittrex",
 			Date:     o.TimeStamp.Time,
 			Type:     o.OrderType,
-			Currency: b.FormattedCurrencyPair(),
+			Currency: formattedCurrencyPair,
 			Quantity: q,
 			Price:    p})
 	}
@@ -110,10 +105,10 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 	}
 	for _, bal := range balances {
 		var currency string
-		if bal.Currency == "BTC" && b.currencyPair.Quote == bal.Currency {
-			currency = fmt.Sprintf("%s-%s", b.currencyPair.Base, bal.Currency)
+		if bal.Currency == "BTC" {
+			currency = fmt.Sprintf("%s-%s", b.ctx.User.LocalCurrency, bal.Currency)
 		} else {
-			currency = fmt.Sprintf("%s-%s", b.currencyPair.Quote, bal.Currency)
+			currency = fmt.Sprintf("%s-%s", "BTC", bal.Currency)
 		}
 		b.logger.Debugf("[Bittrex.GetBalances] Getting %s ticker", currency)
 		ticker, terr := b.client.GetTicker(currency)
@@ -179,7 +174,7 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 }
 
 func (b *Bittrex) getBitcoinPrice() float64 {
-	summary, err := b.client.GetMarketSummary(fmt.Sprintf("%s-BTC", b.currencyPair.Base))
+	summary, err := b.client.GetMarketSummary(fmt.Sprintf("%s-BTC", b.ctx.User.LocalCurrency))
 	if err != nil {
 		b.logger.Errorf("[Bittrex.getBitcoinPrice] %s", err.Error())
 	}
@@ -194,11 +189,7 @@ func (b *Bittrex) getBitcoinPrice() float64 {
 	return price
 }
 
-func (b *Bittrex) GetExchangeAsync(exchangeChan *chan common.CoinExchange) {
-	go func() { *exchangeChan <- b.GetExchange() }()
-}
-
-func (b *Bittrex) GetExchange() common.CoinExchange {
+func (b *Bittrex) GetExchange() common.CryptoExchange {
 	total := 0.0
 	satoshis := 0.0
 	balances, _ := b.GetBalances()
@@ -212,7 +203,7 @@ func (b *Bittrex) GetExchange() common.CoinExchange {
 	}
 	f, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
 	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-	exchange := common.CoinExchange{
+	exchange := common.CryptoExchange{
 		Name:     b.name,
 		URL:      "https://www.bittrex.com",
 		Total:    t,
@@ -221,22 +212,27 @@ func (b *Bittrex) GetExchange() common.CoinExchange {
 	return exchange
 }
 
-func (b *Bittrex) GetCurrencyPair() common.CurrencyPair {
-	return *b.currencyPair
-}
-
 func (b *Bittrex) GetName() string {
 	return b.name
 }
 
-func (b *Bittrex) ToUSD(price, satoshis float64) float64 {
-	return satoshis * price
-}
-
-func (b *Bittrex) FormattedCurrencyPair() string {
-	return fmt.Sprintf("%s-%s", b.currencyPair.Base, b.currencyPair.Quote)
-}
-
 func (b *Bittrex) GetTradingFee() float64 {
 	return b.tradingFee
+}
+
+func (b *Bittrex) FormattedCurrencyPair(currencyPair *common.CurrencyPair) string {
+	cp := b.localizedCurrencyPair(currencyPair)
+	return fmt.Sprintf("%s-%s", cp.Base, cp.Quote)
+}
+
+func (b *Bittrex) localizedCurrencyPair(currencyPair *common.CurrencyPair) *common.CurrencyPair {
+	var cp *common.CurrencyPair
+	if currencyPair.Quote == "USD" {
+		cp = &common.CurrencyPair{
+			Base:  "USDT",
+			Quote: currencyPair.Base}
+	} else {
+		cp = currencyPair
+	}
+	return cp
 }

@@ -32,5 +32,5 @@ test:
 	cd webservice && go test webservice/*.go
 
 build:
-	cd plugins/indicators && go build -buildmode=plugin ExampleIndicator.go
+	cd plugins/indicators/src && go build -buildmode=plugin ExampleIndicator.go && mv ExampleIndicator.so ../
 	go build

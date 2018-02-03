@@ -17,11 +17,6 @@ const (
 	CANDLESTICK_MIN_LOAD  = 250
 )
 
-type ProfitService interface {
-	Save(profit *Profit)
-	Find()
-}
-
 type Profit struct {
 	UserID   uint    `json:"id"`
 	TradeID  uint    `json:"trade_id"`
@@ -31,11 +26,6 @@ type Profit struct {
 	Fee      float64 `json:"fee"`
 	Tax      float64 `json:"tax"`
 	Total    float64 `json:"total"`
-}
-
-type TradeService interface {
-	Save(trade *Trade)
-	GetLastTrade(chart *Chart) *Trade
 }
 
 type TradingStrategy interface {
@@ -57,20 +47,6 @@ type Trade struct {
 	Price     float64   `json:"price"`
 	Amount    float64   `json:"amount"`
 	ChartData string    `json:"chart_data"`
-}
-
-type ChartService interface {
-	GetExchange() Exchange
-	GetChart() *Chart
-	GetCurrencyPair() CurrencyPair
-	GetIndicators() []FinancialIndicator
-	GetIndicator(name string) FinancialIndicator
-	GetPrice() float64
-	Stream(strategyHandler func(chart ChartService))
-	StopStream()
-	OnPriceChange(newPrice *PriceChange)
-	OnPeriodChange(candle *Candlestick)
-	ToJson() string
 }
 
 type Order struct {
@@ -140,13 +116,13 @@ type CurrencyPair struct {
 }
 
 type Portfolio struct {
-	User      *User          `json:"user"`
-	NetWorth  float64        `json:"net_worth"`
-	Exchanges []CoinExchange `json:"exchanges"`
-	Wallets   []CryptoWallet `json:"wallets"`
+	User      *User            `json:"user"`
+	NetWorth  float64          `json:"net_worth"`
+	Exchanges []CryptoExchange `json:"exchanges"`
+	Wallets   []CryptoWallet   `json:"wallets"`
 }
 
-type CoinExchange struct {
+type CryptoExchange struct {
 	Name     string  `json:"name"`
 	URL      string  `json:"url"`
 	Total    float64 `json:"total"`
@@ -154,9 +130,9 @@ type CoinExchange struct {
 	Coins    []Coin  `json:"coins"`
 }
 
-type CoinExchangeList struct {
-	Exchanges []CoinExchange `json:"exchange"`
-	NetWorth  float64        `json:"net_worth"`
+type CryptoExchangeList struct {
+	Exchanges []CryptoExchange `json:"exchange"`
+	NetWorth  float64          `json:"net_worth"`
 }
 
 type PriceChange struct {
@@ -164,6 +140,18 @@ type PriceChange struct {
 	CurrencyPair *CurrencyPair `json:"currencyPair"`
 	Satoshis     float64       `json:"satoshis"`
 	Price        float64       `json:"price"`
+}
+
+type Chart struct {
+	ID         uint        `json:"id"`
+	Base       string      `json:"base"`
+	Quote      string      `json:"quote"`
+	Exchange   string      `json:"exchange"`
+	Period     int         `json:"period"`
+	Price      float64     `json:"price"`
+	AutoTrade  uint        `json:"autotrade"`
+	Indicators []Indicator `json:"indicators"`
+	Trades     []Trade     `json:"trades"`
 }
 
 type ChartData struct {
@@ -211,20 +199,16 @@ type PeriodListener interface {
 }
 
 type Exchange interface {
-	SubscribeToLiveFeed(price chan PriceChange)
-	GetPriceUSD() float64
-	GetPrice() float64
-	GetSatoshis() float64
-	GetPriceHistory(start, end time.Time, granularity int) []Candlestick
-	GetOrderHistory() []Order
-	GetCurrencyPair() CurrencyPair
-	FormattedCurrencyPair() string
-	GetBalances() ([]Coin, float64)
 	GetName() string
-	GetExchangeAsync(*chan CoinExchange)
-	GetExchange() CoinExchange
+	GetBalances() ([]Coin, float64)
+	GetExchange() CryptoExchange
 	GetNetWorth() float64
 	GetTradingFee() float64
+	SubscribeToLiveFeed(currencyPair *CurrencyPair, price chan PriceChange)
+	GetPrice(currencyPair *CurrencyPair) float64
+	GetPriceHistory(currencyPair *CurrencyPair, start, end time.Time, granularity int) []Candlestick
+	GetOrderHistory(currencyPair *CurrencyPair) []Order
+	FormattedCurrencyPair(currencyPair *CurrencyPair) string
 }
 
 type FinancialIndicator interface {

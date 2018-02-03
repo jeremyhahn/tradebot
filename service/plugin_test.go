@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"github.com/jeremyhahn/tradebot/plugins/indicators/example"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/example"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
 )

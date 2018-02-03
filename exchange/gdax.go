@@ -18,6 +18,7 @@ var GDAXLastApiCall = time.Now().AddDate(0, 0, -1).Unix()
 
 type GDAX struct {
 	gdax            *gdax.Client
+	ctx             *common.Context
 	logger          *logging.Logger
 	name            string
 	lastApiCall     int64
@@ -25,24 +26,25 @@ type GDAX struct {
 	balances        []common.Coin
 	netWorth        float64
 	apiCallCount    int
-	currencyPair    *common.CurrencyPair
 	tradingFee      float64
 	common.Exchange
 }
 
-func NewGDAX(_gdax *dao.UserCoinExchange, logger *logging.Logger, currencyPair *common.CurrencyPair) common.Exchange {
+func NewGDAX(ctx *common.Context, _gdax *dao.UserCryptoExchange) common.Exchange {
 	return &GDAX{
+		ctx:          ctx,
 		gdax:         gdax.NewClient(_gdax.Secret, _gdax.Key, _gdax.Extra),
-		logger:       logger,
+		logger:       ctx.Logger,
 		name:         "gdax",
 		apiCallCount: 0,
-		currencyPair: currencyPair,
 		netWorth:     0.0,
 		balances:     make([]common.Coin, 0),
 		tradingFee:   0.025}
 }
 
-func (_gdax *GDAX) GetPriceHistory(start, end time.Time, granularity int) []common.Candlestick {
+func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
+	start, end time.Time, granularity int) []common.Candlestick {
+
 	_gdax.respectRateLimit()
 	_gdax.logger.Debug("[GDAX.GetTradeHistory] Getting trade history")
 	var candlesticks []common.Candlestick
@@ -50,7 +52,7 @@ func (_gdax *GDAX) GetPriceHistory(start, end time.Time, granularity int) []comm
 		Start:       start,
 		End:         end,
 		Granularity: granularity}
-	rates, err := _gdax.gdax.GetHistoricRates(_gdax.FormattedCurrencyPair(), params)
+	rates, err := _gdax.gdax.GetHistoricRates(_gdax.FormattedCurrencyPair(currencyPair), params)
 	if err != nil {
 		if strings.Contains(err.Error(), "granularity too small for the requested time range") {
 			_gdax.logger.Debug("[GDAX.GetTradeHistory] Result set too big; chunking into smaller requests...")
@@ -60,19 +62,19 @@ func (_gdax *GDAX) GetPriceHistory(start, end time.Time, granularity int) []comm
 			for i := 0; i < days; i++ {
 				newStart := start.AddDate(0, 0, i)
 				newEnd := start.AddDate(0, 0, i).Add(time.Hour*23 + time.Minute*59 + time.Second*59)
-				sticks := _gdax.GetPriceHistory(newStart, newEnd, granularity)
+				sticks := _gdax.GetPriceHistory(currencyPair, newStart, newEnd, granularity)
 				candlesticks = append(candlesticks, sticks...)
 			}
 			return candlesticks
 		}
 		_gdax.logger.Errorf("[GDAX.GetTradeHistory] %s", err.Error())
 		time.Sleep(time.Second * 1)
-		return _gdax.GetPriceHistory(start, end, granularity)
+		return _gdax.GetPriceHistory(currencyPair, start, end, granularity)
 	}
 	for _, r := range rates {
 		candlesticks = append(candlesticks, common.Candlestick{
 			Exchange:     _gdax.name,
-			CurrencyPair: _gdax.currencyPair,
+			CurrencyPair: currencyPair,
 			Period:       granularity,
 			Date:         r.Time,
 			Open:         r.Open,
@@ -84,7 +86,7 @@ func (_gdax *GDAX) GetPriceHistory(start, end time.Time, granularity int) []comm
 	return candlesticks
 }
 
-func (_gdax *GDAX) GetOrderHistory() []common.Order {
+func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Order {
 	var orders []common.Order
 	var ledger []gdax.LedgerEntry
 	accounts, err := _gdax.gdax.GetAccounts()
@@ -106,7 +108,10 @@ func (_gdax *GDAX) GetOrderHistory() []common.Order {
 						Base:  base,
 						Quote: quote}
 				} else {
-					cp = _gdax.currencyPair
+					cp = &common.CurrencyPair{
+						Base:          _gdax.ctx.User.LocalCurrency,
+						Quote:         _gdax.ctx.User.LocalCurrency,
+						LocalCurrency: _gdax.ctx.User.LocalCurrency}
 				}
 				orders = append(orders, common.Order{
 					Id:       strconv.FormatInt(int64(e.Id), 10),
@@ -130,7 +135,7 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
 		return _gdax.balances, _gdax.netWorth
 	}
 	_gdax.respectRateLimit()
-	_gdax.logger.Debugf("[GDAX] Getting %s balances", _gdax.currencyPair.Base)
+	_gdax.logger.Debugf("[GDAX] Getting balances")
 	var coins []common.Coin
 	sum := 0.0
 	accounts, err := _gdax.gdax.GetAccounts()
@@ -140,8 +145,8 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
 	}
 	for _, a := range accounts {
 		price := 1.0
-		if a.Currency != _gdax.currencyPair.LocalCurrency {
-			currency := fmt.Sprintf("%s-%s", a.Currency, _gdax.currencyPair.Quote)
+		if a.Currency != _gdax.ctx.User.LocalCurrency {
+			currency := fmt.Sprintf("%s-%s", a.Currency, _gdax.ctx.User.LocalCurrency)
 			_gdax.logger.Debugf("[GDAX.GetBalances] Getting balances for %s", currency)
 			ticker, err := _gdax.gdax.GetTicker(currency)
 			if err != nil {
@@ -174,7 +179,9 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
 	return coins, sum
 }
 
-func (_gdax *GDAX) SubscribeToLiveFeed(priceChannel chan common.PriceChange) {
+func (_gdax *GDAX) SubscribeToLiveFeed(currencyPair *common.CurrencyPair,
+	priceChannel chan common.PriceChange) {
+
 	_gdax.logger.Info("[GDAX.SubscribeToLiveFeed] Subscribing to WebSocket feed")
 
 	var wsDialer ws.Dialer
@@ -185,7 +192,7 @@ func (_gdax *GDAX) SubscribeToLiveFeed(priceChannel chan common.PriceChange) {
 
 	subscribe := map[string]string{
 		"type":       "subscribe",
-		"product_id": _gdax.FormattedCurrencyPair(),
+		"product_id": _gdax.FormattedCurrencyPair(currencyPair),
 	}
 
 	if err := wsConn.WriteJSON(subscribe); err != nil {
@@ -197,31 +204,27 @@ func (_gdax *GDAX) SubscribeToLiveFeed(priceChannel chan common.PriceChange) {
 
 		if err := wsConn.ReadJSON(&message); err != nil {
 			_gdax.logger.Errorf("[GDAX.SubscribeToLiveFeed] %s", err.Error())
-			_gdax.SubscribeToLiveFeed(priceChannel)
+			_gdax.SubscribeToLiveFeed(currencyPair, priceChannel)
 		}
 
 		if message.Type == "match" && message.Reason == "filled" {
 			_gdax.logger.Debugf("[GDAX.SubscribeToLiveFeed] message: %+v\n", message)
 			priceChannel <- common.PriceChange{
 				Exchange:     _gdax.GetName(),
-				CurrencyPair: _gdax.currencyPair,
+				CurrencyPair: currencyPair,
 				Price:        message.Price}
 		}
 	}
 
-	_gdax.SubscribeToLiveFeed(priceChannel)
+	_gdax.SubscribeToLiveFeed(currencyPair, priceChannel)
 }
 
-func (_gdax *GDAX) GetExchangeAsync(exchangeChan *chan common.CoinExchange) {
-	go func() { *exchangeChan <- _gdax.GetExchange() }()
-}
-
-func (_gdax *GDAX) GetExchange() common.CoinExchange {
+func (_gdax *GDAX) GetExchange() common.CryptoExchange {
 	total := 0.0
 	satoshis := 0.0
 	balances, _ := _gdax.GetBalances()
 	for _, c := range balances {
-		if c.Currency == _gdax.currencyPair.LocalCurrency {
+		if c.Currency == _gdax.ctx.User.LocalCurrency {
 			total += c.Total
 		} else if c.IsBitcoin() {
 			satoshis += c.Balance
@@ -240,7 +243,7 @@ func (_gdax *GDAX) GetExchange() common.CoinExchange {
 	}
 	s, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
 	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-	exchange := common.CoinExchange{
+	exchange := common.CryptoExchange{
 		Name:     _gdax.name,
 		URL:      "https://www.gdax.com",
 		Total:    t,
@@ -253,16 +256,12 @@ func (_gdax *GDAX) ToUSD(price, satoshis float64) float64 {
 	return satoshis * price
 }
 
-func (_gdax *GDAX) GetCurrencyPair() common.CurrencyPair {
-	return *_gdax.currencyPair
-}
-
 func (_gdax *GDAX) GetName() string {
 	return _gdax.name
 }
 
-func (_gdax *GDAX) FormattedCurrencyPair() string {
-	return fmt.Sprintf("%s-%s", _gdax.currencyPair.Base, _gdax.currencyPair.Quote)
+func (_gdax *GDAX) FormattedCurrencyPair(currencyPair *common.CurrencyPair) string {
+	return fmt.Sprintf("%s-%s", currencyPair.Base, currencyPair.Quote)
 }
 
 func (_gdax *GDAX) formatCurrencyPair(currencyPair *common.CurrencyPair) string {
@@ -278,7 +277,8 @@ func (_gdax *GDAX) respectRateLimit() {
 	diff := now - _gdax.lastApiCall
 	for diff <= 30 && _gdax.apiCallCount >= 3 {
 		_gdax.logger.Info("[GDAX.respectRateLimit] Cooling off")
-		_gdax.logger.Debugf("[GDAX.respectRateLimit] apiCallCount: %d, lastApiCall: %s", _gdax.apiCallCount, _gdax.lastApiCall)
+		_gdax.logger.Debugf("[GDAX.respectRateLimit] apiCallCount: %d, lastApiCall: %s",
+			_gdax.apiCallCount, _gdax.lastApiCall)
 		time.Sleep(1 * time.Second)
 		GDAXLastApiCall = -1
 	}

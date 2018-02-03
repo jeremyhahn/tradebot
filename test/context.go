@@ -57,23 +57,23 @@ func NewIntegrationTestContext() *common.Context {
 		Currency: "XRP",
 		Address:  XRP_ADDRESS})
 
-	var exchanges []dao.UserCoinExchange
-	exchanges = append(exchanges, dao.UserCoinExchange{
+	var exchanges []dao.UserCryptoExchange
+	exchanges = append(exchanges, dao.UserCryptoExchange{
 		Name:   "gdax",
 		Key:    GDAX_APIKEY,
 		Secret: GDAX_SECRET,
 		Extra:  GDAX_PASSPHRASE})
-	exchanges = append(exchanges, dao.UserCoinExchange{
+	exchanges = append(exchanges, dao.UserCryptoExchange{
 		Name:   "bittrex",
 		Key:    BITTREX_APIKEY,
 		Secret: BITTREX_SECRET,
 		Extra:  BITTREX_EXTRA})
-	exchanges = append(exchanges, dao.UserCoinExchange{
+	exchanges = append(exchanges, dao.UserCryptoExchange{
 		Name:   "binance",
 		Key:    BINANCE_APIKEY,
 		Secret: BINANCE_SECRET,
 		Extra:  BINANCE_EXTRA})
-	/*exchanges = append(exchanges, dao.UserCoinExchange{
+	/*exchanges = append(exchanges, dao.UserCryptoExchange{
 	Name:   "bithumb",
 	Key:    BITHUMB_APIKEY,
 	Secret: BITHUMB_SECRET})*/
@@ -82,40 +82,40 @@ func NewIntegrationTestContext() *common.Context {
 	userDAO.Save(&dao.User{Username: TEST_USERNAME, LocalCurrency: "USD", Exchanges: exchanges, Wallets: wallets})
 
 	/*exchangeDAO := exchange.NewExchangeDAO(TEST_CONTEXT)
-	exchangeDAO.Create(&exchange.CoinExchange{
+	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:       "gdax",
 		Key:        GDAX_APIKEY,
 		Secret:     GDAX_SECRET,
 		Passphrase: GDAX_PASSPHRASE})
-	exchangeDAO.Create(&exchange.CoinExchange{
+	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:   "bittrex",
 		Key:    BITTREX_APIKEY,
 		Secret: BITTREX_SECRET})
-	exchangeDAO.Create(&exchange.CoinExchange{
+	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:   "binance",
 		Key:    BINANCE_APIKEY,
 		Secret: BINANCE_SECRET})
-	exchangeDAO.Create(&exchange.CoinExchange{
+	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:   "bithumb",
 		Key:    BITHUMB_APIKEY,
 		Secret: BITHUMB_SECRET})
 
 	userDAO.Create(&dao.User{
 		Id: TEST_CONTEXT.User
-		Exchanges: . exchange.CoinExchange{
+		Exchanges: . exchange.CryptoExchange{
 		Name:       "gdax",
 		Key:        GDAX_APIKEY,
 		Secret:     GDAX_SECRET,
 		Passphrase: GDAX_PASSPHRASE})
-	exchangeDAO.Create(&exchange.CoinExchange{
+	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:   "bittrex",
 		Key:    BITTREX_APIKEY,
 		Secret: BITTREX_SECRET})
-	exchangeDAO.Create(&exchange.CoinExchange{
+	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:   "binance",
 		Key:    BINANCE_APIKEY,
 		Secret: BINANCE_SECRET})
-	exchangeDAO.Create(&exchange.CoinExchange{
+	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:   "bithumb",
 		Key:    BITHUMB_APIKEY,
 		Secret: BITHUMB_SECRET})*/

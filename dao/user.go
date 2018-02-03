@@ -19,7 +19,7 @@ type User struct {
 	Username      string `gorm:"type:varchar(100);unique_index"`
 	LocalCurrency string `gorm:"type:varchar(5)"`
 	Wallets       []UserWallet
-	Exchanges     []UserCoinExchange
+	Exchanges     []UserCryptoExchange
 }
 
 type UserWallet struct {
@@ -28,7 +28,7 @@ type UserWallet struct {
 	Address  string `gorm:"unique_index"`
 }
 
-type UserCoinExchange struct {
+type UserCryptoExchange struct {
 	UserID uint
 	Name   string `gorm:"primary_key"`
 	URL    string `gorm:"not null" sql:"type:varchar(255)"`
@@ -40,7 +40,7 @@ type UserCoinExchange struct {
 func NewUserDAO(ctx *common.Context) *UserDAO {
 	ctx.DB.AutoMigrate(&User{})
 	ctx.DB.AutoMigrate(&UserWallet{})
-	ctx.DB.AutoMigrate(&UserCoinExchange{})
+	ctx.DB.AutoMigrate(&UserCryptoExchange{})
 	return &UserDAO{
 		ctx:   ctx,
 		Users: make([]User, 0)}
@@ -49,7 +49,7 @@ func NewUserDAO(ctx *common.Context) *UserDAO {
 func CreateUserDAO(ctx *common.Context, user *common.User) *UserDAO {
 	ctx.DB.AutoMigrate(&User{})
 	ctx.DB.AutoMigrate(&UserWallet{})
-	ctx.DB.AutoMigrate(&UserCoinExchange{})
+	ctx.DB.AutoMigrate(&UserCryptoExchange{})
 	ctx.User = user
 	return &UserDAO{
 		ctx:   ctx,
@@ -109,8 +109,8 @@ func (dao *UserDAO) GetWallet(user *common.User, currency string) *UserWallet {
 	return &UserWallet{}
 }
 
-func (dao *UserDAO) GetExchanges(user *common.User) []UserCoinExchange {
-	var exchanges []UserCoinExchange
+func (dao *UserDAO) GetExchanges(user *common.User) []UserCryptoExchange {
+	var exchanges []UserCryptoExchange
 	daoUser := &User{Id: user.Id}
 	if err := dao.ctx.DB.Model(daoUser).Related(&exchanges).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.GetExchanges] Error: %s", err.Error())
@@ -118,8 +118,8 @@ func (dao *UserDAO) GetExchanges(user *common.User) []UserCoinExchange {
 	return exchanges
 }
 
-func (dao *UserDAO) GetExchange(user *common.User, name string) *UserCoinExchange {
-	var exchange UserCoinExchange
+func (dao *UserDAO) GetExchange(user *common.User, name string) *UserCryptoExchange {
+	var exchange UserCryptoExchange
 	exchanges := dao.GetExchanges(user)
 	for _, ex := range exchanges {
 		if ex.Name == name {

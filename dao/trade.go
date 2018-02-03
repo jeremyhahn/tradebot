@@ -11,8 +11,8 @@ type TradeDAO interface {
 	Save(trade ITrade)
 	Update(trade ITrade)
 	Find(user *common.User) []Trade
-	FindByChart(chart IChart) []Trade
-	GetLastTrade(chart IChart) *Trade
+	FindByChart(chart ChartEntity) []Trade
+	GetLastTrade(chart ChartEntity) *Trade
 	ITrade
 }
 
@@ -79,7 +79,7 @@ func (dao *TradeDAOImpl) Find(user *common.User) []Trade {
 	return trades
 }
 
-func (dao *TradeDAOImpl) GetLastTrade(chart IChart) *Trade {
+func (dao *TradeDAOImpl) GetLastTrade(chart ChartEntity) *Trade {
 	var trades []Trade
 	if err := dao.ctx.DB.Order("date desc").Limit(1).Model(chart).Related(&trades).Error; err != nil {
 		dao.ctx.Logger.Errorf("[TradeDAOImpl.GetLastTrade] Error: %s", err.Error())
@@ -92,7 +92,7 @@ func (dao *TradeDAOImpl) GetLastTrade(chart IChart) *Trade {
 	return &trades[0]
 }
 
-func (dao *TradeDAOImpl) FindByChart(chart IChart) []Trade {
+func (dao *TradeDAOImpl) FindByChart(chart ChartEntity) []Trade {
 	var trades []Trade
 	daoChart := &Chart{ID: chart.GetId()}
 	if err := dao.ctx.DB.Model(daoChart).Related(&trades).Error; err != nil {
