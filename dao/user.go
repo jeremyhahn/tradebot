@@ -18,6 +18,7 @@ type User struct {
 	Id            uint   `gorm:"primary_key;AUTO_INCREMENT"`
 	Username      string `gorm:"type:varchar(100);unique_index"`
 	LocalCurrency string `gorm:"type:varchar(5)"`
+	Charts        []Chart
 	Wallets       []UserWallet
 	Exchanges     []UserCryptoExchange
 }

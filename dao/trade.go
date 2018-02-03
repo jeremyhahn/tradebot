@@ -7,13 +7,13 @@ import (
 )
 
 type TradeDAO interface {
-	Create(trade ITrade)
-	Save(trade ITrade)
-	Update(trade ITrade)
+	Create(trade TradeEntity)
+	Save(trade TradeEntity)
+	Update(trade TradeEntity)
 	Find(user *common.User) []Trade
 	FindByChart(chart ChartEntity) []Trade
 	GetLastTrade(chart ChartEntity) *Trade
-	ITrade
+	TradeEntity
 }
 
 type TradeDAOImpl struct {
@@ -22,7 +22,7 @@ type TradeDAOImpl struct {
 	TradeDAO
 }
 
-type ITrade interface {
+type TradeEntity interface {
 	GetId() uint
 	GetBase() string
 	GetQuote() string
@@ -52,19 +52,19 @@ func NewTradeDAO(ctx *common.Context) TradeDAO {
 	return &TradeDAOImpl{ctx: ctx}
 }
 
-func (dao *TradeDAOImpl) Create(trade ITrade) {
+func (dao *TradeDAOImpl) Create(trade TradeEntity) {
 	if err := dao.ctx.DB.Create(trade).Error; err != nil {
 		dao.ctx.Logger.Errorf("[TradeDAOImpl.Create] Error:%s", err.Error())
 	}
 }
 
-func (dao *TradeDAOImpl) Save(trade ITrade) {
+func (dao *TradeDAOImpl) Save(trade TradeEntity) {
 	if err := dao.ctx.DB.Save(trade).Error; err != nil {
 		dao.ctx.Logger.Errorf("[TradeDAOImpl.Save] Error:%s", err.Error())
 	}
 }
 
-func (dao *TradeDAOImpl) Update(trade ITrade) {
+func (dao *TradeDAOImpl) Update(trade TradeEntity) {
 	if err := dao.ctx.DB.Update(trade).Error; err != nil {
 		dao.ctx.Logger.Errorf("[TradeDAOImpl.Update] Error:%s", err.Error())
 	}
@@ -94,7 +94,7 @@ func (dao *TradeDAOImpl) GetLastTrade(chart ChartEntity) *Trade {
 
 func (dao *TradeDAOImpl) FindByChart(chart ChartEntity) []Trade {
 	var trades []Trade
-	daoChart := &Chart{ID: chart.GetId()}
+	daoChart := &Chart{Id: chart.GetId()}
 	if err := dao.ctx.DB.Model(daoChart).Related(&trades).Error; err != nil {
 		dao.ctx.Logger.Errorf("[TradeDAOImpl.GetTrades] Error: %s", err.Error())
 	}

@@ -47,19 +47,19 @@ func (ats *AutoTradeServiceImpl) EndWorldHunger() {
 			continue
 		}
 
-		go func() {
-			ats.chartService.Stream(&chart, func(newPrice float64) {
-				buy, sell, err := s.GetBuySellSignals()
-				if err != nil {
-					ats.ctx.Logger.Errorf("[AutoTradeServiceImpl.EndWorldHunger] %s", err.Error())
-					return
-				}
-				if buy {
-					ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ BUY SIGNAL $$$")
-				} else if sell {
-					ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ SELL SIGNAL $$$")
-				}
-			})
-		}()
+		//go func() {
+		ats.chartService.Stream(&chart, func(newPrice float64) {
+			buy, sell, err := s.GetBuySellSignals()
+			if err != nil {
+				ats.ctx.Logger.Errorf("[AutoTradeServiceImpl.EndWorldHunger] %s", err.Error())
+				return
+			}
+			if buy {
+				ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ BUY SIGNAL $$$")
+			} else if sell {
+				ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ SELL SIGNAL $$$")
+			}
+		})
+		//}()
 	}
 }
