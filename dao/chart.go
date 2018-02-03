@@ -13,7 +13,6 @@ type ChartDAO interface {
 	GetIndicators(chart ChartEntity) ([]Indicator, error)
 	GetTrades(user *common.User) ([]Trade, error)
 	GetLastTrade(chart ChartEntity) (*Trade, error)
-	FindByCurrency(user *common.User, currencyPair *common.CurrencyPair) ([]Trade, error)
 }
 
 type ChartDAOImpl struct {

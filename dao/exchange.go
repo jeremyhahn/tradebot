@@ -1,14 +1,20 @@
 package dao
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/jeremyhahn/tradebot/common"
+)
 
 type ExchangeDAO interface {
-	Get(key string) *CryptoExchange
+	Create(exchange *CryptoExchange) error
+	Get(name string) (*CryptoExchange, error)
+	Find() ([]CryptoExchange, error)
 }
 
 type ExchangeDAOImpl struct {
-	ctx       *common.Context
-	Exchanges []CryptoExchange
+	ctx *common.Context
 	ExchangeDAO
 }
 
@@ -22,28 +28,35 @@ type CryptoExchange struct {
 }
 
 func NewExchangeDAO(ctx *common.Context) ExchangeDAO {
-	var exchanges []CryptoExchange
 	ctx.DB.AutoMigrate(&CryptoExchange{})
-	if err := ctx.DB.Find(&exchanges).Error; err != nil {
-		ctx.Logger.Error(err)
-	}
 	return &ExchangeDAOImpl{
-		ctx:       ctx,
-		Exchanges: exchanges}
+		ctx: ctx}
 }
 
-func (dao *ExchangeDAOImpl) Create(exchange *CryptoExchange) {
+func (dao *ExchangeDAOImpl) Create(exchange *CryptoExchange) error {
 	if err := dao.ctx.DB.Create(exchange).Error; err != nil {
-		dao.ctx.Logger.Errorf("[ExchangeDAO.Create] Error:%s", err.Error())
+		return err
 	}
+	return nil
 }
 
-func (dao *ExchangeDAOImpl) Get(name string) *CryptoExchange {
-	var exchange CryptoExchange
-	for _, ex := range dao.Exchanges {
+func (dao *ExchangeDAOImpl) Find() ([]CryptoExchange, error) {
+	var exchanges []CryptoExchange
+	if err := dao.ctx.DB.Find(&exchanges).Error; err != nil {
+		return nil, err
+	}
+	return exchanges, nil
+}
+
+func (dao *ExchangeDAOImpl) Get(name string) (*CryptoExchange, error) {
+	exchanges, err := dao.Find()
+	if err != nil {
+		return nil, err
+	}
+	for _, ex := range exchanges {
 		if ex.Name == name {
-			return &ex
+			return &ex, nil
 		}
 	}
-	return &exchange
+	return nil, errors.New(fmt.Sprintf("Exchange not found: %s", name))
 }
