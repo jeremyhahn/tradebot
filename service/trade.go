@@ -5,6 +5,9 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 )
 
+type TradeService struct {
+}
+
 type TradeServiceImpl struct {
 	ctx      *common.Context
 	tradeDAO dao.TradeDAO

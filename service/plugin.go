@@ -26,7 +26,13 @@ type PluginServiceImpl struct {
 	PluginService
 }
 
-func NewPluginService(ctx *common.Context, pluginRoot, pluginType string) PluginService {
+func NewPluginService(ctx *common.Context, pluginType string) PluginService {
+	return &PluginServiceImpl{
+		ctx:       ctx,
+		directory: fmt.Sprintf("./%s", pluginType)}
+}
+
+func CreatePluginService(ctx *common.Context, pluginRoot, pluginType string) PluginService {
 	return &PluginServiceImpl{
 		ctx:       ctx,
 		directory: fmt.Sprintf("%s/%s", pluginRoot, pluginType)}
@@ -42,17 +48,17 @@ func (p *PluginServiceImpl) GetIndicator(pluginName string) (func(candles []comm
 	}
 	lib, err := plugin.Open(path)
 	if err != nil {
-		p.ctx.Logger.Errorf("[PluginService.GetIndicator] Error loading %s. %s", pluginName, err.Error())
+		p.ctx.Logger.Errorf("[PluginServiceImpl.GetIndicator] Error loading %s. %s", pluginName, err.Error())
 		return nil, err
 	}
 	symbolName := strings.Split(pluginName, ".")
 	symbol := fmt.Sprintf("Create%s", symbolName[0])
-	p.ctx.Logger.Debugf("[PluginService.GetIndicator] Looking up symbol %s", symbol)
+	p.ctx.Logger.Debugf("[PluginServiceImpl.GetIndicator] Looking up symbol %s", symbol)
 	indicator, err := lib.Lookup(symbol)
 	impl, ok := indicator.(func(candles []common.Candlestick, params []string) common.FinancialIndicator)
 	if !ok {
 		errmsg := fmt.Sprintf("Wrong type - expected func - %s", pluginName)
-		p.ctx.Logger.Errorf("[PluginService.GetIndicator] %s", errmsg)
+		p.ctx.Logger.Errorf("[PluginServiceImpl.GetIndicator] %s", errmsg)
 		return nil, errors.New(errmsg)
 	}
 	return impl, nil

@@ -7,13 +7,21 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 )
 
+type MovingAverageConvergenceDivergence interface {
+	Calculate(price float64) (float64, float64, float64)
+	GetValue() float64
+	GetSignalLine() float64
+	GetHistogram() float64
+	common.FinancialIndicator
+}
+
 type MovingAverageConvergenceDivergenceParams struct {
 	EMA1Period int64
 	EMA2Period int64
 	SignalSize int64
 }
 
-type MovingAverageConvergenceDivergence struct {
+type MovingAverageConvergenceDivergenceImpl struct {
 	name        string
 	displayName string
 	params      *MovingAverageConvergenceDivergenceParams
@@ -27,12 +35,12 @@ type MovingAverageConvergenceDivergence struct {
 	common.FinancialIndicator
 }
 
-func NewMovingAverageConvergenceDivergence(candles []common.Candlestick) *MovingAverageConvergenceDivergence {
+func NewMovingAverageConvergenceDivergence(candles []common.Candlestick) MovingAverageConvergenceDivergence {
 	params := []string{"12", "26", "9"}
 	return CreateMovingAverageConvergenceDivergence(candles, params)
 }
 
-func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, params []string) *MovingAverageConvergenceDivergence {
+func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, params []string) MovingAverageConvergenceDivergence {
 	ema1Period, _ := strconv.ParseInt(params[0], 10, 32)
 	ema2Period, _ := strconv.ParseInt(params[1], 10, 32)
 	signalSize, _ := strconv.ParseInt(params[2], 10, 32)
@@ -49,7 +57,7 @@ func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, para
 	}
 	ema1Avg := ema1.GetAverage()
 	ema2Avg := ema2.GetAverage()
-	macd := &MovingAverageConvergenceDivergence{
+	macd := &MovingAverageConvergenceDivergenceImpl{
 		name:        "MovingAverageConvergenceDivergence",
 		displayName: "Moving Average Convergence Divergence (MACD)",
 		params:      &MovingAverageConvergenceDivergenceParams{EMA1Period: ema1Period, EMA2Period: ema2Period, SignalSize: signalSize},
@@ -68,7 +76,7 @@ func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, para
 	return macd
 }
 
-func (macd *MovingAverageConvergenceDivergence) Calculate(price float64) (float64, float64, float64) {
+func (macd *MovingAverageConvergenceDivergenceImpl) Calculate(price float64) (float64, float64, float64) {
 	var value, signal, histogram float64
 
 	if macd.ema3 != nil {
@@ -89,19 +97,19 @@ func (macd *MovingAverageConvergenceDivergence) Calculate(price float64) (float6
 	return value, signal, histogram
 }
 
-func (macd *MovingAverageConvergenceDivergence) GetValue() float64 {
+func (macd *MovingAverageConvergenceDivergenceImpl) GetValue() float64 {
 	return macd.value
 }
 
-func (macd *MovingAverageConvergenceDivergence) GetSignalLine() float64 {
+func (macd *MovingAverageConvergenceDivergenceImpl) GetSignalLine() float64 {
 	return macd.signal
 }
 
-func (macd *MovingAverageConvergenceDivergence) GetHistogram() float64 {
+func (macd *MovingAverageConvergenceDivergenceImpl) GetHistogram() float64 {
 	return macd.histogram
 }
 
-func (macd *MovingAverageConvergenceDivergence) OnPeriodChange(candle *common.Candlestick) {
+func (macd *MovingAverageConvergenceDivergenceImpl) OnPeriodChange(candle *common.Candlestick) {
 	fmt.Println("[MovingAverageConvergenceDivergence] OnPeriodChange: ", candle.Date, candle.Close)
 	macd.ema1.Add(candle)
 	macd.ema2.Add(candle)
@@ -118,19 +126,19 @@ func (macd *MovingAverageConvergenceDivergence) OnPeriodChange(candle *common.Ca
 	}
 }
 
-func (macd *MovingAverageConvergenceDivergence) GetName() string {
+func (macd *MovingAverageConvergenceDivergenceImpl) GetName() string {
 	return macd.name
 }
 
-func (macd *MovingAverageConvergenceDivergence) GetDisplayName() string {
+func (macd *MovingAverageConvergenceDivergenceImpl) GetDisplayName() string {
 	return macd.displayName
 }
 
-func (macd *MovingAverageConvergenceDivergence) GetDefaultParameters() []string {
+func (macd *MovingAverageConvergenceDivergenceImpl) GetDefaultParameters() []string {
 	return []string{"12", "26", "9"}
 }
 
-func (macd *MovingAverageConvergenceDivergence) GetParameters() []string {
+func (macd *MovingAverageConvergenceDivergenceImpl) GetParameters() []string {
 	return []string{
 		fmt.Sprintf("%d", macd.params.EMA1Period),
 		fmt.Sprintf("%d", macd.params.EMA2Period),

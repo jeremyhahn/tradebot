@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/util"
 	logging "github.com/op/go-logging"
 )
 
@@ -44,28 +45,12 @@ func NewBlockchainInfo(ctx *common.Context) *BlockchainInfo {
 }
 
 func (b *BlockchainInfo) GetPrice() float64 {
-
-	url := "https://blockchain.info/ticker"
 	elapsed := float64(time.Since(b.lastLookup))
-
 	if elapsed/float64(time.Second) >= 900 {
-		req, err := http.NewRequest(http.MethodGet, url, nil)
+		body, err := util.HttpRequest("https://blockchain.info/ticker")
 		if err != nil {
-			b.logger.Errorf("[BlockchainInfo.GetPrice] %s", err.Error())
+			b.logger.Errorf("[BlockchainInfo.GetPrice] Error: ", err.Error())
 		}
-
-		req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
-
-		res, getErr := b.client.Do(req)
-		if getErr != nil {
-			b.logger.Errorf("[BlockchainInfo.GetPrice] %s", getErr.Error())
-		}
-
-		body, readErr := ioutil.ReadAll(res.Body)
-		if readErr != nil {
-			b.logger.Errorf("[BlockchainInfo.GetPrice] %s", readErr.Error())
-		}
-
 		t := BlockchainTickerItem{}
 		jsonErr := json.Unmarshal(body, &t)
 		if jsonErr != nil {

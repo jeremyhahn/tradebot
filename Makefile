@@ -22,14 +22,14 @@ deps:
 	go get "github.com/stretchr/testify"
 
 test:
-	go test common/*.go
-	go test dao/*.go
-	go test exchange/*.go
-	go test indicators/*.go
-	go test restapi/*.go
-	go test service/*.go
-	go test strategy/*.go
-	go test webservice/*.go
+	cd common && go test common/*.go
+	cd dao && go test dao/*.go
+	cd exchange && go test exchange/*.go
+	cd indicators && go test indicators/*.go
+	cd restapi && go test restapi/*.go
+	cd service && go test service/*.go
+	cd strategy && go test strategy/*.go
+	cd webservice && go test webservice/*.go
 
 build:
 	cd plugins/indicators && go build -buildmode=plugin ExampleIndicator.go
