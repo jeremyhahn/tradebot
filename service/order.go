@@ -6,10 +6,6 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 )
 
-type OrderService interface {
-	GetOrderHistory(currencyPair *common.CurrencyPair) []common.Order
-}
-
 type OrderServiceImpl struct {
 	ctx             *common.Context
 	exchangeService ExchangeService
@@ -22,11 +18,18 @@ func NewOrderService(ctx *common.Context, exchangeService ExchangeService) Order
 		exchangeService: exchangeService}
 }
 
-func (os OrderServiceImpl) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Order {
+func (os OrderServiceImpl) GetOrderHistory() []common.Order {
 	var orders []common.Order
-	exchanges := os.exchangeService.GetExchanges(os.ctx.User, currencyPair)
+
+	// TODO: Look up currency pairs from DB
+	currencyPair := &common.CurrencyPair{
+		Base:          "BTC",
+		Quote:         os.ctx.User.LocalCurrency,
+		LocalCurrency: os.ctx.User.LocalCurrency}
+
+	exchanges := os.exchangeService.GetExchanges(os.ctx.User)
 	for _, ex := range exchanges {
-		orders = append(orders, ex.GetOrderHistory()...)
+		orders = append(orders, ex.GetOrderHistory(currencyPair)...)
 	}
 	sort.Slice(orders, func(i, j int) bool {
 		return orders[i].Date.Before(orders[j].Date)

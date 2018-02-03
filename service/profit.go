@@ -5,17 +5,13 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 )
 
-type ProfitService interface {
-	Save(profit *common.Profit)
-}
-
 type ProfitServiceImpl struct {
 	ctx       *common.Context
 	profitDAO dao.ProfitDAO
-	common.ProfitService
+	ProfitService
 }
 
-func NewProfitService(ctx *common.Context, profitDAO dao.ProfitDAO) common.ProfitService {
+func NewProfitService(ctx *common.Context, profitDAO dao.ProfitDAO) ProfitService {
 	return &ProfitServiceImpl{
 		ctx:       ctx,
 		profitDAO: profitDAO}

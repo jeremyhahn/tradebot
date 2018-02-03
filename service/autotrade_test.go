@@ -1,11 +1,7 @@
 package service
 
 import (
-	"testing"
-
-	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
-	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -29,6 +25,7 @@ type MockProfitService struct {
 	mock.Mock
 }
 
+/*
 func TestAutoTradeService(t *testing.T) {
 	ctx := test.NewUnitTestContext()
 	chartDAO := new(MockChartDAO)
@@ -79,3 +76,4 @@ func (mes *MockExchangeService) NewExchange(user *common.User, exchangeName stri
 
 	return nil
 }
+*/

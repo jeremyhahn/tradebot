@@ -5,13 +5,14 @@ import (
 )
 
 type ChartDAO interface {
-	Create(chart IChart)
-	Save(chart IChart)
-	Update(chart IChart)
+	Create(chart ChartEntity)
+	Save(chart ChartEntity)
+	Update(chart ChartEntity)
 	Find(user *common.User) []Chart
-	GetIndicators(chart IChart) map[string]Indicator
+	Get(id uint) ChartEntity
+	GetIndicators(chart ChartEntity) map[string]Indicator
 	GetTrades(user *common.User) []Trade
-	GetLastTrade(chart IChart) *Trade
+	GetLastTrade(chart ChartEntity) *Trade
 	FindByCurrency(user *common.User, currencyPair *common.CurrencyPair) []Trade
 }
 
@@ -21,7 +22,7 @@ type ChartDAOImpl struct {
 	ChartDAO
 }
 
-type IChart interface {
+type ChartEntity interface {
 	GetId() uint
 	GetBase() string
 	GetQuote() string
@@ -46,7 +47,7 @@ type Chart struct {
 	AutoTrade  uint
 	Indicators []Indicator `gorm:"ForeignKey:ChartID"`
 	Trades     []Trade     `gorm:"ForeignKey:ChartID"`
-	IChart
+	ChartEntity
 }
 
 type Indicator struct {
@@ -63,19 +64,19 @@ func NewChartDAO(ctx *common.Context) ChartDAO {
 	return &ChartDAOImpl{ctx: ctx}
 }
 
-func (dao *ChartDAOImpl) Create(chart IChart) {
+func (dao *ChartDAOImpl) Create(chart ChartEntity) {
 	if err := dao.ctx.DB.Create(chart).Error; err != nil {
 		dao.ctx.Logger.Errorf("[ChartDAOImpl.Create] Error:%s", err.Error())
 	}
 }
 
-func (dao *ChartDAOImpl) Save(chart IChart) {
+func (dao *ChartDAOImpl) Save(chart ChartEntity) {
 	if err := dao.ctx.DB.Save(chart).Error; err != nil {
 		dao.ctx.Logger.Errorf("[ChartDAOImpl.Save] Error:%s", err.Error())
 	}
 }
 
-func (dao *ChartDAOImpl) Update(chart IChart) {
+func (dao *ChartDAOImpl) Update(chart ChartEntity) {
 	if err := dao.ctx.DB.Update(chart).Error; err != nil {
 		dao.ctx.Logger.Errorf("[ChartDAOImpl.Update] Error:%s", err.Error())
 	}
@@ -102,7 +103,7 @@ func (dao *ChartDAOImpl) Find(user *common.User) []Chart {
 	return charts
 }
 
-func (dao *ChartDAOImpl) GetIndicators(chart IChart) map[string]Indicator {
+func (dao *ChartDAOImpl) GetIndicators(chart ChartEntity) map[string]Indicator {
 	var indicators []Indicator
 	if err := dao.ctx.DB.Model(chart).Related(&indicators).Error; err != nil {
 		dao.ctx.Logger.Errorf("[ChartDAOImpl.GetIndicators] Error: %s", err.Error())
@@ -123,7 +124,7 @@ func (dao *ChartDAOImpl) GetTrades(user *common.User) []Trade {
 	return trades
 }
 
-func (dao *ChartDAOImpl) GetLastTrade(chart IChart) *Trade {
+func (dao *ChartDAOImpl) GetLastTrade(chart ChartEntity) *Trade {
 	var trades []Trade
 	if err := dao.ctx.DB.Order("date desc").Limit(1).Model(chart).Related(&trades).Error; err != nil {
 		dao.ctx.Logger.Errorf("[ChartDAOImpl.GetLastTrade] Error: %s", err.Error())

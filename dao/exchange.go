@@ -3,16 +3,16 @@ package dao
 import "github.com/jeremyhahn/tradebot/common"
 
 type ExchangeDAO interface {
-	Get(key string) *CoinExchange
+	Get(key string) *CryptoExchange
 }
 
 type ExchangeDAOImpl struct {
 	ctx       *common.Context
-	Exchanges []CoinExchange
+	Exchanges []CryptoExchange
 	ExchangeDAO
 }
 
-type CoinExchange struct {
+type CryptoExchange struct {
 	UserID uint
 	Name   string `gorm:"primary_key" sql:"type:varchar(255)"`
 	URL    string `gorm:"not null" sql:"type:varchar(255)"`
@@ -22,8 +22,8 @@ type CoinExchange struct {
 }
 
 func NewExchangeDAO(ctx *common.Context) ExchangeDAO {
-	var exchanges []CoinExchange
-	ctx.DB.AutoMigrate(&CoinExchange{})
+	var exchanges []CryptoExchange
+	ctx.DB.AutoMigrate(&CryptoExchange{})
 	if err := ctx.DB.Find(&exchanges).Error; err != nil {
 		ctx.Logger.Error(err)
 	}
@@ -32,14 +32,14 @@ func NewExchangeDAO(ctx *common.Context) ExchangeDAO {
 		Exchanges: exchanges}
 }
 
-func (dao *ExchangeDAOImpl) Create(exchange *CoinExchange) {
+func (dao *ExchangeDAOImpl) Create(exchange *CryptoExchange) {
 	if err := dao.ctx.DB.Create(exchange).Error; err != nil {
 		dao.ctx.Logger.Errorf("[ExchangeDAO.Create] Error:%s", err.Error())
 	}
 }
 
-func (dao *ExchangeDAOImpl) Get(name string) *CoinExchange {
-	var exchange CoinExchange
+func (dao *ExchangeDAOImpl) Get(name string) *CryptoExchange {
+	var exchange CryptoExchange
 	for _, ex := range dao.Exchanges {
 		if ex.Name == name {
 			return &ex

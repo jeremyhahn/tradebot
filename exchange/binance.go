@@ -55,29 +55,21 @@ type SymbolTicker struct {
 }
 
 type Binance struct {
-	client       *binance.Client
-	logger       *logging.Logger
-	name         string
-	currencyPair *common.CurrencyPair
-	tradingFee   float64
+	client     *binance.Client
+	ctx        *common.Context
+	logger     *logging.Logger
+	name       string
+	tradingFee float64
 	common.Exchange
 }
 
-func NewBinance(exchange *dao.UserCoinExchange, logger *logging.Logger, currencyPair *common.CurrencyPair) common.Exchange {
-	var cp *common.CurrencyPair
-	if currencyPair.Quote == "USD" {
-		cp = &common.CurrencyPair{
-			Base:  currencyPair.Base,
-			Quote: "USDT"}
-	} else {
-		cp = currencyPair
-	}
+func NewBinance(ctx *common.Context, exchange *dao.UserCryptoExchange) common.Exchange {
 	return &Binance{
-		client:       binance.NewClient(exchange.Key, exchange.Secret),
-		logger:       logger,
-		name:         "binance",
-		tradingFee:   .01,
-		currencyPair: cp}
+		ctx:        ctx,
+		client:     binance.NewClient(exchange.Key, exchange.Secret),
+		logger:     ctx.Logger,
+		name:       "binance",
+		tradingFee: .01}
 }
 
 func (b *Binance) GetBalances() ([]common.Coin, float64) {
@@ -100,7 +92,7 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 
 		if bal > 0 {
 
-			b.logger.Debugf("[Binance.GetBalances] Getting ticker for %s-%s", b.currencyPair.Base, balance.Asset)
+			b.logger.Debugf("[Binance.GetBalances] Getting balance for %s", balance.Asset)
 
 			bitcoin := b.getBitcoin()
 			bitcoinPrice := b.parseBitcoinPrice(bitcoin)
@@ -121,7 +113,7 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 				continue
 			}
 
-			symbol := fmt.Sprintf("%s%s", balance.Asset, b.currencyPair.Base)
+			symbol := fmt.Sprintf("%s%s", balance.Asset, b.ctx.User.LocalCurrency)
 			ticker, err := b.client.NewPriceChangeStatsService().Symbol(symbol).Do(context.Background())
 			if err != nil {
 				b.logger.Errorf("[Binance.GetBalances] %s", err.Error())
@@ -156,11 +148,15 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 	return coins, sum
 }
 
-func (b *Binance) GetPriceHistory(start, end time.Time, granularity int) []common.Candlestick {
+func (b *Binance) GetPriceHistory(currencyPair *common.CurrencyPair,
+	start, end time.Time, granularity int) []common.Candlestick {
+
 	b.logger.Debug("[Binance.GetTradeHistory] Getting trade history")
 	candlesticks := make([]common.Candlestick, 0)
 	interval := fmt.Sprintf("%dm", granularity/60)
-	klines, err := b.client.NewKlinesService().Symbol(b.FormattedCurrencyPair()).Interval(interval).Do(context.Background())
+	klines, err := b.client.NewKlinesService().
+		Symbol(b.FormattedCurrencyPair(currencyPair)).
+		Interval(interval).Do(context.Background())
 	if err != nil {
 		b.logger.Errorf("[Binance.GetTradeHistory] %s", err.Error())
 		return candlesticks
@@ -178,9 +174,11 @@ func (b *Binance) GetPriceHistory(start, end time.Time, granularity int) []commo
 	return candlesticks
 }
 
-func (b *Binance) GetOrderHistory() []common.Order {
+func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Order {
 	var _orders []common.Order
-	orders, err := b.client.NewListTradesService().Symbol(b.FormattedCurrencyPair()).Do(context.Background())
+	formattedCurrencyPair := b.FormattedCurrencyPair(currencyPair)
+	orders, err := b.client.NewListTradesService().
+		Symbol(formattedCurrencyPair).Do(context.Background())
 	if err != nil {
 		b.logger.Errorf("[Binance.GetOrderHistory] %s", err.Error())
 	}
@@ -197,7 +195,7 @@ func (b *Binance) GetOrderHistory() []common.Order {
 			Id:       strconv.FormatInt(int64(o.ID), 10),
 			Exchange: "binance",
 			Type:     orderType,
-			Currency: b.FormattedCurrencyPair(),
+			Currency: formattedCurrencyPair,
 			//Date:     time.Unix(o.Time, 0),
 			Quantity: qty,
 			Price:    p})
@@ -206,9 +204,10 @@ func (b *Binance) GetOrderHistory() []common.Order {
 	return _orders
 }
 
-func (b *Binance) SubscribeToLiveFeed(priceChange chan common.PriceChange) {
+func (b *Binance) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceChange chan common.PriceChange) {
 	var wsDialer ws.Dialer
-	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@aggTrade", strings.ToLower(b.FormattedCurrencyPair()))
+	formattedCurrencyPair := b.FormattedCurrencyPair(currencyPair)
+	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@aggTrade", strings.ToLower(formattedCurrencyPair))
 
 	b.logger.Info("[Binance.SubscribeToLiveFeed] Subscribing to websocket feed: %s", url)
 
@@ -219,7 +218,7 @@ func (b *Binance) SubscribeToLiveFeed(priceChange chan common.PriceChange) {
 
 	subscribe := map[string]string{
 		"type":       "subscribe",
-		"product_id": b.FormattedCurrencyPair(),
+		"product_id": formattedCurrencyPair,
 	}
 
 	if err := wsConn.WriteJSON(subscribe); err != nil {
@@ -242,17 +241,17 @@ func (b *Binance) SubscribeToLiveFeed(priceChange chan common.PriceChange) {
 		}
 
 		priceChange <- common.PriceChange{
-			CurrencyPair: b.currencyPair,
+			CurrencyPair: currencyPair,
 			Exchange:     b.name,
 			Price:        f,
 			Satoshis:     1.0}
 	}
 
-	b.SubscribeToLiveFeed(priceChange)
+	b.SubscribeToLiveFeed(currencyPair, priceChange)
 }
 
 func (b *Binance) getBitcoin() *binance.PriceChangeStats {
-	stats, err := b.client.NewPriceChangeStatsService().Symbol(b.FormattedCurrencyPair()).Do(context.Background())
+	stats, err := b.client.NewPriceChangeStatsService().Symbol("BTCUSDT").Do(context.Background())
 	if err != nil {
 		b.logger.Errorf("[Binance.getBitcoin] %s", err.Error())
 	}
@@ -276,11 +275,11 @@ func (b *Binance) parseBitcoinPrice(bitcoin *binance.PriceChangeStats) float64 {
 	return f
 }
 
-func (b *Binance) GetExchangeAsync(exchangeChan *chan common.CoinExchange) {
+func (b *Binance) GetExchangeAsync(exchangeChan *chan common.CryptoExchange) {
 	go func() { *exchangeChan <- b.GetExchange() }()
 }
 
-func (b *Binance) GetExchange() common.CoinExchange {
+func (b *Binance) GetExchange() common.CryptoExchange {
 	total := 0.0
 	satoshis := 0.0
 	balances, _ := b.GetBalances()
@@ -294,7 +293,7 @@ func (b *Binance) GetExchange() common.CoinExchange {
 	}
 	f, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
 	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-	exchange := common.CoinExchange{
+	exchange := common.CryptoExchange{
 		Name:     b.name,
 		URL:      "https://www.binance.com",
 		Total:    t,
@@ -303,18 +302,27 @@ func (b *Binance) GetExchange() common.CoinExchange {
 	return exchange
 }
 
-func (b *Binance) GetCurrencyPair() common.CurrencyPair {
-	return *b.currencyPair
-}
-
 func (b *Binance) GetName() string {
 	return b.name
 }
 
-func (b *Binance) FormattedCurrencyPair() string {
-	return fmt.Sprintf("%s%s", b.currencyPair.Base, b.currencyPair.Quote)
-}
-
 func (b *Binance) GetTradingFee() float64 {
 	return b.tradingFee
+}
+
+func (b *Binance) FormattedCurrencyPair(currencyPair *common.CurrencyPair) string {
+	cp := b.localizedCurrencyPair(currencyPair)
+	return fmt.Sprintf("%s%s", cp.Base, cp.Quote)
+}
+
+func (b *Binance) localizedCurrencyPair(currencyPair *common.CurrencyPair) *common.CurrencyPair {
+	var cp *common.CurrencyPair
+	if currencyPair.Quote == "USD" {
+		cp = &common.CurrencyPair{
+			Base:  currencyPair.Base,
+			Quote: "USDT"}
+	} else {
+		cp = currencyPair
+	}
+	return cp
 }

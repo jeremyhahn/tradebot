@@ -6,7 +6,13 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 )
 
-type PriceStream struct {
+type PriceStream interface {
+	Listen(priceChange chan common.PriceChange) common.PriceChange
+	SubscribeToPrice(listener common.PriceListener)
+	SubscribeToPeriod(listener common.PeriodListener)
+}
+
+type PriceStreamImpl struct {
 	Period          int       // total seconds per candlestick
 	Start           time.Time // timestamp of first candlestick
 	Volume          int
@@ -15,8 +21,8 @@ type PriceStream struct {
 	periodListeners []common.PeriodListener
 }
 
-func NewPriceStream(period int) *PriceStream {
-	return &PriceStream{
+func NewPriceStream(period int) PriceStream {
+	return &PriceStreamImpl{
 		Period:          period,
 		Start:           common.NewCandlestickPeriod(period),
 		buffer:          make([]float64, 0),
@@ -24,7 +30,7 @@ func NewPriceStream(period int) *PriceStream {
 		periodListeners: make([]common.PeriodListener, 0)}
 }
 
-func (ps *PriceStream) Listen(priceChange chan common.PriceChange) common.PriceChange {
+func (ps *PriceStreamImpl) Listen(priceChange chan common.PriceChange) common.PriceChange {
 	newPrice := <-priceChange
 	ps.buffer = append(ps.buffer, newPrice.Price)
 	ps.Volume = ps.Volume + 1
@@ -39,21 +45,21 @@ func (ps *PriceStream) Listen(priceChange chan common.PriceChange) common.PriceC
 	return newPrice
 }
 
-func (ps *PriceStream) SubscribeToPrice(listener common.PriceListener) {
+func (ps *PriceStreamImpl) SubscribeToPrice(listener common.PriceListener) {
 	ps.priceListeners = append(ps.priceListeners, listener)
 }
 
-func (ps *PriceStream) SubscribeToPeriod(listener common.PeriodListener) {
+func (ps *PriceStreamImpl) SubscribeToPeriod(listener common.PeriodListener) {
 	ps.periodListeners = append(ps.periodListeners, listener)
 }
 
-func (ps *PriceStream) notifyPeriodListeners(candlestick *common.Candlestick) {
+func (ps *PriceStreamImpl) notifyPeriodListeners(candlestick *common.Candlestick) {
 	for _, listener := range ps.periodListeners {
 		go listener.OnPeriodChange(candlestick)
 	}
 }
 
-func (ps *PriceStream) notifyPriceListeners(priceChange *common.PriceChange) {
+func (ps *PriceStreamImpl) notifyPriceListeners(priceChange *common.PriceChange) {
 	for _, listener := range ps.priceListeners {
 		go listener.OnPriceChange(priceChange)
 	}

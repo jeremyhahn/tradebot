@@ -33,9 +33,10 @@ func main() {
 
 	marketcapService := service.NewMarketCapService(logger)
 	exchangeService := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx))
+	chartService := service.NewChartService(ctx, chartDAO, exchangeService)
 	tradeService := service.NewTradeService(ctx, tradeDAO)
 	profitService := service.NewProfitService(ctx, profitDAO)
-	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartDAO, tradeService, profitService)
+	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService, profitService, tradeService)
 	autoTradeService.Trade()
 
 	ws := webservice.NewWebServer(ctx, 8080, marketcapService, exchangeService)
