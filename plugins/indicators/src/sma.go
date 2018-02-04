@@ -22,13 +22,17 @@ type SimpleMovingAverageImpl struct {
 	indicators.SimpleMovingAverage
 }
 
-func NewSimpleMovingAverage(candles []common.Candlestick) indicators.SimpleMovingAverage {
+func NewSimpleMovingAverage(candles []common.Candlestick) common.FinancialIndicator {
 	var params []string
 	params = append(params, fmt.Sprintf("%d", len(candles)))
 	return CreateSimpleMovingAverage(candles, params)
 }
 
-func CreateSimpleMovingAverage(candles []common.Candlestick, params []string) indicators.SimpleMovingAverage {
+func CreateSimpleMovingAverage(candles []common.Candlestick, params []string) common.FinancialIndicator {
+	if params == nil {
+		temp := &SimpleMovingAverageImpl{}
+		params = temp.GetDefaultParameters()
+	}
 	size, _ := strconv.ParseInt(params[0], 10, 64)
 	var prices []float64
 	var total float64

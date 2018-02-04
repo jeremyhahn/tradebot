@@ -34,10 +34,7 @@ func NewExchangeDAO(ctx *common.Context) ExchangeDAO {
 }
 
 func (dao *ExchangeDAOImpl) Create(exchange *CryptoExchange) error {
-	if err := dao.ctx.DB.Create(exchange).Error; err != nil {
-		return err
-	}
-	return nil
+	return dao.ctx.DB.Create(exchange).Error
 }
 
 func (dao *ExchangeDAOImpl) Find() ([]CryptoExchange, error) {

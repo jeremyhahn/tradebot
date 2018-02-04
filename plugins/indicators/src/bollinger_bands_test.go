@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 )
 
 func TestBollingerBands(t *testing.T) {
@@ -30,7 +31,7 @@ func TestBollingerBands(t *testing.T) {
 	candlesticks = append(candlesticks, common.Candlestick{Close: 89.13})
 	candlesticks = append(candlesticks, common.Candlestick{Close: 90.70})
 
-	bollinger := NewBollingerBands(candlesticks)
+	bollinger := NewBollingerBands(candlesticks).(indicators.BollingerBands)
 
 	if bollinger.GetName() != "BollingerBands" {
 		t.Errorf("[Bollinger] Got incorrect name: %s, expected: %s", bollinger.GetName(), "BollingerBands")
@@ -190,7 +191,7 @@ func TestBollingerBands_Calculate(t *testing.T) {
 	candlesticks = append(candlesticks, common.Candlestick{Close: 89.13})
 	candlesticks = append(candlesticks, common.Candlestick{Close: 90.70})
 
-	bollinger := NewBollingerBands(candlesticks)
+	bollinger := NewBollingerBands(candlesticks).(indicators.BollingerBands)
 
 	upper, middle, lower := bollinger.Calculate(92.90)
 	actual := 0.0

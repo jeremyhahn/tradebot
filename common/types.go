@@ -33,6 +33,17 @@ type TradingStrategy interface {
 	GetBuySellSignals() (bool, bool, error)
 	CalculateFeeAndTax(price float64) (float64, float64)
 	GetTradeAmounts() (float64, float64)
+	GetParameters() *TradingStrategyParams
+}
+
+type TradingStrategyParams struct {
+	CurrencyPair *CurrencyPair
+	Balances     []Coin
+	Indicators   map[string]FinancialIndicator
+	NewPrice     float64
+	LastTrade    *Trade
+	TradeFee     float64
+	Config       []string
 }
 
 type Trade struct {
@@ -211,5 +222,6 @@ type Indicator struct {
 	ChartId    uint   `json:"chart_id"`
 	Name       string `json:"name"`
 	Parameters string `json:"parameters"`
+	Filename   string `json:"filename"`
 	FinancialIndicator
 }

@@ -59,10 +59,12 @@ func createIntegrationTestChart(ctx *common.Context) (*Chart, []Indicator, []Tra
 	indicators := []Indicator{
 		Indicator{
 			Name:       "RelativeStrengthIndex",
-			Parameters: "14,70,30"},
+			Parameters: "14,70,30",
+			Filename:   "rsi.so"},
 		Indicator{
 			Name:       "BollingerBands",
-			Parameters: "20,2"}}
+			Parameters: "20,2",
+			Filename:   "bollinger_bands.so"}}
 	trades := []Trade{
 		Trade{
 			UserId:    ctx.User.Id,

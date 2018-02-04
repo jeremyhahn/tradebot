@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/jeremyhahn/tradebot/util"
 )
 
@@ -39,7 +40,7 @@ func TestMovingAverageConvergenceDivergence(t *testing.T) {
 	candles = append(candles, common.Candlestick{Close: 463.58})
 	candles = append(candles, common.Candlestick{Close: 461.14})
 
-	macd := NewMovingAverageConvergenceDivergence(candles)
+	macd := NewMovingAverageConvergenceDivergence(candles).(indicators.MovingAverageConvergenceDivergence)
 
 	if macd.GetName() != "MovingAverageConvergenceDivergence" {
 		t.Errorf("[MovingAverageConvergenceDivergence] Got incorrect name: %s, expected: %s", macd.GetName(), "MovingAverageConvergenceDivergence")

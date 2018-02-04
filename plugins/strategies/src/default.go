@@ -1,4 +1,4 @@
-package strategy
+package main
 
 import (
 	"errors"
@@ -8,16 +8,6 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 )
-
-type TradingStrategyParams struct {
-	CurrencyPair *common.CurrencyPair
-	Balances     []common.Coin
-	Indicators   map[string]common.FinancialIndicator
-	NewPrice     float64
-	LastTrade    *common.Trade
-	TradeFee     float64
-	Config       []string
-}
 
 type DefaultTradingStrategyConfig struct {
 	Tax                    float64
@@ -32,14 +22,16 @@ type DefaultTradingStrategyConfig struct {
 
 type DefaultTradingStrategy struct {
 	name        string
-	params      *TradingStrategyParams
+	params      *common.TradingStrategyParams
 	config      *DefaultTradingStrategyConfig
 	buySignals  int
 	sellSignals int
 	common.TradingStrategy
 }
 
-func CreateDefaultTradingStrategy(params *TradingStrategyParams) (common.TradingStrategy, error) {
+func main() {}
+
+func CreateDefaultTradingStrategy(params *common.TradingStrategyParams) (common.TradingStrategy, error) {
 	expectedConfigCount := 8
 	var strategyConfig *DefaultTradingStrategyConfig
 	if len(params.Config) <= 0 {
@@ -88,6 +80,10 @@ func CreateDefaultTradingStrategy(params *TradingStrategyParams) (common.Trading
 
 func (strategy *DefaultTradingStrategy) GetRequiredIndicators() []string {
 	return []string{"RelativeStrengthIndex", "BollingerBands", "MovingAverageConvergenceDivergence"}
+}
+
+func (strategy *DefaultTradingStrategy) GetParameters() *common.TradingStrategyParams {
+	return strategy.params
 }
 
 func (strategy *DefaultTradingStrategy) GetBuySellSignals() (bool, bool, error) {
@@ -215,27 +211,3 @@ func (config *DefaultTradingStrategyConfig) ToSlice() []string {
 		fmt.Sprintf("%d", config.RequiredBuySignals),
 		fmt.Sprintf("%d", config.RequiredSellSignals)}
 }
-
-/*
-func (tsp *TradingStrategyParams) FromString(config string) []string {
-	var _config []string
-	pieces := strings.Split(config, ",")
-	for _, p := range pieces {
-		_config = append(_config, p)
-	}
-	return _config
-}*/
-
-/*
-func (config *DefaultTradingStrategyConfig) ToString() string {
-	return fmt.Sprintf("%f,%f,%f,%f,%f,%f,%d,%d",
-		config.Tax,
-		config.TradeSize,
-		config.ProfitMarginMin,
-		config.ProfitMarginMinPercent,
-		config.StopLoss,
-		config.StopLossPercent,
-		config.RequiredBuySignals,
-		config.RequiredSellSignals)
-}
-*/

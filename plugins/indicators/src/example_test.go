@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/example"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestExampleIndicator(t *testing.T) {
 	var candles []common.Candlestick
 	params := []string{"4", "5", "6"}
-	exampleIndicator := CreateExampleIndicator(candles, params)
+	exampleIndicator := CreateExampleIndicator(candles, params).(example.ExampleIndicator)
 	assert.Equal(t, "ExampleIndicator", exampleIndicator.GetName())
 	assert.Equal(t, "Example Indicator®", exampleIndicator.GetDisplayName())
 	assert.Equal(t, params, exampleIndicator.GetParameters())

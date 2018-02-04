@@ -1,4 +1,4 @@
-package strategy
+package main
 
 import (
 	"testing"
@@ -31,7 +31,7 @@ func TestDefaultTradingStrategy_DefaultConfig(t *testing.T) {
 		"RelativeStrengthIndex":              new(MockRelativeStrengthIndex),
 		"BollingerBands":                     new(MockBollingerBands),
 		"MovingAverageConvergenceDivergence": new(MockMovingAverageConvergenceDivergence)}
-	params := &TradingStrategyParams{
+	params := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
 		Balances:     helper.CreateBalances(),
 		Indicators:   strategyIndicators,
@@ -69,7 +69,7 @@ func TestDefaultTradingStrategy_CustomTradeSize_Percentage(t *testing.T) {
 		TradeSize:              .1,
 		RequiredBuySignals:     2,
 		RequiredSellSignals:    2}
-	params := &TradingStrategyParams{
+	params := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
 		Balances:     helper.CreateBalances(),
 		NewPrice:     11000,
@@ -102,7 +102,7 @@ func TestDefaultTradingStrategy_CustomTradeSize_AvailableBalance(t *testing.T) {
 		TradeSize:              1,
 		RequiredBuySignals:     2,
 		RequiredSellSignals:    2}
-	params := &TradingStrategyParams{
+	params := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
 		Balances:     helper.CreateBalances(),
 		NewPrice:     11000,
@@ -135,7 +135,7 @@ func TestDefaultTradingStrategy_CustomTradeSize_Zero(t *testing.T) {
 		TradeSize:              0,
 		RequiredBuySignals:     2,
 		RequiredSellSignals:    2}
-	params := &TradingStrategyParams{
+	params := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
 		Balances:     helper.CreateBalances(),
 		NewPrice:     11000,
@@ -168,7 +168,7 @@ func TestDefaultTradingStrategy_CustomTradeSize_GreaterThanOne(t *testing.T) {
 		TradeSize:              2,
 		RequiredBuySignals:     2,
 		RequiredSellSignals:    2}
-	params := &TradingStrategyParams{
+	params := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
 		Balances:     helper.CreateBalances(),
 		NewPrice:     11000,
@@ -201,7 +201,7 @@ func TestDefaultTradingStrategy_CustomTradeSize_LessThanZero(t *testing.T) {
 		TradeSize:              -2,
 		RequiredBuySignals:     2,
 		RequiredSellSignals:    2}
-	params := &TradingStrategyParams{
+	params := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
 		Balances:     helper.CreateBalances(),
 		NewPrice:     11000,

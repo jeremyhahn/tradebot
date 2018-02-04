@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/jeremyhahn/tradebot/util"
 )
 
@@ -21,7 +22,7 @@ func TestSimpleMovingAverage(t *testing.T) {
 	candlesticks = append(candlesticks, common.Candlestick{Close: 65.63})
 	candlesticks = append(candlesticks, common.Candlestick{Close: 66.06})
 
-	sma := NewSimpleMovingAverage(candlesticks)
+	sma := NewSimpleMovingAverage(candlesticks).(indicators.SimpleMovingAverage)
 
 	if sma.GetName() != "SimpleMovingAverage" {
 		t.Errorf("[SimpleMovingAverage] Got incorrect name: %s, expected: %s", sma.GetName(), "SimpleMovingAverage")
@@ -73,7 +74,7 @@ func TestSimpleMovingAverageUsingAdd(t *testing.T) {
 	var candlesticks []common.Candlestick
 
 	params := []string{"10"}
-	sma := CreateSimpleMovingAverage(candlesticks, params)
+	sma := CreateSimpleMovingAverage(candlesticks, params).(indicators.SimpleMovingAverage)
 
 	sma.Add(&common.Candlestick{Close: 67.50})
 	sma.Add(&common.Candlestick{Close: 66.50})

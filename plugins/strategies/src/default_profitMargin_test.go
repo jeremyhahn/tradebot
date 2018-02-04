@@ -1,4 +1,4 @@
-package strategy
+package main
 
 import (
 	"testing"
@@ -49,7 +49,7 @@ func TestDefaultTradingStrategy_CustomTradeSize_ProfitMarginFixed1(t *testing.T)
 		StopLossPercent:        .20,
 		RequiredBuySignals:     2,
 		RequiredSellSignals:    2}
-	params := &TradingStrategyParams{
+	params := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
 		Balances:     helper.CreateBalances(),
 		NewPrice:     11000,
@@ -98,7 +98,7 @@ func TestDefaultTradingStrategy_CustomTradeSize_ProfitMarginFixed2(t *testing.T)
 		TradeSize:              1,
 		RequiredBuySignals:     2,
 		RequiredSellSignals:    2}
-	params := &TradingStrategyParams{
+	params := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
 		Balances:     helper.CreateBalances(),
 		NewPrice:     11000,

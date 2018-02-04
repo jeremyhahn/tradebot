@@ -8,16 +8,25 @@ import (
 )
 
 type OBVImpl struct {
+	name          string
+	displayName   string
 	lastVolume    float64
 	lastPrice     float64
 	volume        float64
 	liveVolume    float64
 	lastLivePrice float64
-	indicators.OBV
+	indicators.OnBalanceVolume
 }
 
-func NewOnBalanceVolume(candlesticks []common.Candlestick) indicators.OBV {
+func CreateOnBalanceVolume(candlesticks []common.Candlestick, params []string) common.FinancialIndicator {
+	if params == nil {
+		temp := &OBVImpl{}
+		params = temp.GetDefaultParameters()
+	}
 	obv := &OBVImpl{
+		name:        "OnBalanceVolume",
+		displayName: "On Balance Volume (OBV)",
+
 		lastVolume: 0.0,
 		lastPrice:  0.0,
 		volume:     0.0}
@@ -59,4 +68,20 @@ func (obv *OBVImpl) OnPeriodChange(candle *common.Candlestick) {
 	obv.lastPrice = candle.Close
 	obv.liveVolume = obv.volume
 	obv.lastLivePrice = obv.lastPrice
+}
+
+func (obv *OBVImpl) GetName() string {
+	return obv.name
+}
+
+func (obv *OBVImpl) GetDisplayName() string {
+	return obv.displayName
+}
+
+func (obv *OBVImpl) GetDefaultParameters() []string {
+	return []string{}
+}
+
+func (obv *OBVImpl) GetParameters() []string {
+	return []string{}
 }
