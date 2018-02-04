@@ -1,21 +1,23 @@
-package indicators
+package main
 
 import (
 	"fmt"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 )
 
-type OBV struct {
+type OBVImpl struct {
 	lastVolume    float64
 	lastPrice     float64
 	volume        float64
 	liveVolume    float64
 	lastLivePrice float64
+	indicators.OBV
 }
 
-func NewOnBalanceVolume(candlesticks []common.Candlestick) *OBV {
-	obv := &OBV{
+func NewOnBalanceVolume(candlesticks []common.Candlestick) indicators.OBV {
+	obv := &OBVImpl{
 		lastVolume: 0.0,
 		lastPrice:  0.0,
 		volume:     0.0}
@@ -25,11 +27,11 @@ func NewOnBalanceVolume(candlesticks []common.Candlestick) *OBV {
 	return obv
 }
 
-func (obv *OBV) GetValue() float64 {
+func (obv *OBVImpl) GetValue() float64 {
 	return obv.volume
 }
 
-func (obv *OBV) Calculate(price float64) float64 {
+func (obv *OBVImpl) Calculate(price float64) float64 {
 	if obv.lastPrice == 0 && obv.lastVolume == 0 {
 		obv.lastLivePrice = price
 		return 0.0
@@ -43,7 +45,7 @@ func (obv *OBV) Calculate(price float64) float64 {
 	return obv.liveVolume
 }
 
-func (obv *OBV) OnPeriodChange(candle *common.Candlestick) {
+func (obv *OBVImpl) OnPeriodChange(candle *common.Candlestick) {
 	fmt.Printf("[OBV] OnPeriodChange: %+v\n", candle)
 	if obv.lastPrice == 0 && obv.lastVolume == 0 {
 		obv.lastPrice = candle.Close

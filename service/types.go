@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
 )
 
 type AutoTradeService interface {
@@ -9,17 +10,17 @@ type AutoTradeService interface {
 }
 
 type ChartService interface {
+	GetCurrencyPair(chart *common.Chart) *common.CurrencyPair
 	GetExchange(chart *common.Chart) common.Exchange
-	//GetCurrencyPair(chart *common.Chart) common.CurrencyPair
-	Stream(chart *common.Chart, strategyHandler func(price float64)) error
+	Stream(chart *common.Chart, strategyHandler func(price float64) error) error
 	StopStream(chart *common.Chart)
-	ToJson(chart *common.Chart) string
-
-	GetIndicator(*common.Chart, string) (common.FinancialIndicator, error)
-	GetIndicators(chart *common.Chart) (map[string]common.FinancialIndicator, error)
-	GetChart(id uint) (*common.Chart, error)
 	GetCharts() ([]common.Chart, error)
-	GetChartsByUser(user *common.User) []common.Chart
+	GetTrades(chart *common.Chart) ([]common.Trade, error)
+	GetLastTrade(chart common.Chart) (*common.Trade, error)
+	GetChart(id uint) (*common.Chart, error)
+	GetIndicator(chart *common.Chart, name string) (common.FinancialIndicator, error)
+	GetIndicators(chart *common.Chart) (map[string]common.FinancialIndicator, error)
+	CreateIndicator(dao *dao.Indicator) common.FinancialIndicator
 }
 
 type TradeService interface {

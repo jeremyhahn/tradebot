@@ -57,7 +57,7 @@ func (p *PluginServiceImpl) GetIndicator(pluginName string) (func(candles []comm
 	indicator, err := lib.Lookup(symbol)
 	impl, ok := indicator.(func(candles []common.Candlestick, params []string) common.FinancialIndicator)
 	if !ok {
-		errmsg := fmt.Sprintf("Wrong type - expected func - %s", pluginName)
+		errmsg := fmt.Sprintf("Wrong type - expected %s func(candles []common.Candlestick, params []string) common.FinancialIndicator", pluginName)
 		p.ctx.Logger.Errorf("[PluginServiceImpl.GetIndicator] %s", errmsg)
 		return nil, errors.New(errmsg)
 	}

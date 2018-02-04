@@ -37,33 +37,42 @@ func (ats *AutoTradeServiceImpl) EndWorldHunger() error {
 		}
 		exchange := ats.exchangeService.CreateExchange(ats.ctx.User, chart.Exchange)
 		coins, _ := exchange.GetBalances()
-		params := &strategy.TradingStrategyParams{
-			CurrencyPair: &common.CurrencyPair{
-				Base:          chart.Base,
-				Quote:         chart.Quote,
-				LocalCurrency: ats.ctx.User.LocalCurrency},
-			Balances:   coins,
-			Indicators: indicators}
-
-		s, err := strategy.CreateDefaultTradingStrategy(params)
-		if err != nil {
-			ats.ctx.Logger.Errorf("[AutoTradeServiceImpl.EndWorldHunger] %s", err.Error())
-			continue
+		lastTrade, err3 := ats.chartService.GetLastTrade(chart)
+		if err3 != nil {
+			return err3
 		}
 
 		//go func() {
-		ats.chartService.Stream(&chart, func(newPrice float64) {
-			buy, sell, err := s.GetBuySellSignals()
-			if err != nil {
-				ats.ctx.Logger.Errorf("[AutoTradeServiceImpl.EndWorldHunger] %s", err.Error())
-				return
+		streamErr := ats.chartService.Stream(&chart, func(newPrice float64) error {
+			params := &strategy.TradingStrategyParams{
+				CurrencyPair: &common.CurrencyPair{
+					Base:          chart.Base,
+					Quote:         chart.Quote,
+					LocalCurrency: ats.ctx.User.LocalCurrency},
+				Balances:   coins,
+				NewPrice:   newPrice,
+				LastTrade:  lastTrade,
+				Indicators: indicators}
+
+			strategy, err4 := strategy.CreateDefaultTradingStrategy(params)
+			if err4 != nil {
+				return err4
+			}
+			buy, sell, err5 := strategy.GetBuySellSignals()
+			if err5 != nil {
+				return err5
 			}
 			if buy {
 				ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ BUY SIGNAL $$$")
 			} else if sell {
 				ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ SELL SIGNAL $$$")
 			}
+			return nil
 		})
+		if streamErr != nil {
+			return streamErr
+		}
+		return nil
 		//}()
 	}
 	return nil

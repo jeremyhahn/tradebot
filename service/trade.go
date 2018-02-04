@@ -40,38 +40,6 @@ func (ts *TradeServiceImpl) Save(trade *common.Trade) {
 }
 
 func (ts *TradeServiceImpl) GetLastTrade(chart *common.Chart) *common.Trade {
-	/*
-		var trades []dao.Trade
-		var indicators []dao.Indicator
-		for _, trade := range chart.Trades {
-			trades = append(trades, dao.Trade{
-				Id:        trade.Id,
-				UserId:    trade.UserId,
-				ChartId:   chart.Id,
-				Date:      trade.Date,
-				Exchange:  trade.Exchange,
-				Type:      trade.Type,
-				Base:      trade.Base,
-				Quote:     trade.Quote,
-				Amount:    trade.Amount,
-				Price:     trade.Price,
-				ChartData: trade.ChartData})
-		}
-		for _, indicator := range chart.Indicators {
-			indicators = append(indicators, dao.Indicator{
-				Id:         indicator.Id,
-				ChartId:    indicator.ChartId,
-				Name:       indicator.Name,
-				Parameters: indicator.Parameters})
-		}
-		daoChart := &dao.Chart{
-			Id:         chart.Id,
-			Base:       chart.Base,
-			Exchange:   chart.Exchange,
-			Period:     chart.Period,
-			Trades:     trades,
-			Indicators: indicators}
-	*/
 	daoChart := &dao.Chart{Id: chart.Id}
 	entity := ts.tradeDAO.GetLastTrade(daoChart)
 	return &common.Trade{
@@ -87,3 +55,36 @@ func (ts *TradeServiceImpl) GetLastTrade(chart *common.Chart) *common.Trade {
 		Price:     entity.Price,
 		ChartData: entity.ChartData}
 }
+
+/*
+	var trades []dao.Trade
+	var indicators []dao.Indicator
+	for _, trade := range chart.Trades {
+		trades = append(trades, dao.Trade{
+			Id:        trade.Id,
+			UserId:    trade.UserId,
+			ChartId:   chart.Id,
+			Date:      trade.Date,
+			Exchange:  trade.Exchange,
+			Type:      trade.Type,
+			Base:      trade.Base,
+			Quote:     trade.Quote,
+			Amount:    trade.Amount,
+			Price:     trade.Price,
+			ChartData: trade.ChartData})
+	}
+	for _, indicator := range chart.Indicators {
+		indicators = append(indicators, dao.Indicator{
+			Id:         indicator.Id,
+			ChartId:    indicator.ChartId,
+			Name:       indicator.Name,
+			Parameters: indicator.Parameters})
+	}
+	daoChart := &dao.Chart{
+		Id:         chart.Id,
+		Base:       chart.Base,
+		Exchange:   chart.Exchange,
+		Period:     chart.Period,
+		Trades:     trades,
+		Indicators: indicators}
+*/

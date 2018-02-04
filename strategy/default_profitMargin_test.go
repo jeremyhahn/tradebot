@@ -1,12 +1,10 @@
-// +build unit
-
 package strategy
 
 import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/indicators"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -34,8 +32,8 @@ func TestDefaultTradingStrategy_CustomTradeSize_ProfitMarginFixed1(t *testing.T)
 		"BollingerBands":                     new(MockBBands_StrategyProfitMargin),
 		"MovingAverageConvergenceDivergence": new(MockMACD_StrategyProfitMargin)}
 	lastTrade := &common.Trade{
-		ID:       1,
-		ChartID:  1,
+		Id:       1,
+		ChartId:  1,
 		Base:     "BTC",
 		Quote:    "USD",
 		Exchange: "gdax",
@@ -83,8 +81,8 @@ func TestDefaultTradingStrategy_CustomTradeSize_ProfitMarginFixed2(t *testing.T)
 		"BollingerBands":                     new(MockBBands_StrategyProfitMargin),
 		"MovingAverageConvergenceDivergence": new(MockMACD_StrategyProfitMargin)}
 	lastTrade := &common.Trade{
-		ID:       1,
-		ChartID:  1,
+		Id:       1,
+		ChartId:  1,
 		Base:     "BTC",
 		Quote:    "USD",
 		Exchange: "gdax",

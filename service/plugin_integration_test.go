@@ -1,5 +1,3 @@
-// +build integration
-
 package service
 
 import (
@@ -17,7 +15,7 @@ func TestPluginService_Indicator(t *testing.T) {
 	if err != nil {
 		assert.Fail(t, err.Error())
 	}
-	indicator := constructor(createChartCandles(), []string{"1", "2", "3"})
+	indicator := constructor(createIntegrationTestCandles(), []string{"1", "2", "3"})
 	assert.Equal(t, "ExampleIndicator", indicator.GetName())
 	assert.Equal(t, "Example Indicator®", indicator.GetDisplayName())
 	assert.Equal(t, []string{"1", "2", "3"}, indicator.GetDefaultParameters())

@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/indicators"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 )
 
 type TradingStrategyParams struct {
@@ -80,7 +80,7 @@ func CreateDefaultTradingStrategy(params *TradingStrategyParams) (common.Trading
 		config: strategyConfig}
 	for _, name := range strategy.GetRequiredIndicators() {
 		if _, ok := params.Indicators[name]; !ok {
-			return nil, errors.New(fmt.Sprintf("Strategy requires indicator: %s", name))
+			return nil, errors.New(fmt.Sprintf("Strategy requires missing indicator: %s", name))
 		}
 	}
 	return strategy, nil

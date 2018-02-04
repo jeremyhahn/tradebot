@@ -1,4 +1,4 @@
-package indicators
+package main
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 )
 
 type ExponentialMovingAverage struct {
@@ -19,16 +20,15 @@ type ExponentialMovingAverage struct {
 	average      float64
 	last         float64
 	multiplier   float64
-	common.MovingAverage
-	common.PeriodListener
+	indicators.ExponentialMovingAverage
 }
 
-func NewExponentialMovingAverage(candles []common.Candlestick) *ExponentialMovingAverage {
+func NewExponentialMovingAverage(candles []common.Candlestick) indicators.ExponentialMovingAverage {
 	params := []string{fmt.Sprintf("%d", len(candles))}
 	return CreateExponentialMovingAverage(candles, params)
 }
 
-func CreateExponentialMovingAverage(candles []common.Candlestick, params []string) *ExponentialMovingAverage {
+func CreateExponentialMovingAverage(candles []common.Candlestick, params []string) indicators.ExponentialMovingAverage {
 	size, _ := strconv.ParseInt(params[0], 10, 64)
 	var prices []float64
 	var total float64

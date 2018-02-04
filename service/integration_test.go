@@ -1,62 +1,103 @@
+//// +build integraion
+
 package service
 
 import (
+	"os"
+	"sync"
+	"time"
+
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	logging "github.com/op/go-logging"
 )
 
-/*
-type MockChartDAO struct {
-	dao.ChartDAO
-	mock.Mock
+var TEST_CONTEXT *common.Context
+var TEST_LOCK sync.Mutex
+var TEST_USERNAME = "test"
+var TEST_DBPATH = "/tmp/tradebot-integration-testing.db"
+
+func NewIntegrationTestContext() *common.Context {
+
+	TEST_LOCK.Lock()
+
+	backend, _ := logging.NewSyslogBackend(common.APPNAME)
+	logging.SetBackend(backend)
+	logger := logging.MustGetLogger(common.APPNAME)
+
+	db, err := gorm.Open("sqlite3", TEST_DBPATH)
+	db.LogMode(true)
+	if err != nil {
+		panic(err)
+	}
+
+	TEST_CONTEXT = &common.Context{
+		DB:     db,
+		Logger: logger,
+		User: &common.User{
+			Id:            1,
+			Username:      TEST_USERNAME,
+			LocalCurrency: "USD"}}
+
+	userDAO := dao.NewUserDAO(TEST_CONTEXT)
+	userDAO.Save(&dao.User{Username: TEST_USERNAME, LocalCurrency: "USD"})
+
+	return TEST_CONTEXT
 }
 
-type MockChartEntity struct {
-	dao.IChart
-	mock.Mock
+func CleanupIntegrationTest() {
+	if TEST_CONTEXT != nil {
+		TEST_CONTEXT.DB.Close()
+		TEST_LOCK.Unlock()
+		os.Remove(TEST_DBPATH)
+	}
 }
 
-type MockExchangeService struct {
-	common.Exchange
-	mock.Mock
+func createIntegrationTestChart(ctx *common.Context) (*dao.Chart, []dao.Indicator, []dao.Trade) {
+	indicators := []dao.Indicator{
+		dao.Indicator{
+			Name:       "RelativeStrengthIndex",
+			Parameters: "14,70,30"},
+		dao.Indicator{
+			Name:       "BollingerBands",
+			Parameters: "20,2"}}
+	trades := []dao.Trade{
+		dao.Trade{
+			UserId:    ctx.User.Id,
+			Base:      "BTC",
+			Quote:     "USD",
+			Exchange:  "Test",
+			Date:      time.Now(),
+			Type:      "buy",
+			Amount:    2,
+			Price:     10000,
+			ChartData: "test-trade-1"},
+		dao.Trade{
+			UserId:    ctx.User.Id,
+			Base:      "BTC",
+			Quote:     "USD",
+			Exchange:  "Test",
+			Date:      time.Now(),
+			Type:      "sell",
+			Amount:    2,
+			Price:     12000,
+			ChartData: "test-trade-2"}}
+	chart := &dao.Chart{
+		UserId:     ctx.User.Id,
+		Base:       "BTC",
+		Quote:      "USD",
+		Exchange:   "gdax",
+		Period:     900, // 15 minutes
+		Indicators: indicators,
+		Trades:     trades,
+		AutoTrade:  1}
+	return chart, indicators, trades
 }
 
-func TestChartService(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	chartDAO := new(MockChartDAO)
-	entity := new(MockChartEntity)
-	exchangeService := new(MockExchangeService)
-	chartService := NewChartService(ctx, chartDAO, entity, exchangeService)
-	chartService.Stream(func(chart common.ChartService) {
-
-	})
-}
-
-func (mcdao *MockChartDAO) GetIndicators(chart dao.IChart) map[string]dao.Indicator {
-	return map[string]dao.Indicator{
-		"TestIndicator": dao.Indicator{
-			Id:         1,
-			ChartID:    1,
-			Name:       "TestIndicator",
-			Parameters: "1,2,3"}}
-}
-
-func (mce *MockChartEntity) GetPeriod() int {
-	return 14
-}
-
-func (eces *MockExchangeService) GetName() string {
-	return "TestExchange"
-}
-
-func (eces *MockExchangeService) FormattedCurrencyPair() string {
-	return "BTC-USD"
-}
-
-func (eces *MockExchangeService) GetPriceHistory(time.Time, time.Time, int) []common.Candlestick {
-	return createChartCandles()
-}
-*/
-func createChartCandles() []common.Candlestick {
+func createIntegrationTestCandles() []common.Candlestick {
 	var candles []common.Candlestick
 	candles = append(candles, common.Candlestick{Close: 100.00})
 	candles = append(candles, common.Candlestick{Close: 200.00})

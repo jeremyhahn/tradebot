@@ -1,19 +1,12 @@
-package indicators
+package main
 
 import (
 	"fmt"
 	"strconv"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 )
-
-type MovingAverageConvergenceDivergence interface {
-	Calculate(price float64) (float64, float64, float64)
-	GetValue() float64
-	GetSignalLine() float64
-	GetHistogram() float64
-	common.FinancialIndicator
-}
 
 type MovingAverageConvergenceDivergenceParams struct {
 	EMA1Period int64
@@ -25,9 +18,9 @@ type MovingAverageConvergenceDivergenceImpl struct {
 	name        string
 	displayName string
 	params      *MovingAverageConvergenceDivergenceParams
-	ema1        common.MovingAverage
-	ema2        common.MovingAverage
-	ema3        common.MovingAverage
+	ema1        indicators.ExponentialMovingAverage
+	ema2        indicators.ExponentialMovingAverage
+	ema3        indicators.ExponentialMovingAverage
 	signal      float64
 	value       float64
 	histogram   float64
@@ -35,12 +28,12 @@ type MovingAverageConvergenceDivergenceImpl struct {
 	common.FinancialIndicator
 }
 
-func NewMovingAverageConvergenceDivergence(candles []common.Candlestick) MovingAverageConvergenceDivergence {
+func NewMovingAverageConvergenceDivergence(candles []common.Candlestick) indicators.MovingAverageConvergenceDivergence {
 	params := []string{"12", "26", "9"}
 	return CreateMovingAverageConvergenceDivergence(candles, params)
 }
 
-func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, params []string) MovingAverageConvergenceDivergence {
+func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, params []string) indicators.MovingAverageConvergenceDivergence {
 	ema1Period, _ := strconv.ParseInt(params[0], 10, 32)
 	ema2Period, _ := strconv.ParseInt(params[1], 10, 32)
 	signalSize, _ := strconv.ParseInt(params[2], 10, 32)

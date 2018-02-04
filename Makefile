@@ -32,5 +32,14 @@ test:
 	cd webservice && go test webservice/*.go
 
 build:
-	cd plugins/indicators/src && go build -buildmode=plugin ExampleIndicator.go && mv ExampleIndicator.so ../
+	cd plugins/indicators/src && go build -buildmode=plugin example.go && mv example.so ../
+	cd plugins/indicators/src && go build -buildmode=plugin sma.go && mv sma.so ../
+	cd plugins/indicators/src && go build -buildmode=plugin ema.go && mv ema.so ../
+	cd plugins/indicators/src && go build -buildmode=plugin rsi.go sma.go && mv rsi.so ../
+	cd plugins/indicators/src && go build -buildmode=plugin bollinger_bands.go sma.go && mv bollinger_bands.so ../
+	cd plugins/indicators/src && go build -buildmode=plugin macd.go ema.go && mv macd.so ../
+	cd plugins/indicators/src && go build -buildmode=plugin obv.go && mv obv.so ../
 	go build
+
+clean:
+	cd plugins/indicators && rm -rf *.so
