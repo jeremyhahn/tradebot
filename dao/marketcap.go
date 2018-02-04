@@ -46,10 +46,10 @@ func NewMarketCapDAO(ctx *common.Context) *MarketCapDAO {
 		logger: ctx.Logger}
 }
 
-func (dao *MarketCapDAO) Get(symbol string) *common.MarketCap {
+func (dao *MarketCapDAO) Get(symbol string) (*common.MarketCap, error) {
 	var market MarketCap
 	if err := dao.db.First(&symbol).Error; err != nil {
-		dao.logger.Error(err)
+		return nil, err
 	}
 	return &common.MarketCap{
 		Id:               market.Id,
@@ -66,11 +66,9 @@ func (dao *MarketCapDAO) Get(symbol string) *common.MarketCap {
 		PercentChange1h:  market.PercentChange1h,
 		PercentChange24h: market.PercentChange24h,
 		PercentChange7d:  market.PercentChange7d,
-		LastUpdated:      market.LastUpdated}
+		LastUpdated:      market.LastUpdated}, nil
 }
 
-func (dao *MarketCapDAO) Delete(symbol string) {
-	if err := dao.db.Delete(&MarketCap{Symbol: symbol}).Error; err != nil {
-		dao.logger.Error(err)
-	}
+func (dao *MarketCapDAO) Delete(symbol string) error {
+	return dao.db.Delete(&MarketCap{Symbol: symbol}).Error
 }

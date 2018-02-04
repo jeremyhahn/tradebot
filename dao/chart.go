@@ -29,24 +29,15 @@ func NewChartDAO(ctx *common.Context) ChartDAO {
 }
 
 func (chartDAO *ChartDAOImpl) Create(chart ChartEntity) error {
-	if err := chartDAO.ctx.DB.Create(chart).Error; err != nil {
-		return err
-	}
-	return nil
+	return chartDAO.ctx.DB.Create(chart).Error
 }
 
 func (chartDAO *ChartDAOImpl) Save(chart ChartEntity) error {
-	if err := chartDAO.ctx.DB.Save(chart).Error; err != nil {
-		return err
-	}
-	return nil
+	return chartDAO.ctx.DB.Save(chart).Error
 }
 
 func (chartDAO *ChartDAOImpl) Update(chart ChartEntity) error {
-	if err := chartDAO.ctx.DB.Update(chart).Error; err != nil {
-		return err
-	}
-	return nil
+	return chartDAO.ctx.DB.Update(chart).Error
 }
 
 func (chartDAO *ChartDAOImpl) Get(id uint) (ChartEntity, error) {

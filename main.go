@@ -32,11 +32,13 @@ func main() {
 	profitDAO := dao.NewProfitDAO(ctx)
 
 	marketcapService := service.NewMarketCapService(logger)
+	pluginService := service.NewPluginService(ctx)
 	exchangeService := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx))
 	chartService := service.NewChartService(ctx, chartDAO, exchangeService)
 	tradeService := service.NewTradeService(ctx, tradeDAO)
 	profitService := service.NewProfitService(ctx, profitDAO)
-	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService, profitService, tradeService)
+	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService,
+		profitService, tradeService, pluginService)
 	err := autoTradeService.EndWorldHunger()
 	if err != nil {
 		ctx.Logger.Error(err.Error())

@@ -46,17 +46,11 @@ func NewProfitDAO(ctx *common.Context) ProfitDAO {
 }
 
 func (dao *ProfitDAOImpl) Create(profit ProfitEntity) error {
-	if err := dao.ctx.DB.Create(profit).Error; err != nil {
-		return err
-	}
-	return nil
+	return dao.ctx.DB.Create(profit).Error
 }
 
 func (dao *ProfitDAOImpl) Save(profit ProfitEntity) error {
-	if err := dao.ctx.DB.Save(profit).Error; err != nil {
-		return err
-	}
-	return nil
+	return dao.ctx.DB.Save(profit).Error
 }
 
 func (dao *ProfitDAOImpl) Find() ([]Profit, error) {

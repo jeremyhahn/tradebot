@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 )
 
 // https://www.investopedia.com/terms/o/onbalancevolume.asp
 func TestOnBalanceVolume(t *testing.T) {
 
 	var candlesticks []common.Candlestick
-	obv := NewOnBalanceVolume(candlesticks)
+	obv := CreateOnBalanceVolume(candlesticks, nil).(indicators.OnBalanceVolume)
 
 	actual := obv.GetValue()
 	expected := 0.0

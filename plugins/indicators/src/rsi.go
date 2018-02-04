@@ -29,16 +29,20 @@ type RelativeStrengthIndexImpl struct {
 	indicators.RelativeStrengthIndex
 }
 
-func NewRelativeStrengthIndex(candles []common.Candlestick) indicators.RelativeStrengthIndex {
+func NewRelativeStrengthIndex(candles []common.Candlestick) common.FinancialIndicator {
 	params := []string{fmt.Sprintf("%d", len(candles)), "70", "30"}
 	return CreateRelativeStrengthIndex(candles, params)
 }
 
-func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) indicators.RelativeStrengthIndex {
+func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) common.FinancialIndicator {
+	if params == nil {
+		temp := &RelativeStrengthIndexImpl{}
+		params = temp.GetDefaultParameters()
+	}
 	period, _ := strconv.ParseInt(params[0], 10, 64)
 	overbought, _ := strconv.ParseFloat(params[1], 64)
 	oversold, _ := strconv.ParseFloat(params[2], 64)
-	sma := CreateSimpleMovingAverage(candles, []string{params[0]})
+	sma := CreateSimpleMovingAverage(candles, []string{params[0]}).(indicators.SimpleMovingAverage)
 	candleLen := len(candles)
 	lastPrice := 0.0
 	if candleLen > 0 {

@@ -28,22 +28,26 @@ type MovingAverageConvergenceDivergenceImpl struct {
 	common.FinancialIndicator
 }
 
-func NewMovingAverageConvergenceDivergence(candles []common.Candlestick) indicators.MovingAverageConvergenceDivergence {
+func NewMovingAverageConvergenceDivergence(candles []common.Candlestick) common.FinancialIndicator {
 	params := []string{"12", "26", "9"}
 	return CreateMovingAverageConvergenceDivergence(candles, params)
 }
 
-func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, params []string) indicators.MovingAverageConvergenceDivergence {
+func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, params []string) common.FinancialIndicator {
+	if params == nil {
+		temp := &MovingAverageConvergenceDivergenceImpl{}
+		params = temp.GetDefaultParameters()
+	}
 	ema1Period, _ := strconv.ParseInt(params[0], 10, 32)
 	ema2Period, _ := strconv.ParseInt(params[1], 10, 32)
 	signalSize, _ := strconv.ParseInt(params[2], 10, 32)
-	ema1 := NewExponentialMovingAverage(candles[:ema1Period])
-	ema2 := NewExponentialMovingAverage(candles[:ema2Period])
+	ema1 := NewExponentialMovingAverage(candles[:ema1Period]).(indicators.ExponentialMovingAverage)
+	ema2 := NewExponentialMovingAverage(candles[:ema2Period]).(indicators.ExponentialMovingAverage)
 	for _, c := range candles[ema1Period:ema2Period] {
 		ema1.OnPeriodChange(&c)
 	}
 	ema3Candles := make([]common.Candlestick, signalSize)
-	ema3 := NewExponentialMovingAverage(ema3Candles)
+	ema3 := NewExponentialMovingAverage(ema3Candles).(indicators.ExponentialMovingAverage)
 	ema3.Add(&common.Candlestick{Close: ema1.GetAverage() - ema2.GetAverage()})
 	for _, c := range candles[ema2Period:] {
 		ema3.OnPeriodChange(&c)

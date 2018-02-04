@@ -8,7 +8,7 @@ BUILD_DIR = build
 
 export PATH := $(GOPATH)/bin:$(PATH)
 
-default: all
+default: build
 
 deps:
 	go get "github.com/op/go-logging"
@@ -22,16 +22,9 @@ deps:
 	go get "github.com/stretchr/testify"
 
 test:
-	cd common && go test common/*.go
-	cd dao && go test dao/*.go
-	cd exchange && go test exchange/*.go
-	cd indicators && go test indicators/*.go
-	cd restapi && go test restapi/*.go
-	cd service && go test service/*.go
-	cd strategy && go test strategy/*.go
-	cd webservice && go test webservice/*.go
+	go test -v dao/*
 
-build:
+indicators:
 	cd plugins/indicators/src && go build -buildmode=plugin example.go && mv example.so ../
 	cd plugins/indicators/src && go build -buildmode=plugin sma.go && mv sma.so ../
 	cd plugins/indicators/src && go build -buildmode=plugin ema.go && mv ema.so ../
@@ -39,7 +32,14 @@ build:
 	cd plugins/indicators/src && go build -buildmode=plugin bollinger_bands.go sma.go && mv bollinger_bands.so ../
 	cd plugins/indicators/src && go build -buildmode=plugin macd.go ema.go && mv macd.so ../
 	cd plugins/indicators/src && go build -buildmode=plugin obv.go && mv obv.so ../
-	go build
+
+strategies:
+	cd plugins/strategies/src && go build -buildmode=plugin default.go && mv default.so ../
 
 clean:
 	cd plugins/indicators && rm -rf *.so
+	cd plugins/strategies && rm -rf *.so
+	rm tradebot
+
+build: clean test indicators strategies
+	go build

@@ -1,51 +1,57 @@
-package strategy
+package main
 
 import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
-	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-type MockRSI_StrategyBuy struct {
+type MockRSI_StrategyBuy2 struct {
 	indicators.RelativeStrengthIndex
 	mock.Mock
 }
 
-type MockBBands_StrategyBuy struct {
+type MockBBands_StrategyBuy2 struct {
 	indicators.BollingerBands
 	mock.Mock
 }
 
-type MockMACD_StrategyBuy struct {
+type MockMACD_StrategyBuy2 struct {
 	indicators.MovingAverageConvergenceDivergence
 	mock.Mock
 }
 
-func TestDefaultTradingStrategy_DefaultConfig_Buy(t *testing.T) {
-	helper := &test.StrategyTestHelper{}
+func TestDefaultTradingStrategy_DefaultConfig_Buy2(t *testing.T) {
 	strategyIndicators := map[string]common.FinancialIndicator{
-		"RelativeStrengthIndex":              new(MockRSI_StrategyBuy),
-		"BollingerBands":                     new(MockBBands_StrategyBuy),
-		"MovingAverageConvergenceDivergence": new(MockMACD_StrategyBuy)}
-	params := &TradingStrategyParams{
+		"RelativeStrengthIndex":              new(MockRSI_StrategyBuy2),
+		"BollingerBands":                     new(MockBBands_StrategyBuy2),
+		"MovingAverageConvergenceDivergence": new(MockMACD_StrategyBuy2)}
+	balances := []common.Coin{
+		common.Coin{
+			Currency:  "BTC",
+			Available: 1.5},
+		common.Coin{
+			Currency:  "USD",
+			Available: 0.0}}
+	lastTrade := &common.Trade{
+		Id:       1,
+		ChartId:  1,
+		Base:     "BTC",
+		Quote:    "USD",
+		Exchange: "gdax",
+		Type:     "buy",
+		Amount:   1,
+		Price:    8000}
+	params := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
-		Balances:     helper.CreateBalances(),
 		Indicators:   strategyIndicators,
 		NewPrice:     11000,
 		TradeFee:     .025,
-		LastTrade: &common.Trade{
-			Id:       1,
-			ChartId:  1,
-			Base:     "BTC",
-			Quote:    "USD",
-			Exchange: "gdax",
-			Type:     "buy",
-			Amount:   1,
-			Price:    8000}}
+		Balances:     balances,
+		LastTrade:    lastTrade}
 
 	s, err := CreateDefaultTradingStrategy(params)
 	assert.Equal(t, nil, err)
@@ -60,21 +66,21 @@ func TestDefaultTradingStrategy_DefaultConfig_Buy(t *testing.T) {
 	buy, sell, err := strategy.GetBuySellSignals()
 	assert.Equal(t, true, buy)
 	assert.Equal(t, false, sell)
-	assert.Equal(t, nil, err)
+	assert.Equal(t, "Out of USD funding!", err.Error())
 }
 
-func (mrsi *MockRSI_StrategyBuy) Calculate(price float64) float64 {
+func (mrsi *MockRSI_StrategyBuy2) Calculate(price float64) float64 {
 	return 29.0
 }
 
-func (mrsi *MockRSI_StrategyBuy) IsOverBought(rsiValue float64) bool {
+func (mrsi *MockRSI_StrategyBuy2) IsOverBought(rsiValue float64) bool {
 	return false
 }
 
-func (mrsi *MockRSI_StrategyBuy) IsOverSold(rsiValue float64) bool {
+func (mrsi *MockRSI_StrategyBuy2) IsOverSold(rsiValue float64) bool {
 	return true
 }
 
-func (mrsi *MockBBands_StrategyBuy) Calculate(price float64) (float64, float64, float64) {
+func (mrsi *MockBBands_StrategyBuy2) Calculate(price float64) (float64, float64, float64) {
 	return 14000.0, 13000.0, 12000.0
 }

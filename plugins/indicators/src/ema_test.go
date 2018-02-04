@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/jeremyhahn/tradebot/util"
 )
 
@@ -22,7 +23,7 @@ func TestExponentialMovingAverage(t *testing.T) {
 	candlesticks = append(candlesticks, common.Candlestick{Close: 62.95})
 	candlesticks = append(candlesticks, common.Candlestick{Close: 63.37})
 
-	ema := NewExponentialMovingAverage(candlesticks)
+	ema := NewExponentialMovingAverage(candlesticks).(indicators.ExponentialMovingAverage)
 
 	if ema.GetName() != "ExponentialMovingAverage" {
 		t.Errorf("[ExponentialMovingAverage] Got incorrect name: %s, expected: %s", ema.GetName(), "ExponentialMovingAverage")

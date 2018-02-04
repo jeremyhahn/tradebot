@@ -1,6 +1,4 @@
-// +build unit
-
-package strategy
+package main
 
 import (
 	"testing"
@@ -32,15 +30,15 @@ func TestDefaultTradingStrategy_DefaultConfig_Calculate(t *testing.T) {
 		"BollingerBands":                     new(MockBBands_StrategyCalculate),
 		"MovingAverageConvergenceDivergence": new(MockMACD_StrategyCalculate)}
 	lastTrade := &common.Trade{
-		ID:       1,
-		ChartID:  1,
+		Id:       1,
+		ChartId:  1,
 		Base:     "BTC",
 		Quote:    "USD",
 		Exchange: "gdax",
 		Type:     "buy",
 		Amount:   1,
 		Price:    10000}
-	params := &TradingStrategyParams{
+	params := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
 		Balances:     nil,
 		Indicators:   indicators,

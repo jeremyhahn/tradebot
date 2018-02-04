@@ -9,7 +9,7 @@ import (
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 )
 
-type ExponentialMovingAverage struct {
+type ExponentialMovingAverageImpl struct {
 	name         string
 	displayName  string
 	size         int
@@ -23,12 +23,16 @@ type ExponentialMovingAverage struct {
 	indicators.ExponentialMovingAverage
 }
 
-func NewExponentialMovingAverage(candles []common.Candlestick) indicators.ExponentialMovingAverage {
+func NewExponentialMovingAverage(candles []common.Candlestick) common.FinancialIndicator {
 	params := []string{fmt.Sprintf("%d", len(candles))}
 	return CreateExponentialMovingAverage(candles, params)
 }
 
-func CreateExponentialMovingAverage(candles []common.Candlestick, params []string) indicators.ExponentialMovingAverage {
+func CreateExponentialMovingAverage(candles []common.Candlestick, params []string) common.FinancialIndicator {
+	if params == nil {
+		temp := &ExponentialMovingAverageImpl{}
+		params = temp.GetDefaultParameters()
+	}
 	size, _ := strconv.ParseInt(params[0], 10, 64)
 	var prices []float64
 	var total float64
@@ -36,7 +40,7 @@ func CreateExponentialMovingAverage(candles []common.Candlestick, params []strin
 		prices = append(prices, c.Close)
 		total = total + c.Close
 	}
-	ema := &ExponentialMovingAverage{
+	ema := &ExponentialMovingAverageImpl{
 		name:         "ExponentialMovingAverage",
 		displayName:  "Exponential Moving Average (EMA)",
 		prices:       make([]float64, size),
@@ -59,7 +63,7 @@ func CreateExponentialMovingAverage(candles []common.Candlestick, params []strin
 	return ema
 }
 
-func (ema *ExponentialMovingAverage) Add(candle *common.Candlestick) float64 {
+func (ema *ExponentialMovingAverageImpl) Add(candle *common.Candlestick) float64 {
 	if ema.count == ema.size {
 		ema.index = (ema.index + 1) % ema.size
 		ema.prices[ema.index] = candle.Close
@@ -84,30 +88,30 @@ func (ema *ExponentialMovingAverage) Add(candle *common.Candlestick) float64 {
 	return ema.average
 }
 
-func (ema *ExponentialMovingAverage) GetCandlesticks() []common.Candlestick {
+func (ema *ExponentialMovingAverageImpl) GetCandlesticks() []common.Candlestick {
 	return ema.candlesticks
 }
 
-func (ema *ExponentialMovingAverage) GetPrices() []float64 {
+func (ema *ExponentialMovingAverageImpl) GetPrices() []float64 {
 	return ema.prices
 }
 
-func (ema *ExponentialMovingAverage) GetAverage() float64 {
+func (ema *ExponentialMovingAverageImpl) GetAverage() float64 {
 	return ema.average
 }
 
-func (ema *ExponentialMovingAverage) GetSize() int {
+func (ema *ExponentialMovingAverageImpl) GetSize() int {
 	return ema.size
 }
 
-func (ema *ExponentialMovingAverage) GetCount() int {
+func (ema *ExponentialMovingAverageImpl) GetCount() int {
 	return ema.count
 }
-func (ema *ExponentialMovingAverage) GetIndex() int {
+func (ema *ExponentialMovingAverageImpl) GetIndex() int {
 	return ema.index
 }
 
-func (ema *ExponentialMovingAverage) Sum() float64 {
+func (ema *ExponentialMovingAverageImpl) Sum() float64 {
 	var i float64
 	for _, price := range ema.prices {
 		i += price
@@ -115,11 +119,11 @@ func (ema *ExponentialMovingAverage) Sum() float64 {
 	return i
 }
 
-func (ema *ExponentialMovingAverage) GetMultiplier() float64 {
+func (ema *ExponentialMovingAverageImpl) GetMultiplier() float64 {
 	return ema.multiplier
 }
 
-func (ema *ExponentialMovingAverage) GetGainsAndLosses() (float64, float64) {
+func (ema *ExponentialMovingAverageImpl) GetGainsAndLosses() (float64, float64) {
 	var u, d float64
 	if len(ema.candlesticks) <= 0 {
 		return 0.0, 0.0
@@ -137,23 +141,23 @@ func (ema *ExponentialMovingAverage) GetGainsAndLosses() (float64, float64) {
 	return u, d
 }
 
-func (ema *ExponentialMovingAverage) OnPeriodChange(candle *common.Candlestick) {
+func (ema *ExponentialMovingAverageImpl) OnPeriodChange(candle *common.Candlestick) {
 	fmt.Println("[ExponentialMovingAverage] OnPeriodChange: ", candle.Date, candle.Close)
 	ema.Add(candle)
 }
 
-func (ema *ExponentialMovingAverage) GetName() string {
+func (ema *ExponentialMovingAverageImpl) GetName() string {
 	return ema.name
 }
 
-func (ema *ExponentialMovingAverage) GetDisplayName() string {
+func (ema *ExponentialMovingAverageImpl) GetDisplayName() string {
 	return ema.displayName
 }
 
-func (ema *ExponentialMovingAverage) GetDefaultParameters() []string {
+func (ema *ExponentialMovingAverageImpl) GetDefaultParameters() []string {
 	return []string{"20"}
 }
 
-func (ema *ExponentialMovingAverage) GetParameters() []string {
+func (ema *ExponentialMovingAverageImpl) GetParameters() []string {
 	return []string{fmt.Sprintf("%d", ema.size)}
 }

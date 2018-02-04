@@ -24,15 +24,19 @@ type BollingerBandsImpl struct {
 	indicators.BollingerBands
 }
 
-func NewBollingerBands(candles []common.Candlestick) indicators.BollingerBands {
+func NewBollingerBands(candles []common.Candlestick) common.FinancialIndicator {
 	params := []string{"20", "2"}
 	return CreateBollingerBands(candles, params)
 }
 
-func CreateBollingerBands(candles []common.Candlestick, params []string) indicators.BollingerBands {
+func CreateBollingerBands(candles []common.Candlestick, params []string) common.FinancialIndicator {
+	if params == nil {
+		temp := &BollingerBandsImpl{}
+		params = temp.GetDefaultParameters()
+	}
 	period, _ := strconv.ParseInt(params[0], 10, 64)
 	k, _ := strconv.ParseFloat(params[1], 64)
-	sma := NewSimpleMovingAverage(candles[:period])
+	sma := NewSimpleMovingAverage(candles[:period]).(indicators.SimpleMovingAverage)
 	return &BollingerBandsImpl{
 		name:        "BollingerBands",
 		displayName: "Bollinger Bands®",
