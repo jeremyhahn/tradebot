@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
@@ -29,12 +30,13 @@ type DefaultTradingStrategy struct {
 	common.TradingStrategy
 }
 
-func main() {}
+func main() {
+}
 
 func CreateDefaultTradingStrategy(params *common.TradingStrategyParams) (common.TradingStrategy, error) {
 	expectedConfigCount := 8
 	var strategyConfig *DefaultTradingStrategyConfig
-	if len(params.Config) <= 0 {
+	if params.Config == nil {
 		strategyConfig = &DefaultTradingStrategyConfig{
 			Tax:                    .40,
 			TradeSize:              1,
@@ -63,7 +65,8 @@ func CreateDefaultTradingStrategy(params *common.TradingStrategyParams) (common.
 			RequiredBuySignals:     int(requiredBuySignals),
 			RequiredSellSignals:    int(requiredSellSignals)}
 	} else {
-		errmsg := fmt.Sprintf("Invalid configuration. Expected %d items, received %d.", len(params.Config), expectedConfigCount)
+		errmsg := fmt.Sprintf("Invalid configuration. Expected %d items, received %d (%s)",
+			expectedConfigCount, len(params.Config), strings.Join(params.Config, ","))
 		return nil, errors.New(errmsg)
 	}
 	strategy := &DefaultTradingStrategy{

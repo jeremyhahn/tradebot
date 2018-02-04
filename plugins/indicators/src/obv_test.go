@@ -5,13 +5,17 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
+	"github.com/stretchr/testify/assert"
 )
 
 // https://www.investopedia.com/terms/o/onbalancevolume.asp
 func TestOnBalanceVolume(t *testing.T) {
 
 	var candlesticks []common.Candlestick
-	obv := CreateOnBalanceVolume(candlesticks, nil).(indicators.OnBalanceVolume)
+
+	obvIndicator, err := CreateOnBalanceVolume(candlesticks, nil)
+	assert.Equal(t, nil, err)
+	obv := obvIndicator.(indicators.OnBalanceVolume)
 
 	actual := obv.GetValue()
 	expected := 0.0

@@ -28,6 +28,23 @@ type Profit struct {
 	Total    float64 `json:"total"`
 }
 
+type FinancialIndicator interface {
+	GetDefaultParameters() []string
+	GetParameters() []string
+	GetDisplayName() string
+	GetName() string
+	PeriodListener
+}
+
+type Indicator struct {
+	Id         uint   `json:"id"`
+	ChartId    uint   `json:"chart_id"`
+	Name       string `json:"name"`
+	Parameters string `json:"parameters"`
+	Filename   string `json:"filename"`
+	FinancialIndicator
+}
+
 type TradingStrategy interface {
 	GetRequiredIndicators() []string
 	GetBuySellSignals() (bool, bool, error)
@@ -207,21 +224,4 @@ type PriceListener interface {
 
 type PeriodListener interface {
 	OnPeriodChange(candlestick *Candlestick)
-}
-
-type FinancialIndicator interface {
-	GetDefaultParameters() []string
-	GetParameters() []string
-	GetDisplayName() string
-	GetName() string
-	PeriodListener
-}
-
-type Indicator struct {
-	Id         uint   `json:"id"`
-	ChartId    uint   `json:"chart_id"`
-	Name       string `json:"name"`
-	Parameters string `json:"parameters"`
-	Filename   string `json:"filename"`
-	FinancialIndicator
 }

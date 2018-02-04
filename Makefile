@@ -1,4 +1,4 @@
-ORG := jeremyhahn
+ORG := automatethethingsllc
 PACKAGE := tradebot
 TARGET_OS := linux
 
@@ -21,8 +21,8 @@ deps:
 	go get "github.com/adshao/go-binance"
 	go get "github.com/stretchr/testify"
 
-test:
-	go test -v dao/*
+unittest:
+	go test -v dao/* -tags !integration
 
 indicators:
 	cd plugins/indicators/src && go build -buildmode=plugin example.go && mv example.so ../
@@ -39,7 +39,7 @@ strategies:
 clean:
 	cd plugins/indicators && rm -rf *.so
 	cd plugins/strategies && rm -rf *.so
-	rm tradebot
+	rm -rf tradebot
 
 build: clean test indicators strategies
 	go build

@@ -6,6 +6,7 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/jeremyhahn/tradebot/util"
+	"github.com/stretchr/testify/assert"
 )
 
 // http://cns.bu.edu/~gsc/CN710/fincast/Technical%20_indicators/Moving%20Averages.htm
@@ -22,7 +23,9 @@ func TestSimpleMovingAverage(t *testing.T) {
 	candlesticks = append(candlesticks, common.Candlestick{Close: 65.63})
 	candlesticks = append(candlesticks, common.Candlestick{Close: 66.06})
 
-	sma := NewSimpleMovingAverage(candlesticks).(indicators.SimpleMovingAverage)
+	smaIndicator, err := NewSimpleMovingAverage(candlesticks)
+	assert.Equal(t, nil, err)
+	sma := smaIndicator.(indicators.SimpleMovingAverage)
 
 	if sma.GetName() != "SimpleMovingAverage" {
 		t.Errorf("[SimpleMovingAverage] Got incorrect name: %s, expected: %s", sma.GetName(), "SimpleMovingAverage")
@@ -73,8 +76,9 @@ func TestSimpleMovingAverage(t *testing.T) {
 func TestSimpleMovingAverageUsingAdd(t *testing.T) {
 	var candlesticks []common.Candlestick
 
-	params := []string{"10"}
-	sma := CreateSimpleMovingAverage(candlesticks, params).(indicators.SimpleMovingAverage)
+	smaIndicator, err := CreateSimpleMovingAverage(candlesticks, []string{"10"})
+	assert.Equal(t, nil, err)
+	sma := smaIndicator.(indicators.SimpleMovingAverage)
 
 	sma.Add(&common.Candlestick{Close: 67.50})
 	sma.Add(&common.Candlestick{Close: 66.50})
