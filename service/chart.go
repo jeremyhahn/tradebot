@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -42,35 +43,41 @@ func (service *ChartServiceImpl) GetExchange(chart *common.Chart) common.Exchang
 	return service.exchangeService.GetExchange(service.ctx.User, chart.Exchange)
 }
 
-func (service *ChartServiceImpl) Stream(chart *common.Chart, strategyHandler func(price float64)) {
+func (service *ChartServiceImpl) Stream(chart *common.Chart, strategyHandler func(price float64)) error {
 
-	if _, ok := service.charts[chart.ID]; !ok {
-		return
+	if _, ok := service.charts[chart.Id]; !ok {
+		return errors.New(fmt.Sprintf("Already streaming chart %s-%s", chart.Base, chart.Quote))
 	}
 
-	service.charts[chart.ID] = chart
+	service.charts[chart.Id] = chart
+	service.closeChans[chart.Id] = make(chan bool)
+
 	currencyPair := service.GetCurrencyPair(chart)
 	exchange := service.GetExchange(chart)
 
 	service.ctx.Logger.Infof("[ChartServiceImpl.Stream] Streaming %s %s chart data.",
 		exchange.GetName(), exchange.FormattedCurrencyPair(currencyPair))
 
-	indicators := service.GetIndicators(chart)
-	service.closeChans[chart.ID] = make(chan bool)
-
-	for _, indicator := range indicators {
-		service.priceStreams[chart.ID] = NewPriceStream(chart.Period)
-		service.priceStreams[chart.ID].SubscribeToPeriod(indicator)
+	indicators, err := service.GetIndicators(chart)
+	if err != nil {
+		return err
 	}
+	for _, indicator := range indicators {
+		service.priceStreams[chart.Id] = NewPriceStream(chart.Period)
+		service.priceStreams[chart.Id].SubscribeToPeriod(indicator)
+	}
+
 	priceChange := make(chan common.PriceChange)
 	go exchange.SubscribeToLiveFeed(currencyPair, priceChange)
 	for {
 		select {
-		case <-service.closeChans[chart.ID]:
+		case <-service.closeChans[chart.Id]:
 			service.ctx.Logger.Debug("[ChartServiceImpl.Stream] Closing stream")
-			return
+			delete(service.charts, chart.Id)
+			delete(service.closeChans, chart.Id)
+			return nil
 		default:
-			priceChange := service.priceStreams[chart.ID].Listen(priceChange)
+			priceChange := service.priceStreams[chart.Id].Listen(priceChange)
 			chart.Price = priceChange.Price
 			strategyHandler(chart.Price)
 		}
@@ -79,12 +86,15 @@ func (service *ChartServiceImpl) Stream(chart *common.Chart, strategyHandler fun
 
 func (service *ChartServiceImpl) StopStream(chart *common.Chart) {
 	service.ctx.Logger.Debugf("[ChartServiceImpl.StopStream]")
-	service.closeChans[chart.ID] <- true
+	service.closeChans[chart.Id] <- true
 }
 
-func (service *ChartServiceImpl) GetCharts() []common.Chart {
+func (service *ChartServiceImpl) GetCharts() ([]common.Chart, error) {
 	var charts []common.Chart
-	_charts := service.chartDAO.Find(service.ctx.User)
+	_charts, err := service.chartDAO.Find(service.ctx.User)
+	if err != nil {
+		return nil, err
+	}
 	for _, chart := range _charts {
 		var indicators []common.Indicator
 		var trades []common.Trade
@@ -95,7 +105,7 @@ func (service *ChartServiceImpl) GetCharts() []common.Chart {
 			trades = append(trades, service.mapTradeEntityToDto(trade))
 		}
 		charts = append(charts, common.Chart{
-			ID:         chart.ID,
+			Id:         chart.Id,
 			Base:       chart.Base,
 			Quote:      chart.Quote,
 			Exchange:   chart.Exchange,
@@ -103,21 +113,28 @@ func (service *ChartServiceImpl) GetCharts() []common.Chart {
 			Indicators: indicators,
 			Trades:     trades})
 	}
-	return charts
+	return charts, nil
 }
 
-func (service *ChartServiceImpl) GetTrades(chart *common.Chart) []common.Trade {
+func (service *ChartServiceImpl) GetTrades(chart *common.Chart) ([]common.Trade, error) {
 	var trades []common.Trade
-	for _, entity := range service.chartDAO.GetTrades(service.ctx.User) {
+	entities, err := service.chartDAO.GetTrades(service.ctx.User)
+	if err != nil {
+		return nil, err
+	}
+	for _, entity := range entities {
 		trades = append(trades, service.mapTradeEntityToDto(entity))
 	}
-	return trades
+	return trades, nil
 }
 
-func (service *ChartServiceImpl) GetChart(id uint) *common.Chart {
+func (service *ChartServiceImpl) GetChart(id uint) (*common.Chart, error) {
 	var trades []common.Trade
 	var indicators []common.Indicator
-	entity := service.chartDAO.Get(id)
+	entity, err := service.chartDAO.Get(id)
+	if err != nil {
+		return nil, err
+	}
 	for _, entity := range entity.GetTrades() {
 		trades = append(trades, service.mapTradeEntityToDto(entity))
 	}
@@ -125,34 +142,39 @@ func (service *ChartServiceImpl) GetChart(id uint) *common.Chart {
 		indicators = append(indicators, service.mapIndicatorEntityToDto(indicator))
 	}
 	return &common.Chart{
-		ID:         entity.GetId(),
+		Id:         entity.GetId(),
 		Exchange:   entity.GetExchangeName(),
 		Base:       entity.GetBase(),
 		Quote:      entity.GetQuote(),
 		Period:     entity.GetPeriod(),
 		Indicators: indicators,
-		Trades:     trades}
+		Trades:     trades}, nil
 }
 
-func (service *ChartServiceImpl) GetIndicator(chart *common.Chart, name string) common.FinancialIndicator {
-	indicators := service.GetIndicators(chart)
+func (service *ChartServiceImpl) GetIndicator(chart *common.Chart, name string) (common.FinancialIndicator, error) {
+	indicators, err := service.GetIndicators(chart)
+	if err != nil {
+		return nil, err
+	}
 	for _, indicator := range indicators {
 		if indicator.GetName() == name {
-			return indicator
+			return indicator, nil
 		}
 	}
-	service.ctx.Logger.Warningf("[ChartServiceImpl.GetIndicator] Unable to locate indicator: %s", name)
-	return nil
+	return nil, errors.New(fmt.Sprintf("Unable to locate indicator: %s", name))
 }
 
-func (service *ChartServiceImpl) GetIndicators(chart *common.Chart) map[string]common.FinancialIndicator {
+func (service *ChartServiceImpl) GetIndicators(chart *common.Chart) (map[string]common.FinancialIndicator, error) {
 	var indicators map[string]common.FinancialIndicator
-	entity := &dao.Chart{ID: chart.ID}
-	daoIndicators := service.chartDAO.GetIndicators(entity)
+	entity := &dao.Chart{Id: chart.Id}
+	daoIndicators, err := service.chartDAO.GetIndicators(entity)
+	if err != nil {
+		return nil, err
+	}
 	for _, daoIndicator := range daoIndicators {
 		indicators[daoIndicator.Name] = service.CreateIndicator(&daoIndicator)
 	}
-	return indicators
+	return indicators, nil
 }
 
 func (service *ChartServiceImpl) CreateIndicator(dao *dao.Indicator) common.Indicator {
@@ -191,9 +213,9 @@ func (service *ChartServiceImpl) loadCandlesticks(chart *common.Chart, exchange 
 
 func (service *ChartServiceImpl) mapTradeEntityToDto(entity dao.Trade) common.Trade {
 	return common.Trade{
-		ID:        entity.ID,
-		UserID:    service.ctx.User.Id,
-		ChartID:   entity.ChartID,
+		Id:        entity.Id,
+		UserId:    service.ctx.User.Id,
+		ChartId:   entity.ChartId,
 		Date:      entity.Date,
 		Exchange:  entity.Exchange,
 		Type:      entity.Type,
@@ -206,9 +228,9 @@ func (service *ChartServiceImpl) mapTradeEntityToDto(entity dao.Trade) common.Tr
 
 func (service *ChartServiceImpl) mapTradeDtoToEntity(trade common.Trade) dao.Trade {
 	return dao.Trade{
-		ID:        trade.ID,
-		UserID:    service.ctx.User.Id,
-		ChartID:   trade.ChartID,
+		Id:        trade.Id,
+		UserId:    service.ctx.User.Id,
+		ChartId:   trade.ChartId,
 		Date:      trade.Date,
 		Exchange:  trade.Exchange,
 		Type:      trade.Type,
@@ -222,7 +244,7 @@ func (service *ChartServiceImpl) mapTradeDtoToEntity(trade common.Trade) dao.Tra
 func (service *ChartServiceImpl) mapIndicatorEntityToDto(entity dao.Indicator) common.Indicator {
 	return common.Indicator{
 		Id:         entity.Id,
-		ChartID:    entity.ChartID,
+		ChartId:    entity.ChartId,
 		Name:       entity.Name,
 		Parameters: entity.Parameters}
 }
@@ -230,7 +252,7 @@ func (service *ChartServiceImpl) mapIndicatorEntityToDto(entity dao.Indicator) c
 func (service *ChartServiceImpl) mapIndicatorDtoToEntity(dto common.Indicator) dao.Indicator {
 	return dao.Indicator{
 		Id:         dto.Id,
-		ChartID:    dto.ChartID,
+		ChartId:    dto.ChartId,
 		Name:       dto.Name,
 		Parameters: dto.Parameters}
 }
@@ -245,8 +267,8 @@ for _, trade := range chart.Trades {
 	daoTrades = append(daoTrades, service.mapTradeDtoToEntity(trade))
 }
 entity := &dao.Chart{
-	ID:         chart.ID,
-	UserID:     service.ctx.User.Id,
+	Id:         chart.Id,
+	UserId:     service.ctx.User.Id,
 	Base:       chart.Base,
 	Quote:      chart.Quote,
 	Exchange:   chart.Exchange,

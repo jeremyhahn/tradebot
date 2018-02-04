@@ -17,16 +17,18 @@ func NewTradeService(ctx *common.Context, tradeDAO dao.TradeDAO) TradeService {
 		tradeDAO: tradeDAO}
 }
 
-/*
-func (ts *TradeServiceImpl) Trade(chartBL businesslogic.ChartBL) {
-	ts.charts = append(ts.charts, chartBL)
+func (ts *TradeServiceImpl) Buy(exchange common.Exchange, trade common.Trade) {
+	ts.ctx.Logger.Debugf("[TradeServiceImpl.Buy] %+v\n", trade)
+}
 
-}*/
+func (ts *TradeServiceImpl) Sell(exchange common.Exchange, trade common.Trade) {
+	ts.ctx.Logger.Debugf("[TradeServiceImpl.Sell] %+v\n", trade)
+}
 
 func (ts *TradeServiceImpl) Save(trade *common.Trade) {
 	ts.tradeDAO.Create(&dao.Trade{
-		ID:        trade.ID,
-		ChartID:   trade.ChartID,
+		Id:        trade.Id,
+		ChartId:   trade.ChartId,
 		Date:      trade.Date,
 		Exchange:  trade.Exchange,
 		Base:      trade.Base,
@@ -43,9 +45,9 @@ func (ts *TradeServiceImpl) GetLastTrade(chart *common.Chart) *common.Trade {
 		var indicators []dao.Indicator
 		for _, trade := range chart.Trades {
 			trades = append(trades, dao.Trade{
-				ID:        trade.ID,
-				UserID:    trade.UserID,
-				ChartID:   chart.ID,
+				Id:        trade.Id,
+				UserId:    trade.UserId,
+				ChartId:   chart.Id,
 				Date:      trade.Date,
 				Exchange:  trade.Exchange,
 				Type:      trade.Type,
@@ -58,24 +60,24 @@ func (ts *TradeServiceImpl) GetLastTrade(chart *common.Chart) *common.Trade {
 		for _, indicator := range chart.Indicators {
 			indicators = append(indicators, dao.Indicator{
 				Id:         indicator.Id,
-				ChartID:    indicator.ChartID,
+				ChartId:    indicator.ChartId,
 				Name:       indicator.Name,
 				Parameters: indicator.Parameters})
 		}
 		daoChart := &dao.Chart{
-			ID:         chart.ID,
+			Id:         chart.Id,
 			Base:       chart.Base,
 			Exchange:   chart.Exchange,
 			Period:     chart.Period,
 			Trades:     trades,
 			Indicators: indicators}
 	*/
-	daoChart := &dao.Chart{ID: chart.ID}
+	daoChart := &dao.Chart{Id: chart.Id}
 	entity := ts.tradeDAO.GetLastTrade(daoChart)
 	return &common.Trade{
-		ID:        entity.ID,
-		UserID:    ts.ctx.User.Id,
-		ChartID:   entity.ChartID,
+		Id:        entity.Id,
+		UserId:    ts.ctx.User.Id,
+		ChartId:   entity.ChartId,
 		Date:      entity.Date,
 		Exchange:  entity.Exchange,
 		Type:      entity.Type,

@@ -33,9 +33,9 @@ type TradeEntity interface {
 }
 
 type Trade struct {
-	ID        uint   `gorm:"primary_key"`
-	ChartID   uint   `gorm:"foreign_key"`
-	UserID    uint   `gorm:"foreign_key;index"`
+	Id        uint   `gorm:"primary_key"`
+	ChartId   uint   `gorm:"foreign_key"`
+	UserId    uint   `gorm:"foreign_key;index"`
 	Base      string `gorm:"index"`
 	Quote     string `gorm:"index"`
 	Exchange  string `gorm:"index"`
@@ -101,7 +101,7 @@ func (dao *TradeDAOImpl) FindByChart(chart ChartEntity) []Trade {
 }
 
 func (trade *Trade) GetId() uint {
-	return trade.ID
+	return trade.Id
 }
 
 func (trade *Trade) GetBase() string {
