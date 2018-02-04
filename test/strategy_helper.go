@@ -32,8 +32,8 @@ func (h *StrategyTestHelper) CreateIndicators() map[string]common.FinancialIndic
 
 func (h *StrategyTestHelper) CreateLastTrade() *common.Trade {
 	return &common.Trade{
-		ID:       1,
-		ChartID:  1,
+		Id:       1,
+		ChartId:  1,
 		Base:     "BTC",
 		Quote:    "USD",
 		Exchange: "gdax",

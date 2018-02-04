@@ -24,14 +24,18 @@ func NewAutoTradeService(ctx *common.Context, exchangeService ExchangeService, c
 		profitService:   profitService}
 }
 
-func (ats *AutoTradeServiceImpl) EndWorldHunger() {
-
-	for _, chart := range ats.chartService.GetCharts() {
-
+func (ats *AutoTradeServiceImpl) EndWorldHunger() error {
+	charts, err := ats.chartService.GetCharts()
+	if err != nil {
+		return err
+	}
+	for _, chart := range charts {
 		ats.ctx.Logger.Debugf("[AutoTradeService.EndWorldHunger] Loading chart %s-%s\n", chart.Base, chart.Quote)
-
+		indicators, err2 := ats.chartService.GetIndicators(&chart)
+		if err2 != nil {
+			return err2
+		}
 		exchange := ats.exchangeService.CreateExchange(ats.ctx.User, chart.Exchange)
-
 		coins, _ := exchange.GetBalances()
 		params := &strategy.TradingStrategyParams{
 			CurrencyPair: &common.CurrencyPair{
@@ -39,7 +43,7 @@ func (ats *AutoTradeServiceImpl) EndWorldHunger() {
 				Quote:         chart.Quote,
 				LocalCurrency: ats.ctx.User.LocalCurrency},
 			Balances:   coins,
-			Indicators: ats.chartService.GetIndicators(&chart)}
+			Indicators: indicators}
 
 		s, err := strategy.CreateDefaultTradingStrategy(params)
 		if err != nil {
@@ -62,4 +66,5 @@ func (ats *AutoTradeServiceImpl) EndWorldHunger() {
 		})
 		//}()
 	}
+	return nil
 }

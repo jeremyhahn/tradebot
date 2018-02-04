@@ -5,20 +5,20 @@ import (
 )
 
 type AutoTradeService interface {
-	EndWorldHunger()
+	EndWorldHunger() error
 }
 
 type ChartService interface {
 	GetExchange(chart *common.Chart) common.Exchange
 	//GetCurrencyPair(chart *common.Chart) common.CurrencyPair
-	GetIndicator(*common.Chart, string) common.FinancialIndicator
-	Stream(chart *common.Chart, strategyHandler func(price float64))
+	Stream(chart *common.Chart, strategyHandler func(price float64)) error
 	StopStream(chart *common.Chart)
 	ToJson(chart *common.Chart) string
 
-	GetIndicators(chart *common.Chart) map[string]common.FinancialIndicator
-	GetChart(id uint) *common.Chart
-	GetCharts() []common.Chart
+	GetIndicator(*common.Chart, string) (common.FinancialIndicator, error)
+	GetIndicators(chart *common.Chart) (map[string]common.FinancialIndicator, error)
+	GetChart(id uint) (*common.Chart, error)
+	GetCharts() ([]common.Chart, error)
 	GetChartsByUser(user *common.User) []common.Chart
 }
 
