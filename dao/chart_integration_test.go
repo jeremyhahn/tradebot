@@ -1,12 +1,10 @@
-// +build integration
+//// +build integration
 
 package dao
 
 import (
 	"testing"
-	"time"
 
-	"github.com/jeremyhahn/tradebot/common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,8 +52,8 @@ func TestChartDAO(t *testing.T) {
 	assert.Equal(t, 2, len(persistedTrades))
 
 	assert.Equal(t, uint(1), persistedTrades[0].GetId())
-	assert.Equal(t, chart.GetId(), persistedTrades[0].ChartID)
-	assert.Equal(t, daoUser.Id, persistedTrades[0].UserID)
+	assert.Equal(t, chart.GetId(), persistedTrades[0].ChartId)
+	assert.Equal(t, daoUser.Id, persistedTrades[0].UserId)
 	assert.Equal(t, trades[0].Base, persistedTrades[0].Base)
 	assert.Equal(t, trades[0].Quote, persistedTrades[0].Quote)
 	assert.Equal(t, trades[0].Exchange, persistedTrades[0].Exchange)
@@ -66,8 +64,8 @@ func TestChartDAO(t *testing.T) {
 	assert.Equal(t, trades[0].ChartData, persistedTrades[0].ChartData)
 
 	assert.Equal(t, uint(2), persistedTrades[1].GetId())
-	assert.Equal(t, chart.GetId(), persistedTrades[1].ChartID)
-	assert.Equal(t, daoUser.Id, persistedTrades[1].UserID)
+	assert.Equal(t, chart.GetId(), persistedTrades[1].ChartId)
+	assert.Equal(t, daoUser.Id, persistedTrades[1].UserId)
 	assert.Equal(t, trades[1].Base, persistedTrades[1].Base)
 	assert.Equal(t, trades[1].Quote, persistedTrades[1].Quote)
 	assert.Equal(t, trades[1].Exchange, persistedTrades[1].Exchange)
@@ -111,45 +109,4 @@ func TestChartDAO_GetLastTrade(t *testing.T) {
 	assert.Equal(t, "sell", trade.GetType())
 
 	CleanupIntegrationTest()
-}
-
-func createIntegrationTestChart(ctx *common.Context) (*Chart, []Indicator, []Trade) {
-	indicators := []Indicator{
-		Indicator{
-			Name:       "RelativeStrengthIndex",
-			Parameters: "14,70,30"},
-		Indicator{
-			Name:       "BollingerBands",
-			Parameters: "20,2"}}
-	trades := []Trade{
-		Trade{
-			UserID:    ctx.User.Id,
-			Base:      "BTC",
-			Quote:     "USD",
-			Exchange:  "Test",
-			Date:      time.Now(),
-			Type:      "buy",
-			Amount:    2,
-			Price:     10000,
-			ChartData: "test-trade-1"},
-		Trade{
-			UserID:    ctx.User.Id,
-			Base:      "BTC",
-			Quote:     "USD",
-			Exchange:  "Test",
-			Date:      time.Now(),
-			Type:      "sell",
-			Amount:    2,
-			Price:     12000,
-			ChartData: "test-trade-2"}}
-	chart := &Chart{
-		UserId:     ctx.User.Id,
-		Base:       "BTC",
-		Quote:      "USD",
-		Exchange:   "gdax",
-		Period:     900, // 15 minutes
-		Indicators: indicators,
-		Trades:     trades,
-		AutoTrade:  1}
-	return chart, indicators, trades
 }

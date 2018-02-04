@@ -5,6 +5,7 @@ package dao
 import (
 	"os"
 	"sync"
+	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jinzhu/gorm"
@@ -52,4 +53,45 @@ func CleanupIntegrationTest() {
 		TEST_LOCK.Unlock()
 		os.Remove(TEST_DBPATH)
 	}
+}
+
+func createIntegrationTestChart(ctx *common.Context) (*Chart, []Indicator, []Trade) {
+	indicators := []Indicator{
+		Indicator{
+			Name:       "RelativeStrengthIndex",
+			Parameters: "14,70,30"},
+		Indicator{
+			Name:       "BollingerBands",
+			Parameters: "20,2"}}
+	trades := []Trade{
+		Trade{
+			UserId:    ctx.User.Id,
+			Base:      "BTC",
+			Quote:     "USD",
+			Exchange:  "Test",
+			Date:      time.Now(),
+			Type:      "buy",
+			Amount:    2,
+			Price:     10000,
+			ChartData: "test-trade-1"},
+		Trade{
+			UserId:    ctx.User.Id,
+			Base:      "BTC",
+			Quote:     "USD",
+			Exchange:  "Test",
+			Date:      time.Now(),
+			Type:      "sell",
+			Amount:    2,
+			Price:     12000,
+			ChartData: "test-trade-2"}}
+	chart := &Chart{
+		UserId:     ctx.User.Id,
+		Base:       "BTC",
+		Quote:      "USD",
+		Exchange:   "gdax",
+		Period:     900, // 15 minutes
+		Indicators: indicators,
+		Trades:     trades,
+		AutoTrade:  1}
+	return chart, indicators, trades
 }
