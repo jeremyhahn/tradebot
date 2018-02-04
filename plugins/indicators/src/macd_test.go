@@ -6,6 +6,7 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/jeremyhahn/tradebot/util"
+	"github.com/stretchr/testify/assert"
 )
 
 // http://investexcel.net/how-to-calculate-macd-in-excel/
@@ -40,7 +41,9 @@ func TestMovingAverageConvergenceDivergence(t *testing.T) {
 	candles = append(candles, common.Candlestick{Close: 463.58})
 	candles = append(candles, common.Candlestick{Close: 461.14})
 
-	macd := NewMovingAverageConvergenceDivergence(candles).(indicators.MovingAverageConvergenceDivergence)
+	macdIndicator, err := NewMovingAverageConvergenceDivergence(candles)
+	assert.Equal(t, nil, err)
+	macd := macdIndicator.(indicators.MovingAverageConvergenceDivergence)
 
 	if macd.GetName() != "MovingAverageConvergenceDivergence" {
 		t.Errorf("[MovingAverageConvergenceDivergence] Got incorrect name: %s, expected: %s", macd.GetName(), "MovingAverageConvergenceDivergence")

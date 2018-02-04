@@ -22,13 +22,13 @@ type SimpleMovingAverageImpl struct {
 	indicators.SimpleMovingAverage
 }
 
-func NewSimpleMovingAverage(candles []common.Candlestick) common.FinancialIndicator {
+func NewSimpleMovingAverage(candles []common.Candlestick) (common.FinancialIndicator, error) {
 	var params []string
 	params = append(params, fmt.Sprintf("%d", len(candles)))
 	return CreateSimpleMovingAverage(candles, params)
 }
 
-func CreateSimpleMovingAverage(candles []common.Candlestick, params []string) common.FinancialIndicator {
+func CreateSimpleMovingAverage(candles []common.Candlestick, params []string) (common.FinancialIndicator, error) {
 	if params == nil {
 		temp := &SimpleMovingAverageImpl{}
 		params = temp.GetDefaultParameters()
@@ -57,7 +57,7 @@ func CreateSimpleMovingAverage(candles []common.Candlestick, params []string) co
 		sma.index = candleLen - 1
 		sma.average = total / float64(size)
 	}
-	return sma
+	return sma, nil
 }
 
 func (sma *SimpleMovingAverageImpl) Add(candle *common.Candlestick) float64 {

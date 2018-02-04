@@ -18,7 +18,7 @@ type OBVImpl struct {
 	indicators.OnBalanceVolume
 }
 
-func CreateOnBalanceVolume(candlesticks []common.Candlestick, params []string) common.FinancialIndicator {
+func CreateOnBalanceVolume(candlesticks []common.Candlestick, params []string) (common.FinancialIndicator, error) {
 	if params == nil {
 		temp := &OBVImpl{}
 		params = temp.GetDefaultParameters()
@@ -26,14 +26,13 @@ func CreateOnBalanceVolume(candlesticks []common.Candlestick, params []string) c
 	obv := &OBVImpl{
 		name:        "OnBalanceVolume",
 		displayName: "On Balance Volume (OBV)",
-
-		lastVolume: 0.0,
-		lastPrice:  0.0,
-		volume:     0.0}
+		lastVolume:  0.0,
+		lastPrice:   0.0,
+		volume:      0.0}
 	for _, c := range candlesticks {
 		obv.OnPeriodChange(&c)
 	}
-	return obv
+	return obv, nil
 }
 
 func (obv *OBVImpl) GetValue() float64 {

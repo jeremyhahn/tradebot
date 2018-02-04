@@ -6,6 +6,7 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/jeremyhahn/tradebot/util"
+	"github.com/stretchr/testify/assert"
 )
 
 // http://cns.bu.edu/~gsc/CN710/fincast/Technical%20_indicators/Relative%20Strength%20Index%20(RelativeStrengthIndex).htm
@@ -27,7 +28,9 @@ func TestRelativeStrengthIndexWithSMA(t *testing.T) {
 	candlesticks = append(candlesticks, common.Candlestick{Close: 46.3125})
 	candlesticks = append(candlesticks, common.Candlestick{Close: 47.6875})
 
-	rsi := NewRelativeStrengthIndex(candlesticks).(indicators.RelativeStrengthIndex)
+	_rsi, err := NewRelativeStrengthIndex(candlesticks)
+	assert.Equal(t, nil, err)
+	rsi := _rsi.(indicators.RelativeStrengthIndex)
 
 	if rsi.GetName() != "RelativeStrengthIndex" {
 		t.Errorf("[RelativeStrengthIndex] Got incorrect name: %s, expected: %s", rsi.GetName(), "RelativeStrengthIndex")

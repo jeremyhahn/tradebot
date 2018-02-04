@@ -23,12 +23,12 @@ type ExponentialMovingAverageImpl struct {
 	indicators.ExponentialMovingAverage
 }
 
-func NewExponentialMovingAverage(candles []common.Candlestick) common.FinancialIndicator {
+func NewExponentialMovingAverage(candles []common.Candlestick) (common.FinancialIndicator, error) {
 	params := []string{fmt.Sprintf("%d", len(candles))}
 	return CreateExponentialMovingAverage(candles, params)
 }
 
-func CreateExponentialMovingAverage(candles []common.Candlestick, params []string) common.FinancialIndicator {
+func CreateExponentialMovingAverage(candles []common.Candlestick, params []string) (common.FinancialIndicator, error) {
 	if params == nil {
 		temp := &ExponentialMovingAverageImpl{}
 		params = temp.GetDefaultParameters()
@@ -60,7 +60,7 @@ func CreateExponentialMovingAverage(candles []common.Candlestick, params []strin
 		ema.last = total / float64(size)
 		ema.multiplier = 2 / (float64(size) + 1)
 	}
-	return ema
+	return ema, nil
 }
 
 func (ema *ExponentialMovingAverageImpl) Add(candle *common.Candlestick) float64 {

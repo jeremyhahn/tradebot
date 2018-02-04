@@ -24,7 +24,7 @@ type ExampleIndicatorParams struct {
 func main() {
 }
 
-func CreateExampleIndicator(candles []common.Candlestick, params []string) common.FinancialIndicator {
+func CreateExampleIndicator(candles []common.Candlestick, params []string) (common.FinancialIndicator, error) {
 	if params == nil {
 		temp := &ExampleIndicatorImpl{}
 		params = temp.GetDefaultParameters()
@@ -38,7 +38,7 @@ func CreateExampleIndicator(candles []common.Candlestick, params []string) commo
 		params: ExampleIndicatorParams{
 			param1: int(intParam1),
 			param2: int(intParam2),
-			param3: int(intParam3)}}
+			param3: int(intParam3)}}, nil
 }
 
 func (fi ExampleIndicatorImpl) GetName() string {

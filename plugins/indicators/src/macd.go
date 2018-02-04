@@ -28,12 +28,12 @@ type MovingAverageConvergenceDivergenceImpl struct {
 	common.FinancialIndicator
 }
 
-func NewMovingAverageConvergenceDivergence(candles []common.Candlestick) common.FinancialIndicator {
+func NewMovingAverageConvergenceDivergence(candles []common.Candlestick) (common.FinancialIndicator, error) {
 	params := []string{"12", "26", "9"}
 	return CreateMovingAverageConvergenceDivergence(candles, params)
 }
 
-func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, params []string) common.FinancialIndicator {
+func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, params []string) (common.FinancialIndicator, error) {
 	if params == nil {
 		temp := &MovingAverageConvergenceDivergenceImpl{}
 		params = temp.GetDefaultParameters()
@@ -41,13 +41,25 @@ func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, para
 	ema1Period, _ := strconv.ParseInt(params[0], 10, 32)
 	ema2Period, _ := strconv.ParseInt(params[1], 10, 32)
 	signalSize, _ := strconv.ParseInt(params[2], 10, 32)
-	ema1 := NewExponentialMovingAverage(candles[:ema1Period]).(indicators.ExponentialMovingAverage)
-	ema2 := NewExponentialMovingAverage(candles[:ema2Period]).(indicators.ExponentialMovingAverage)
+	ema1Indicator, err := NewExponentialMovingAverage(candles[:ema1Period])
+	if err != nil {
+		return nil, err
+	}
+	ema1 := ema1Indicator.(indicators.ExponentialMovingAverage)
+	ema2Indicator, err2 := NewExponentialMovingAverage(candles[:ema2Period])
+	if err2 != nil {
+		return nil, err2
+	}
+	ema2 := ema2Indicator.(indicators.ExponentialMovingAverage)
 	for _, c := range candles[ema1Period:ema2Period] {
 		ema1.OnPeriodChange(&c)
 	}
 	ema3Candles := make([]common.Candlestick, signalSize)
-	ema3 := NewExponentialMovingAverage(ema3Candles).(indicators.ExponentialMovingAverage)
+	ema3Indicator, err3 := NewExponentialMovingAverage(ema3Candles)
+	if err3 != nil {
+		return nil, err3
+	}
+	ema3 := ema3Indicator.(indicators.ExponentialMovingAverage)
 	ema3.Add(&common.Candlestick{Close: ema1.GetAverage() - ema2.GetAverage()})
 	for _, c := range candles[ema2Period:] {
 		ema3.OnPeriodChange(&c)
@@ -70,7 +82,7 @@ func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, para
 		macd.OnPeriodChange(&c)
 	}
 
-	return macd
+	return macd, nil
 }
 
 func (macd *MovingAverageConvergenceDivergenceImpl) Calculate(price float64) (float64, float64, float64) {
