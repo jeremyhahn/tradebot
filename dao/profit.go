@@ -3,8 +3,10 @@ package dao
 import "github.com/jeremyhahn/tradebot/common"
 
 type ProfitDAO interface {
-	Create(profit *Profit)
-	Save(profit *Profit)
+	Create(profit ProfitEntity) error
+	Save(profit ProfitEntity) error
+	Find() ([]Profit, error)
+	GetByTrade(trade *Trade) (ProfitEntity, error)
 }
 
 type ProfitDAOImpl struct {
@@ -13,43 +15,99 @@ type ProfitDAOImpl struct {
 	ProfitDAO
 }
 
+type ProfitEntity interface {
+	GetId() uint
+	GetUserId() uint
+	GetTradeId() uint
+	GetQuantity() float64
+	GetBought() float64
+	GetSold() float64
+	GetFee() float64
+	GetTax() float64
+	GetTotal() float64
+}
+
 type Profit struct {
-	ID       uint `gorm:"primary_key"`
-	UserID   uint `gorm:"unique_index:idx_profit"`
-	TradeID  uint `gorm:"foreign_key;unique_index:idx_profit"`
+	Id       uint `gorm:"primary_key"`
+	UserId   uint `gorm:"unique_index:idx_profit"`
+	TradeId  uint `gorm:"foreign_key;unique_index:idx_profit"`
 	Quantity float64
 	Bought   float64
 	Sold     float64
 	Fee      float64
 	Tax      float64
 	Total    float64
+	ProfitEntity
 }
 
 func NewProfitDAO(ctx *common.Context) ProfitDAO {
-	var profits []Profit
 	ctx.DB.AutoMigrate(&Profit{})
-	if err := ctx.DB.Find(&profits).Error; err != nil {
-		ctx.Logger.Error(err)
-	}
-	return &ProfitDAOImpl{ctx: ctx, Items: profits}
+	return &ProfitDAOImpl{ctx: ctx}
 }
 
-func (dao *ProfitDAOImpl) Create(profit *Profit) {
+func (dao *ProfitDAOImpl) Create(profit ProfitEntity) error {
 	if err := dao.ctx.DB.Create(profit).Error; err != nil {
-		dao.ctx.Logger.Errorf("[ProfitDAOImpl.Create] Error:%s", err.Error())
+		return err
 	}
+	return nil
 }
 
-func (dao *ProfitDAOImpl) Save(profit *Profit) {
+func (dao *ProfitDAOImpl) Save(profit ProfitEntity) error {
 	if err := dao.ctx.DB.Save(profit).Error; err != nil {
-		dao.ctx.Logger.Errorf("[ProfitDAOImpl.Save] Error:%s", err.Error())
+		return err
 	}
+	return nil
 }
 
-func (dao *ProfitDAOImpl) GetByTrade(trade *Trade) *Profit {
+func (dao *ProfitDAOImpl) Find() ([]Profit, error) {
+	var profits []Profit
+	daoUser := &User{Id: dao.ctx.User.Id}
+	if err := dao.ctx.DB.Model(daoUser).Related(&profits).Error; err != nil {
+		return nil, err
+	}
+	return profits, nil
+}
+
+func (dao *ProfitDAOImpl) GetByTrade(trade *Trade) (ProfitEntity, error) {
 	var profit Profit
 	if err := dao.ctx.DB.Model(trade).Related(&profit).Error; err != nil {
-		dao.ctx.Logger.Errorf("[AutoTradeDAO.GetTrades] Error: %s", err.Error())
+		return nil, err
 	}
-	return &profit
+	return &profit, nil
+}
+
+func (entity *Profit) GetId() uint {
+	return entity.Id
+}
+
+func (entity *Profit) GetUserId() uint {
+	return entity.UserId
+}
+
+func (entity *Profit) GetTradeId() uint {
+	return entity.TradeId
+}
+
+func (entity *Profit) GetQuantity() float64 {
+	return entity.Quantity
+}
+
+func (entity *Profit) GetBought() float64 {
+	return entity.Bought
+}
+
+func (entity *Profit) GetSold() float64 {
+	return entity.Sold
+}
+
+func (entity *Profit) GetFee() float64 {
+	return entity.Fee
+}
+
+func (entity *Profit) GetTax() float64 {
+	return entity.Tax
+}
+
+func (entity *Profit) GetTotal() float64 {
+	return entity.Total
 }

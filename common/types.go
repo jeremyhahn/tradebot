@@ -18,8 +18,8 @@ const (
 )
 
 type Profit struct {
-	UserID   uint    `json:"id"`
-	TradeID  uint    `json:"trade_id"`
+	UserId   uint    `json:"id"`
+	TradeId  uint    `json:"trade_id"`
 	Quantity float64 `json:"quantity"`
 	Bought   float64 `json:"bought"`
 	Sold     float64 `json:"sold"`

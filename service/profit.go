@@ -19,8 +19,8 @@ func NewProfitService(ctx *common.Context, profitDAO dao.ProfitDAO) ProfitServic
 
 func (ps *ProfitServiceImpl) Save(profit *common.Profit) {
 	ps.profitDAO.Create(&dao.Profit{
-		UserID:   profit.UserID,
-		TradeID:  profit.TradeID,
+		UserId:   profit.UserId,
+		TradeId:  profit.TradeId,
 		Quantity: profit.Quantity,
 		Bought:   profit.Bought,
 		Sold:     profit.Sold,
