@@ -1,4 +1,4 @@
-package indicators
+package main
 
 import (
 	"fmt"
@@ -6,9 +6,10 @@ import (
 	"strconv"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 )
 
-type SimpleMovingAverage struct {
+type SimpleMovingAverageImpl struct {
 	name         string
 	displayName  string
 	size         int
@@ -18,18 +19,16 @@ type SimpleMovingAverage struct {
 	index        int
 	average      float64
 	sum          float64
-	common.MovingAverage
-	common.PeriodListener
-	common.FinancialIndicator
+	indicators.SimpleMovingAverage
 }
 
-func NewSimpleMovingAverage(candles []common.Candlestick) *SimpleMovingAverage {
+func NewSimpleMovingAverage(candles []common.Candlestick) indicators.SimpleMovingAverage {
 	var params []string
 	params = append(params, fmt.Sprintf("%d", len(candles)))
 	return CreateSimpleMovingAverage(candles, params)
 }
 
-func CreateSimpleMovingAverage(candles []common.Candlestick, params []string) *SimpleMovingAverage {
+func CreateSimpleMovingAverage(candles []common.Candlestick, params []string) indicators.SimpleMovingAverage {
 	size, _ := strconv.ParseInt(params[0], 10, 64)
 	var prices []float64
 	var total float64
@@ -37,7 +36,7 @@ func CreateSimpleMovingAverage(candles []common.Candlestick, params []string) *S
 		prices = append(prices, c.Close)
 		total += c.Close
 	}
-	sma := &SimpleMovingAverage{
+	sma := &SimpleMovingAverageImpl{
 		name:         "SimpleMovingAverage",
 		displayName:  "Simple Moving Average (SMA)",
 		size:         int(size),
@@ -57,7 +56,7 @@ func CreateSimpleMovingAverage(candles []common.Candlestick, params []string) *S
 	return sma
 }
 
-func (sma *SimpleMovingAverage) Add(candle *common.Candlestick) float64 {
+func (sma *SimpleMovingAverageImpl) Add(candle *common.Candlestick) float64 {
 	if sma.count == sma.size {
 		sma.index = (sma.index + 1) % sma.size
 		sma.average += (candle.Close - sma.prices[sma.index]) / float64(sma.count)
@@ -75,23 +74,27 @@ func (sma *SimpleMovingAverage) Add(candle *common.Candlestick) float64 {
 	return sma.average
 }
 
-func (sma *SimpleMovingAverage) GetCandlesticks() []common.Candlestick {
+func (sma *SimpleMovingAverageImpl) GetCandlesticks() []common.Candlestick {
 	return sma.candlesticks
 }
 
-func (sma *SimpleMovingAverage) GetAverage() float64 {
+func (sma *SimpleMovingAverageImpl) GetAverage() float64 {
 	return sma.average
 }
 
-func (sma *SimpleMovingAverage) GetSize() int {
+func (sma *SimpleMovingAverageImpl) GetSize() int {
 	return sma.size
 }
 
-func (sma *SimpleMovingAverage) GetPrices() []float64 {
+func (sma *SimpleMovingAverageImpl) GetCount() int {
+	return sma.count
+}
+
+func (sma *SimpleMovingAverageImpl) GetPrices() []float64 {
 	return sma.prices
 }
 
-func (sma *SimpleMovingAverage) GetGainsAndLosses() (float64, float64) {
+func (sma *SimpleMovingAverageImpl) GetGainsAndLosses() (float64, float64) {
 	var gains, losses float64
 	if len(sma.candlesticks) <= 0 {
 		return 0.0, 0.0
@@ -109,23 +112,23 @@ func (sma *SimpleMovingAverage) GetGainsAndLosses() (float64, float64) {
 	return gains, losses
 }
 
-func (sma *SimpleMovingAverage) OnPeriodChange(candle *common.Candlestick) {
+func (sma *SimpleMovingAverageImpl) OnPeriodChange(candle *common.Candlestick) {
 	fmt.Println("[SimpleMovingAverage] OnPeriodChange: ", candle.Date, candle.Close)
 	sma.Add(candle)
 }
 
-func (sma *SimpleMovingAverage) GetName() string {
+func (sma *SimpleMovingAverageImpl) GetName() string {
 	return sma.name
 }
 
-func (sma *SimpleMovingAverage) GetDisplayName() string {
+func (sma *SimpleMovingAverageImpl) GetDisplayName() string {
 	return sma.displayName
 }
 
-func (sma *SimpleMovingAverage) GetDefaultParameters() []string {
+func (sma *SimpleMovingAverageImpl) GetDefaultParameters() []string {
 	return []string{"20"}
 }
 
-func (sma *SimpleMovingAverage) GetParameters() []string {
+func (sma *SimpleMovingAverageImpl) GetParameters() []string {
 	return []string{fmt.Sprintf("%d", sma.size)}
 }

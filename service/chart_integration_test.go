@@ -1,4 +1,4 @@
-// +build integration
+//// +build integration
 
 package service
 
@@ -9,12 +9,19 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/exchange"
+	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-type MockExchange struct {
+type MockExchange_Chart struct {
+	common.Exchange
+	mock.Mock
+}
+
+type MockExchangeService_Chart struct {
 	common.Exchange
 	mock.Mock
 }
@@ -26,7 +33,8 @@ func TestChartDAO(t *testing.T) {
 	chart := createChart(ctx)
 	chartDAO.Create(chart)
 
-	charts := chartDAO.Find(ctx.User)
+	charts, err := chartDAO.Find(ctx.User)
+	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
 	assert.Equal(t, "USD", charts[0].GetQuote())
@@ -43,7 +51,7 @@ func TestChartDAO(t *testing.T) {
 	assert.Equal(t, "gdax", trades[0].Exchange)
 	assert.Equal(t, 1.0, trades[0].Amount)
 	assert.Equal(t, 10000.0, trades[0].Price)
-	assert.Equal(t, uint(1), trades[0].UserID)
+	assert.Equal(t, uint(1), trades[0].UserId)
 
 	indicators := charts[0].GetIndicators()
 	assert.Equal(t, 3, len(indicators))
@@ -60,7 +68,8 @@ func TestChartDAO_GetIndicators(t *testing.T) {
 	chart.Indicators = nil
 	chartDAO.Create(chart)
 
-	charts := chartDAO.Find(ctx.User)
+	charts, err := chartDAO.Find(ctx.User)
+	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
 	assert.Equal(t, "USD", charts[0].GetQuote())
@@ -88,7 +97,8 @@ func TestChartDAO_GetTrades(t *testing.T) {
 	chart.Indicators = nil
 	chartDAO.Create(chart)
 
-	charts := chartDAO.Find(ctx.User)
+	charts, err := chartDAO.Find(ctx.User)
+	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
 	assert.Equal(t, "USD", charts[0].GetQuote())
@@ -110,9 +120,10 @@ func TestChartDAO_GetTrades(t *testing.T) {
 	assert.Equal(t, "gdax", trades[0].Exchange)
 	assert.Equal(t, 1.0, trades[0].Amount)
 	assert.Equal(t, 10000.0, trades[0].Price)
-	assert.Equal(t, uint(1), trades[0].UserID)
+	assert.Equal(t, uint(1), trades[0].UserId)
 
-	lastTrade := chartDAO.GetLastTrade(chart)
+	lastTrade, err := chartDAO.GetLastTrade(chart)
+	assert.Equal(t, nil, err)
 	assert.Equal(t, "sell", lastTrade.Type)
 	assert.Equal(t, "BTC", lastTrade.Base)
 	assert.Equal(t, "USD", lastTrade.Quote)
@@ -129,7 +140,8 @@ func TestChartService_GetIndicators(t *testing.T) {
 	chart := createChart(ctx)
 	chartDAO.Create(chart)
 
-	charts := chartDAO.Find(ctx.User)
+	charts, err := chartDAO.Find(ctx.User)
+	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
 	assert.Equal(t, "USD", charts[0].GetQuote())
@@ -140,15 +152,20 @@ func TestChartService_GetIndicators(t *testing.T) {
 
 	indicators := charts[0].GetIndicators()
 	assert.Equal(t, 3, len(indicators))
-	assert.Equal(t, "BBands", indicators[0].Name)
+	assert.Equal(t, "BollingerBands", indicators[0].Name)
 	assert.Equal(t, "20,2", indicators[0].Parameters)
-	assert.Equal(t, "MACD", indicators[1].Name)
+	assert.Equal(t, "MovingAverageConvergenceDivergence", indicators[1].Name)
 	assert.Equal(t, "12,26,9", indicators[1].Parameters)
-	assert.Equal(t, "RSI", indicators[2].Name)
+	assert.Equal(t, "RelativeStrengthIndex", indicators[2].Name)
 	assert.Equal(t, "14,70,30", indicators[2].Parameters)
 
-	service := NewChartService(ctx, chartDAO, &charts[0], new(MockExchange))
-	Indicators := service.GetIndicators()
+	mapper := mapper.NewChartMapper(ctx)
+
+	service := NewChartService(ctx, chartDAO, new(MockExchangeService_Chart))
+
+	commonChart := mapper.MapChartEntityToDto(&charts[0])
+	Indicators, err := service.GetIndicators(&commonChart)
+	assert.Equal(t, nil, err)
 	assert.Equal(t, 3, len(Indicators))
 
 	test.CleanupMockContext()
@@ -160,7 +177,8 @@ func TestChartService_Stream(t *testing.T) {
 	chart := createChart(ctx)
 	chartDAO.Create(chart)
 
-	charts := chartDAO.Find(ctx.User)
+	charts, err := chartDAO.Find(ctx.User)
+	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
 	assert.Equal(t, "USD", charts[0].GetQuote())
@@ -168,14 +186,16 @@ func TestChartService_Stream(t *testing.T) {
 	assert.Equal(t, 900, charts[0].GetPeriod())
 	assert.Equal(t, true, charts[0].IsAutoTrade())
 
-	var receivedService common.ChartService
-	service := NewChartService(ctx, chartDAO, &charts[0], new(MockExchange))
-	service.Stream(func(chart common.ChartService) {
-		receivedService = chart
-		service.StopStream()
+	var indicators []common.Indicator
+	service := NewChartService(ctx, chartDAO, new(MockExchangeService_Chart))
+	mapper := mapper.NewChartMapper(ctx)
+	commonChart := mapper.MapChartEntityToDto(&charts[0])
+	service.Stream(&commonChart, func(newPrice float64) error {
+		indicators = commonChart.Indicators
+		service.StopStream(&commonChart)
+		return nil
 	})
-	indicators := receivedService.GetIndicators()
-	assert.Equal(t, true, len(indicators) == 3)
+	assert.Equal(t, 3, len(indicators))
 
 	test.CleanupMockContext()
 }
@@ -183,13 +203,13 @@ func TestChartService_Stream(t *testing.T) {
 func createChartIndicators() []dao.Indicator {
 	var indicators []dao.Indicator
 	indicators = append(indicators, dao.Indicator{
-		Name:       "RSI",
+		Name:       "RelativeStrengthIndex",
 		Parameters: "14,70,30"})
 	indicators = append(indicators, dao.Indicator{
-		Name:       "BBands",
+		Name:       "BollingerBands",
 		Parameters: "20,2"})
 	indicators = append(indicators, dao.Indicator{
-		Name:       "MACD",
+		Name:       "MovingAverageConvergenceDivergence",
 		Parameters: "12,26,9"})
 	return indicators
 }
@@ -204,7 +224,7 @@ func createChartTrades() []dao.Trade {
 		Exchange: "gdax",
 		Amount:   1,
 		Price:    10000,
-		UserID:   1})
+		UserId:   1})
 	trades = append(trades, dao.Trade{
 		Date:     time.Now().AddDate(0, 0, -10),
 		Type:     "sell",
@@ -213,13 +233,13 @@ func createChartTrades() []dao.Trade {
 		Exchange: "gdax",
 		Amount:   1,
 		Price:    12000,
-		UserID:   1})
+		UserId:   1})
 	return trades
 }
 
 func createChart(ctx *common.Context) *dao.Chart {
 	return &dao.Chart{
-		UserID:     ctx.User.Id,
+		UserId:     ctx.User.Id,
 		Base:       "BTC",
 		Quote:      "USD",
 		Exchange:   "gdax",
@@ -229,19 +249,21 @@ func createChart(ctx *common.Context) *dao.Chart {
 		Trades:     createChartTrades()}
 }
 
-func (mcs *MockExchange) GetName() string {
+func (mcs *MockExchange_Chart) GetName() string {
 	return "Test"
 }
 
-func (mcs *MockExchange) FormattedCurrencyPair() string {
+func (mcs *MockExchange_Chart) FormattedCurrencyPair(currencyPair *common.CurrencyPair) string {
 	return "BTC-USD"
 }
 
-func (mcs *MockExchange) GetPriceHistory(start, end time.Time, granularity int) []common.Candlestick {
-	return createChartCandles()
+func (mcs *MockExchange_Chart) GetPriceHistory(currencyPair *common.CurrencyPair,
+	start, end time.Time, granularity int) []common.Candlestick {
+
+	return createIntegrationTestCandles()
 }
 
-func (mcs *MockExchange) SubscribeToLiveFeed(priceChange chan common.PriceChange) {
+func (mcs *MockExchange_Chart) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceChange chan common.PriceChange) {
 	fmt.Println("Subscribing to feed")
 	priceChange <- common.PriceChange{
 		CurrencyPair: &common.CurrencyPair{
@@ -254,9 +276,25 @@ func (mcs *MockExchange) SubscribeToLiveFeed(priceChange chan common.PriceChange
 	fmt.Println("Price change sent")
 }
 
-func (mcs *MockExchange) GetCurrencyPair() common.CurrencyPair {
-	return common.CurrencyPair{
-		Base:          "BTC",
-		Quote:         "USD",
-		LocalCurrency: "USD"}
+func (mes *MockExchangeService_Chart) CreateExchange(user *common.User, exchangeName string) common.Exchange {
+	return new(MockExchange_Chart)
+}
+
+func (mes *MockExchangeService_Chart) GetExchange(user *common.User, exchangeName string) common.Exchange {
+	return new(MockExchange_Chart)
+}
+
+func (mes *MockExchangeService_Chart) GetExchanges(user *common.User) []common.Exchange {
+	ctx := &common.Context{
+		User: &common.User{
+			Id:            1,
+			Username:      test.TEST_USERNAME,
+			LocalCurrency: "USD"}}
+	testExchange := &dao.UserCryptoExchange{
+		Name:   "Test Exchange",
+		URL:    "https://www.example.com",
+		Key:    "ABC123",
+		Secret: "$ecret!",
+		Extra:  "Exchange specific data here"}
+	return []common.Exchange{exchange.NewGDAX(ctx, testExchange)}
 }

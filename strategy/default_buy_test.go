@@ -1,12 +1,10 @@
-// +build unit
-
 package strategy
 
 import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/indicators"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -40,8 +38,8 @@ func TestDefaultTradingStrategy_DefaultConfig_Buy(t *testing.T) {
 		NewPrice:     11000,
 		TradeFee:     .025,
 		LastTrade: &common.Trade{
-			ID:       1,
-			ChartID:  1,
+			Id:       1,
+			ChartId:  1,
 			Base:     "BTC",
 			Quote:    "USD",
 			Exchange: "gdax",

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/example"
@@ -23,14 +24,17 @@ type ExampleIndicatorParams struct {
 func main() {
 }
 
-func CreateExampleIndicator(candles []common.Candlestick, params []string) common.FinancialIndicator {
+func CreateExampleIndicator(candles []common.Candlestick, params []string) example.ExampleIndicator {
+	intParam1, _ := strconv.ParseInt(params[0], 10, 64)
+	intParam2, _ := strconv.ParseInt(params[1], 10, 64)
+	intParam3, _ := strconv.ParseInt(params[2], 10, 64)
 	return ExampleIndicatorImpl{
 		name:        "ExampleIndicator",
 		displayName: "Example Indicator®",
 		params: ExampleIndicatorParams{
-			param1: 1,
-			param2: 2,
-			param3: 3}}
+			param1: int(intParam1),
+			param2: int(intParam2),
+			param3: int(intParam3)}}
 }
 
 func (fi ExampleIndicatorImpl) GetName() string {

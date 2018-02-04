@@ -115,6 +115,7 @@ type ChartEntity interface {
 	GetPeriod() int
 	GetExchangeName() string
 	IsAutoTrade() bool
+	GetAutoTrade() uint
 	GetIndicators() []Indicator
 	SetIndicators(indicators []Indicator)
 	AddIndicator(indicator *Indicator)
@@ -183,6 +184,10 @@ func (entity *Chart) GetPeriod() int {
 
 func (entity *Chart) GetExchangeName() string {
 	return entity.Exchange
+}
+
+func (entity *Chart) GetAutoTrade() uint {
+	return entity.AutoTrade
 }
 
 func (entity *Chart) IsAutoTrade() bool {

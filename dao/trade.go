@@ -23,6 +23,8 @@ type TradeDAOImpl struct {
 
 type TradeEntity interface {
 	GetId() uint
+	GetChartId() uint
+	GetUserId() uint
 	GetBase() string
 	GetQuote() string
 	GetExchangeName() string
@@ -30,6 +32,7 @@ type TradeEntity interface {
 	GetType() string
 	GetPrice() float64
 	GetAmount() float64
+	GetChartData() string
 }
 
 type Trade struct {
@@ -78,30 +81,16 @@ func (dao *TradeDAOImpl) Find(user *common.User) []Trade {
 	return trades
 }
 
-func (dao *TradeDAOImpl) GetLastTrade(chart ChartEntity) *Trade {
-	var trades []Trade
-	if err := dao.ctx.DB.Order("date desc").Limit(1).Model(chart).Related(&trades).Error; err != nil {
-		dao.ctx.Logger.Errorf("[TradeDAOImpl.GetLastTrade] Error: %s", err.Error())
-	}
-	tradeLen := len(trades)
-	if tradeLen < 1 || tradeLen > 1 {
-		dao.ctx.Logger.Warningf("[TradeDAOImpl.GetLastTrade] Invalid number of trades returned: %d", tradeLen)
-		return &Trade{}
-	}
-	return &trades[0]
-}
-
-func (dao *TradeDAOImpl) FindByChart(chart ChartEntity) []Trade {
-	var trades []Trade
-	daoChart := &Chart{Id: chart.GetId()}
-	if err := dao.ctx.DB.Model(daoChart).Related(&trades).Error; err != nil {
-		dao.ctx.Logger.Errorf("[TradeDAOImpl.GetTrades] Error: %s", err.Error())
-	}
-	return trades
-}
-
 func (trade *Trade) GetId() uint {
 	return trade.Id
+}
+
+func (trade *Trade) GetChartId() uint {
+	return trade.ChartId
+}
+
+func (trade *Trade) GetUserId() uint {
+	return trade.UserId
 }
 
 func (trade *Trade) GetBase() string {
@@ -130,4 +119,8 @@ func (trade *Trade) GetPrice() float64 {
 
 func (trade *Trade) GetAmount() float64 {
 	return trade.Amount
+}
+
+func (trade *Trade) GetChartData() string {
+	return trade.ChartData
 }

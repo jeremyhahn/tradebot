@@ -1,3 +1,5 @@
+// +build integration
+
 package dao
 
 import (
@@ -41,6 +43,7 @@ func TestProfitDAO(t *testing.T) {
 
 	persisted2, exErr2 := profitDAO.Find()
 	assert.Equal(t, nil, exErr2)
+	assert.Equal(t, 1, len(persisted2))
 	assert.Equal(t, uint(1), persisted2[0].GetId())
 	assert.Equal(t, ctx.User.Id, persisted2[0].GetUserId())
 	assert.Equal(t, profit.TradeId, persisted2[0].GetTradeId())

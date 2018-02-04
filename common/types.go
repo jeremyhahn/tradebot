@@ -190,19 +190,6 @@ type ChartData struct {
 	OnBalanceVolumeLive float64      `json:"on_balance_volume_live"`
 }
 
-type MovingAverage interface {
-	Add(candle *Candlestick) float64
-	GetCandlesticks() []Candlestick
-	GetSize() int
-	GetCount() int
-	GetIndex() int
-	GetAverage() float64
-	GetPrices() []float64
-	Sum() float64
-	GetGainsAndLosses() (float64, float64)
-	PeriodListener
-}
-
 type PriceListener interface {
 	OnPriceChange(priceChange *PriceChange)
 }

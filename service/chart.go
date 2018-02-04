@@ -8,6 +8,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/mapper"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
@@ -43,7 +44,7 @@ func (service *ChartServiceImpl) GetExchange(chart *common.Chart) common.Exchang
 	return service.exchangeService.GetExchange(service.ctx.User, chart.Exchange)
 }
 
-func (service *ChartServiceImpl) Stream(chart *common.Chart, strategyHandler func(price float64)) error {
+func (service *ChartServiceImpl) Stream(chart *common.Chart, strategyHandler func(price float64) error) error {
 
 	if _, ok := service.charts[chart.Id]; !ok {
 		return errors.New(fmt.Sprintf("Already streaming chart %s-%s", chart.Base, chart.Quote))
@@ -79,7 +80,10 @@ func (service *ChartServiceImpl) Stream(chart *common.Chart, strategyHandler fun
 		default:
 			priceChange := service.priceStreams[chart.Id].Listen(priceChange)
 			chart.Price = priceChange.Price
-			strategyHandler(chart.Price)
+			strategyErr := strategyHandler(chart.Price)
+			if strategyErr != nil {
+				return strategyErr
+			}
 		}
 	}
 }
@@ -95,14 +99,15 @@ func (service *ChartServiceImpl) GetCharts() ([]common.Chart, error) {
 	if err != nil {
 		return nil, err
 	}
+	mapper := mapper.NewChartMapper(service.ctx)
 	for _, chart := range _charts {
 		var indicators []common.Indicator
 		var trades []common.Trade
 		for _, indicator := range chart.GetIndicators() {
-			indicators = append(indicators, service.mapIndicatorEntityToDto(indicator))
+			indicators = append(indicators, mapper.MapIndicatorEntityToDto(indicator))
 		}
 		for _, trade := range chart.GetTrades() {
-			trades = append(trades, service.mapTradeEntityToDto(trade))
+			trades = append(trades, mapper.MapTradeEntityToDto(&trade))
 		}
 		charts = append(charts, common.Chart{
 			Id:         chart.Id,
@@ -122,10 +127,22 @@ func (service *ChartServiceImpl) GetTrades(chart *common.Chart) ([]common.Trade,
 	if err != nil {
 		return nil, err
 	}
+	mapper := mapper.NewChartMapper(service.ctx)
 	for _, entity := range entities {
-		trades = append(trades, service.mapTradeEntityToDto(entity))
+		trades = append(trades, mapper.MapTradeEntityToDto(&entity))
 	}
 	return trades, nil
+}
+
+func (service *ChartServiceImpl) GetLastTrade(chart common.Chart) (*common.Trade, error) {
+	daoChart := &dao.Chart{Id: chart.Id}
+	entity, err := service.chartDAO.GetLastTrade(daoChart)
+	if err != nil {
+		return nil, err
+	}
+	mapper := mapper.NewChartMapper(service.ctx)
+	tradeDTO := mapper.MapTradeEntityToDto(entity)
+	return &tradeDTO, nil
 }
 
 func (service *ChartServiceImpl) GetChart(id uint) (*common.Chart, error) {
@@ -135,11 +152,12 @@ func (service *ChartServiceImpl) GetChart(id uint) (*common.Chart, error) {
 	if err != nil {
 		return nil, err
 	}
+	mapper := mapper.NewChartMapper(service.ctx)
 	for _, entity := range entity.GetTrades() {
-		trades = append(trades, service.mapTradeEntityToDto(entity))
+		trades = append(trades, mapper.MapTradeEntityToDto(&entity))
 	}
 	for _, indicator := range entity.GetIndicators() {
-		indicators = append(indicators, service.mapIndicatorEntityToDto(indicator))
+		indicators = append(indicators, mapper.MapIndicatorEntityToDto(indicator))
 	}
 	return &common.Chart{
 		Id:         entity.GetId(),
@@ -172,15 +190,13 @@ func (service *ChartServiceImpl) GetIndicators(chart *common.Chart) (map[string]
 		return nil, err
 	}
 	for _, daoIndicator := range daoIndicators {
-		indicators[daoIndicator.Name] = service.CreateIndicator(&daoIndicator)
+		indicator := service.CreateIndicator(&daoIndicator)
+		if indicator != nil {
+			return nil, errors.New(fmt.Sprintf("Unable to create indicator instace: %s", indicator))
+		}
+		indicators[daoIndicator.Name] = indicator
 	}
 	return indicators, nil
-}
-
-func (service *ChartServiceImpl) CreateIndicator(dao *dao.Indicator) common.Indicator {
-	fqcn := fmt.Sprintf("indicators.%s", dao.Name)
-	service.ctx.Logger.Debugf("[ChartServiceImpl.createIndicator] Creating indicator: %s", fqcn)
-	return reflect.New(reflect.TypeOf(fqcn)).Elem().Interface().(common.Indicator)
 }
 
 func (service *ChartServiceImpl) loadCandlesticks(chart *common.Chart, exchange common.Exchange) []common.Candlestick {
@@ -211,69 +227,12 @@ func (service *ChartServiceImpl) loadCandlesticks(chart *common.Chart, exchange 
 	return reversed
 }
 
-func (service *ChartServiceImpl) mapTradeEntityToDto(entity dao.Trade) common.Trade {
-	return common.Trade{
-		Id:        entity.Id,
-		UserId:    service.ctx.User.Id,
-		ChartId:   entity.ChartId,
-		Date:      entity.Date,
-		Exchange:  entity.Exchange,
-		Type:      entity.Type,
-		Base:      entity.Base,
-		Quote:     entity.Quote,
-		Amount:    entity.Amount,
-		Price:     entity.Price,
-		ChartData: entity.ChartData}
-}
+func (service *ChartServiceImpl) CreateIndicator(dao *dao.Indicator) common.FinancialIndicator {
+	//var candles []common.Candlestick
+	//rsi := indicators.NewRelativeStrengthIndex(candles)
 
-func (service *ChartServiceImpl) mapTradeDtoToEntity(trade common.Trade) dao.Trade {
-	return dao.Trade{
-		Id:        trade.Id,
-		UserId:    service.ctx.User.Id,
-		ChartId:   trade.ChartId,
-		Date:      trade.Date,
-		Exchange:  trade.Exchange,
-		Type:      trade.Type,
-		Base:      trade.Base,
-		Quote:     trade.Quote,
-		Amount:    trade.Amount,
-		Price:     trade.Price,
-		ChartData: trade.ChartData}
+	fqcn := fmt.Sprintf("*indicators.%s", dao.Name)
+	service.ctx.Logger.Debugf("[ChartServiceImpl.createIndicator] Creating indicator: %s", fqcn)
+	elem := reflect.New(reflect.TypeOf(fqcn)).Elem()
+	return elem.Interface().(common.FinancialIndicator)
 }
-
-func (service *ChartServiceImpl) mapIndicatorEntityToDto(entity dao.Indicator) common.Indicator {
-	return common.Indicator{
-		Id:         entity.Id,
-		ChartId:    entity.ChartId,
-		Name:       entity.Name,
-		Parameters: entity.Parameters}
-}
-
-func (service *ChartServiceImpl) mapIndicatorDtoToEntity(dto common.Indicator) dao.Indicator {
-	return dao.Indicator{
-		Id:         dto.Id,
-		ChartId:    dto.ChartId,
-		Name:       dto.Name,
-		Parameters: dto.Parameters}
-}
-
-/*
-var daoIndicators []dao.Indicator
-for _, indicator := range chart.Indicators {
-	daoIndicators = append(daoIndicators, service.mapIndicatorDtoToEntity(indicator))
-}
-var daoTrades []dao.Trade
-for _, trade := range chart.Trades {
-	daoTrades = append(daoTrades, service.mapTradeDtoToEntity(trade))
-}
-entity := &dao.Chart{
-	Id:         chart.Id,
-	UserId:     service.ctx.User.Id,
-	Base:       chart.Base,
-	Quote:      chart.Quote,
-	Exchange:   chart.Exchange,
-	Indicators: daoIndicators,
-	Trades:     daoTrades,
-	Period:     chart.Period,
-	AutoTrade:  chart.AutoTrade}
-*/

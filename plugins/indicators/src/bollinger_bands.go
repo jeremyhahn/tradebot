@@ -1,4 +1,4 @@
-package indicators
+package main
 
 import (
 	"fmt"
@@ -6,17 +6,9 @@ import (
 	"strconv"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/jeremyhahn/tradebot/util"
 )
-
-type BollingerBands interface {
-	GetUpper() float64
-	GetMiddle() float64
-	GetLower() float64
-	StandardDeviation() float64
-	Calculate(price float64) (float64, float64, float64)
-	common.FinancialIndicator
-}
 
 type BBandParams struct {
 	Period int64
@@ -27,17 +19,17 @@ type BollingerBandsImpl struct {
 	name        string
 	displayName string
 	price       float64
-	sma         common.MovingAverage
+	sma         indicators.SimpleMovingAverage
 	params      *BBandParams
-	BollingerBands
+	indicators.BollingerBands
 }
 
-func NewBollingerBands(candles []common.Candlestick) BollingerBands {
+func NewBollingerBands(candles []common.Candlestick) indicators.BollingerBands {
 	params := []string{"20", "2"}
 	return CreateBollingerBands(candles, params)
 }
 
-func CreateBollingerBands(candles []common.Candlestick, params []string) BollingerBands {
+func CreateBollingerBands(candles []common.Candlestick, params []string) indicators.BollingerBands {
 	period, _ := strconv.ParseInt(params[0], 10, 64)
 	k, _ := strconv.ParseFloat(params[1], 64)
 	sma := NewSimpleMovingAverage(candles[:period])
