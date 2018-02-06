@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -13,23 +12,27 @@ import (
 )
 
 type ChartServiceImpl struct {
-	ctx             *common.Context
-	chartDAO        dao.ChartDAO
-	charts          map[uint]*common.Chart
-	priceStreams    map[uint]PriceStream
-	closeChans      map[uint]chan bool
-	exchangeService ExchangeService
+	ctx              *common.Context
+	chartDAO         dao.ChartDAO
+	charts           map[uint]*common.Chart
+	priceStreams     map[uint]PriceStream
+	closeChans       map[uint]chan bool
+	exchangeService  ExchangeService
+	indicatorService IndicatorService
 	ChartService
 }
 
-func NewChartService(ctx *common.Context, chartDAO dao.ChartDAO, exchangeService ExchangeService) ChartService {
+func NewChartService(ctx *common.Context, chartDAO dao.ChartDAO, exchangeService ExchangeService,
+	indicatorService IndicatorService) ChartService {
+
 	service := &ChartServiceImpl{
-		ctx:             ctx,
-		chartDAO:        chartDAO,
-		charts:          make(map[uint]*common.Chart),
-		priceStreams:    make(map[uint]PriceStream),
-		closeChans:      make(map[uint]chan bool),
-		exchangeService: exchangeService}
+		ctx:              ctx,
+		chartDAO:         chartDAO,
+		charts:           make(map[uint]*common.Chart),
+		priceStreams:     make(map[uint]PriceStream),
+		closeChans:       make(map[uint]chan bool),
+		exchangeService:  exchangeService,
+		indicatorService: indicatorService}
 	return service
 }
 
@@ -101,7 +104,7 @@ func (service *ChartServiceImpl) GetCharts() ([]common.Chart, error) {
 	}
 	mapper := mapper.NewChartMapper(service.ctx)
 	for _, chart := range _charts {
-		var indicators []common.Indicator
+		var indicators []common.ChartIndicator
 		var trades []common.Trade
 		for _, indicator := range chart.GetIndicators() {
 			indicators = append(indicators, mapper.MapIndicatorEntityToDto(indicator))
@@ -147,7 +150,7 @@ func (service *ChartServiceImpl) GetLastTrade(chart common.Chart) (*common.Trade
 
 func (service *ChartServiceImpl) GetChart(id uint) (*common.Chart, error) {
 	var trades []common.Trade
-	var indicators []common.Indicator
+	var indicators []common.ChartIndicator
 	entity, err := service.chartDAO.Get(id)
 	if err != nil {
 		return nil, err
@@ -183,16 +186,20 @@ func (service *ChartServiceImpl) GetIndicator(chart *common.Chart, name string) 
 }
 
 func (service *ChartServiceImpl) GetIndicators(chart *common.Chart) (map[string]common.FinancialIndicator, error) {
-	var indicators map[string]common.FinancialIndicator
+	indicators := make(map[string]common.FinancialIndicator, len(chart.Indicators))
 	entity := &dao.Chart{Id: chart.Id}
 	daoIndicators, err := service.chartDAO.GetIndicators(entity)
 	if err != nil {
 		return nil, err
 	}
+	candles := service.loadCandlesticks(chart, service.GetExchange(chart))
 	for _, daoIndicator := range daoIndicators {
-		indicator := service.CreateIndicator(&daoIndicator)
-		if indicator != nil {
-			return nil, errors.New(fmt.Sprintf("Unable to create indicator instace: %s", indicator))
+		indicator, err := service.indicatorService.GetChartIndicator(chart, daoIndicator.GetName(), candles)
+		if err != nil {
+			return nil, err
+		}
+		if indicator == nil {
+			return nil, errors.New(fmt.Sprintf("Unable to create indicator instance: %s", indicator))
 		}
 		indicators[daoIndicator.Name] = indicator
 	}
@@ -225,14 +232,4 @@ func (service *ChartServiceImpl) loadCandlesticks(chart *common.Chart, exchange 
 		reversed = append(reversed, candles[i])
 	}
 	return reversed
-}
-
-func (service *ChartServiceImpl) CreateIndicator(dao *dao.Indicator) common.FinancialIndicator {
-	//var candles []common.Candlestick
-	//rsi := indicators.NewRelativeStrengthIndex(candles)
-
-	fqcn := fmt.Sprintf("*indicators.%s", dao.Name)
-	service.ctx.Logger.Debugf("[ChartServiceImpl.createIndicator] Creating indicator: %s", fqcn)
-	elem := reflect.New(reflect.TypeOf(fqcn)).Elem()
-	return elem.Interface().(common.FinancialIndicator)
 }

@@ -17,7 +17,7 @@ import (
 var TEST_CONTEXT *common.Context
 var TEST_LOCK sync.Mutex
 var TEST_USERNAME = "test"
-var TEST_DBPATH = "/tmp/tradebot-integration-testing.db"
+var TEST_DBPATH = "/tmp/tradebot-integration-dao-testing.db"
 
 func NewIntegrationTestContext() *common.Context {
 
@@ -50,21 +50,30 @@ func NewIntegrationTestContext() *common.Context {
 func CleanupIntegrationTest() {
 	if TEST_CONTEXT != nil {
 		TEST_CONTEXT.DB.Close()
-		TEST_LOCK.Unlock()
 		os.Remove(TEST_DBPATH)
+		TEST_LOCK.Unlock()
+		TEST_CONTEXT = nil
 	}
 }
 
-func createIntegrationTestChart(ctx *common.Context) (*Chart, []Indicator, []Trade) {
-	indicators := []Indicator{
-		Indicator{
+func createIntegrationTestChart(ctx *common.Context) *Chart {
+	userIndicators := []ChartIndicator{
+		ChartIndicator{
 			Name:       "RelativeStrengthIndex",
-			Parameters: "14,70,30",
-			Filename:   "rsi.so"},
-		Indicator{
+			Parameters: "14,70,30"},
+		ChartIndicator{
 			Name:       "BollingerBands",
-			Parameters: "20,2",
-			Filename:   "bollinger_bands.so"}}
+			Parameters: "20,2"},
+		ChartIndicator{
+			Name:       "MovingAverageConvergenceDivergence",
+			Parameters: "12,26,9"}}
+
+	userStrategies := []ChartStrategy{
+		ChartStrategy{
+			ChartId:    1,
+			Name:       "DefaultTradingStrategy",
+			Parameters: "1,2,3"}}
+
 	trades := []Trade{
 		Trade{
 			UserId:    ctx.User.Id,
@@ -86,16 +95,19 @@ func createIntegrationTestChart(ctx *common.Context) (*Chart, []Indicator, []Tra
 			Amount:    2,
 			Price:     12000,
 			ChartData: "test-trade-2"}}
+
 	chart := &Chart{
 		UserId:     ctx.User.Id,
 		Base:       "BTC",
 		Quote:      "USD",
 		Exchange:   "gdax",
 		Period:     900, // 15 minutes
-		Indicators: indicators,
+		Indicators: userIndicators,
+		Strategies: userStrategies,
 		Trades:     trades,
 		AutoTrade:  1}
-	return chart, indicators, trades
+
+	return chart
 }
 
 func createIntegrationTestCandles() []common.Candlestick {

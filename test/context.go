@@ -123,10 +123,10 @@ func NewIntegrationTestContext() *common.Context {
 	return TEST_CONTEXT
 }
 
-func CleanupMockContext() {
+func CleanupIntegrationTest() {
 	if TEST_CONTEXT != nil {
 		TEST_CONTEXT.DB.Close()
-		TEST_LOCK.Unlock()
 		os.Remove(TEST_DBPATH)
+		TEST_LOCK.Unlock()
 	}
 }

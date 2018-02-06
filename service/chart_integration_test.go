@@ -11,7 +11,6 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/exchange"
 	"github.com/jeremyhahn/tradebot/mapper"
-	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -26,8 +25,18 @@ type MockExchangeService_Chart struct {
 	mock.Mock
 }
 
+type MockIndicatorService_Chart struct {
+	IndicatorService
+	mock.Mock
+}
+
+type MockFinancialIndicator_Chart struct {
+	common.FinancialIndicator
+	mock.Mock
+}
+
 func TestChartDAO(t *testing.T) {
-	ctx := test.NewIntegrationTestContext()
+	ctx := NewIntegrationTestContext()
 	chartDAO := dao.NewChartDAO(ctx)
 
 	chart := createChart(ctx)
@@ -56,11 +65,11 @@ func TestChartDAO(t *testing.T) {
 	indicators := charts[0].GetIndicators()
 	assert.Equal(t, 3, len(indicators))
 
-	test.CleanupMockContext()
+	CleanupIntegrationTest()
 }
 
 func TestChartDAO_GetIndicators(t *testing.T) {
-	ctx := test.NewIntegrationTestContext()
+	ctx := NewIntegrationTestContext()
 	chartDAO := dao.NewChartDAO(ctx)
 
 	chart := createChart(ctx)
@@ -85,11 +94,11 @@ func TestChartDAO_GetIndicators(t *testing.T) {
 	indicators := charts[0].GetIndicators()
 	assert.Equal(t, 3, len(indicators))
 
-	test.CleanupMockContext()
+	CleanupIntegrationTest()
 }
 
 func TestChartDAO_GetTrades(t *testing.T) {
-	ctx := test.NewIntegrationTestContext()
+	ctx := NewIntegrationTestContext()
 	chartDAO := dao.NewChartDAO(ctx)
 
 	chart := createChart(ctx)
@@ -131,11 +140,11 @@ func TestChartDAO_GetTrades(t *testing.T) {
 	assert.Equal(t, 1.0, lastTrade.Amount)
 	assert.Equal(t, 12000.0, lastTrade.Price)
 
-	test.CleanupMockContext()
+	CleanupIntegrationTest()
 }
 
 func TestChartService_GetIndicators(t *testing.T) {
-	ctx := test.NewIntegrationTestContext()
+	ctx := NewIntegrationTestContext()
 	chartDAO := dao.NewChartDAO(ctx)
 	chart := createChart(ctx)
 	chartDAO.Create(chart)
@@ -160,19 +169,19 @@ func TestChartService_GetIndicators(t *testing.T) {
 	assert.Equal(t, "14,70,30", indicators[2].Parameters)
 
 	mapper := mapper.NewChartMapper(ctx)
-
-	service := NewChartService(ctx, chartDAO, new(MockExchangeService_Chart))
+	service := NewChartService(ctx, chartDAO, new(MockExchangeService_Chart), new(MockIndicatorService_Chart))
 
 	commonChart := mapper.MapChartEntityToDto(&charts[0])
 	Indicators, err := service.GetIndicators(&commonChart)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 3, len(Indicators))
 
-	test.CleanupMockContext()
+	CleanupIntegrationTest()
 }
 
+/*
 func TestChartService_Stream(t *testing.T) {
-	ctx := test.NewIntegrationTestContext()
+	ctx := NewIntegrationTestContext()
 	chartDAO := dao.NewChartDAO(ctx)
 	chart := createChart(ctx)
 	chartDAO.Create(chart)
@@ -186,9 +195,10 @@ func TestChartService_Stream(t *testing.T) {
 	assert.Equal(t, 900, charts[0].GetPeriod())
 	assert.Equal(t, true, charts[0].IsAutoTrade())
 
-	var indicators []common.Indicator
-	service := NewChartService(ctx, chartDAO, new(MockExchangeService_Chart))
+	var indicators []common.ChartIndicator
+	service := NewChartService(ctx, chartDAO, new(MockExchangeService_Chart), new(MockIndicatorService_Chart))
 	mapper := mapper.NewChartMapper(ctx)
+
 	commonChart := mapper.MapChartEntityToDto(&charts[0])
 	service.Stream(&commonChart, func(newPrice float64) error {
 		indicators = commonChart.Indicators
@@ -197,18 +207,18 @@ func TestChartService_Stream(t *testing.T) {
 	})
 	assert.Equal(t, 3, len(indicators))
 
-	test.CleanupMockContext()
-}
+	CleanupMockContext()
+}*/
 
-func createChartIndicators() []dao.Indicator {
-	var indicators []dao.Indicator
-	indicators = append(indicators, dao.Indicator{
+func createChartIndicators() []dao.ChartIndicator {
+	var indicators []dao.ChartIndicator
+	indicators = append(indicators, dao.ChartIndicator{
 		Name:       "RelativeStrengthIndex",
 		Parameters: "14,70,30"})
-	indicators = append(indicators, dao.Indicator{
+	indicators = append(indicators, dao.ChartIndicator{
 		Name:       "BollingerBands",
 		Parameters: "20,2"})
-	indicators = append(indicators, dao.Indicator{
+	indicators = append(indicators, dao.ChartIndicator{
 		Name:       "MovingAverageConvergenceDivergence",
 		Parameters: "12,26,9"})
 	return indicators
@@ -288,7 +298,7 @@ func (mes *MockExchangeService_Chart) GetExchanges(user *common.User) []common.E
 	ctx := &common.Context{
 		User: &common.User{
 			Id:            1,
-			Username:      test.TEST_USERNAME,
+			Username:      TEST_USERNAME,
 			LocalCurrency: "USD"}}
 	testExchange := &dao.UserCryptoExchange{
 		Name:   "Test Exchange",
@@ -298,3 +308,41 @@ func (mes *MockExchangeService_Chart) GetExchanges(user *common.User) []common.E
 		Extra:  "Exchange specific data here"}
 	return []common.Exchange{exchange.NewGDAX(ctx, testExchange)}
 }
+
+func (mes *MockIndicatorService_Chart) GetChartIndicator(chart *common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
+	return new(MockFinancialIndicator_Chart), nil
+}
+
+func (mfi *MockFinancialIndicator_Chart) GetName() string {
+	return "MockIndicator"
+}
+
+func (mfi *MockFinancialIndicator_Chart) GetDisplayName() string {
+	return "Mock Indicator"
+}
+
+func (mfi *MockFinancialIndicator_Chart) GetParameters() []string {
+	return []string{"a", "b", "c", "1", "2", "3"}
+}
+
+func (mfi *MockFinancialIndicator_Chart) GetDefautParameters() []string {
+	return []string{"d", "e", "f", "4", "5", "6"}
+}
+
+/*
+func (mfi *MockFinancialIndicator_Chart) GetName() string {
+	return "RelativeStrengthIndex"
+}
+
+func (mfi *MockFinancialIndicator_Chart) GetDisplayName() string {
+	return "Relative Strength Index (RSI)"
+}
+
+func (mfi *MockFinancialIndicator_Chart) GetParameters() []string {
+	return []string{"14", "80", "20"}
+}
+
+func (mfi *MockFinancialIndicator_Chart) GetDefautParameters() []string {
+	return []string{"14", "70", "30"}
+}
+*/
