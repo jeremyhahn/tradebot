@@ -8,8 +8,10 @@ import (
 type ChartMapper interface {
 	MapChartDtoToEntity(dto common.Chart) dao.Chart
 	MapChartEntityToDto(entity dao.ChartEntity) common.Chart
-	MapIndicatorEntityToDto(entity dao.Indicator) common.Indicator
-	MapIndicatorDtoToEntity(dto common.Indicator) dao.Indicator
+	MapIndicatorEntityToDto(entity dao.ChartIndicator) common.ChartIndicator
+	MapIndicatorDtoToEntity(dto common.ChartIndicator) dao.ChartIndicator
+	MapStrategyEntityToDto(entity dao.ChartStrategy) common.ChartStrategy
+	MapStrategyDtoToEntity(dto common.ChartStrategy) dao.ChartStrategy
 	MapTradeEntityToDto(entity dao.TradeEntity) common.Trade
 	MapTradeDtoToEntity(trade common.Trade) dao.Trade
 }
@@ -52,16 +54,32 @@ func (mapper *ChartMapperImpl) MapTradeDtoToEntity(trade common.Trade) dao.Trade
 		ChartData: trade.ChartData}
 }
 
-func (mapper *ChartMapperImpl) MapIndicatorEntityToDto(entity dao.Indicator) common.Indicator {
-	return common.Indicator{
+func (mapper *ChartMapperImpl) MapIndicatorEntityToDto(entity dao.ChartIndicator) common.ChartIndicator {
+	return common.ChartIndicator{
 		Id:         entity.Id,
 		ChartId:    entity.ChartId,
 		Name:       entity.Name,
 		Parameters: entity.Parameters}
 }
 
-func (mapper *ChartMapperImpl) MapIndicatorDtoToEntity(dto common.Indicator) dao.Indicator {
-	return dao.Indicator{
+func (mapper *ChartMapperImpl) MapIndicatorDtoToEntity(dto common.ChartIndicator) dao.ChartIndicator {
+	return dao.ChartIndicator{
+		Id:         dto.Id,
+		ChartId:    dto.ChartId,
+		Name:       dto.Name,
+		Parameters: dto.Parameters}
+}
+
+func (mapper *ChartMapperImpl) MapStrategyEntityToDto(entity dao.ChartStrategy) common.ChartStrategy {
+	return common.ChartStrategy{
+		Id:         entity.Id,
+		ChartId:    entity.ChartId,
+		Name:       entity.Name,
+		Parameters: entity.Parameters}
+}
+
+func (mapper *ChartMapperImpl) MapStrategyDtoToEntity(dto common.ChartStrategy) dao.ChartStrategy {
+	return dao.ChartStrategy{
 		Id:         dto.Id,
 		ChartId:    dto.ChartId,
 		Name:       dto.Name,
@@ -69,9 +87,9 @@ func (mapper *ChartMapperImpl) MapIndicatorDtoToEntity(dto common.Indicator) dao
 }
 
 func (mapper *ChartMapperImpl) MapChartDtoToEntity(dto common.Chart) dao.Chart {
-	var daoIndicators []dao.Indicator
+	var daoChartIndicators []dao.ChartIndicator
 	for _, indicator := range dto.Indicators {
-		daoIndicators = append(daoIndicators, mapper.MapIndicatorDtoToEntity(indicator))
+		daoChartIndicators = append(daoChartIndicators, mapper.MapIndicatorDtoToEntity(indicator))
 	}
 	var daoTrades []dao.Trade
 	for _, trade := range dto.Trades {
@@ -85,12 +103,12 @@ func (mapper *ChartMapperImpl) MapChartDtoToEntity(dto common.Chart) dao.Chart {
 		Exchange:   dto.Exchange,
 		Period:     dto.Period,
 		AutoTrade:  dto.AutoTrade,
-		Indicators: daoIndicators,
+		Indicators: daoChartIndicators,
 		Trades:     daoTrades}
 }
 
 func (mapper *ChartMapperImpl) MapChartEntityToDto(entity dao.ChartEntity) common.Chart {
-	var indicators []common.Indicator
+	var indicators []common.ChartIndicator
 	for _, indicator := range entity.GetIndicators() {
 		indicators = append(indicators, mapper.MapIndicatorEntityToDto(indicator))
 	}

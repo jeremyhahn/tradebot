@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/webservice"
 	"github.com/jinzhu/gorm"
@@ -28,15 +29,21 @@ func main() {
 	ctx.User = userDAO.GetById(1)
 
 	chartDAO := dao.NewChartDAO(ctx)
+	indicatorDAO := dao.NewIndicatorDAO(ctx)
+	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
 	tradeDAO := dao.NewTradeDAO(ctx)
 	profitDAO := dao.NewProfitDAO(ctx)
 
+	indicatorMapper := mapper.NewIndicatorMapper()
+
 	marketcapService := service.NewMarketCapService(logger)
-	pluginService := service.NewPluginService(ctx)
 	exchangeService := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx))
-	chartService := service.NewChartService(ctx, chartDAO, exchangeService)
+	pluginService := service.NewPluginService(ctx)
+	indicatorService := service.NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
+	chartService := service.NewChartService(ctx, chartDAO, exchangeService, indicatorService)
 	tradeService := service.NewTradeService(ctx, tradeDAO)
 	profitService := service.NewProfitService(ctx, profitDAO)
+
 	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService,
 		profitService, tradeService, pluginService)
 	err := autoTradeService.EndWorldHunger()

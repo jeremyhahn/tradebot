@@ -1,3 +1,5 @@
+// +build broken
+
 package main
 
 import (

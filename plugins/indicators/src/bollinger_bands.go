@@ -91,7 +91,7 @@ func (b *BollingerBandsImpl) calculateStandardDeviation(prices []float64, mean f
 }
 
 func (b *BollingerBandsImpl) OnPeriodChange(candle *common.Candlestick) {
-	fmt.Println("[Bollinger] OnPeriodChange: ", candle.Date, candle.Close)
+	//fmt.Println("[Bollinger] OnPeriodChange: ", candle.Date, candle.Close)
 	b.sma.Add(candle)
 }
 

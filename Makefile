@@ -22,7 +22,16 @@ deps:
 	go get "github.com/stretchr/testify"
 
 unittest:
-	go test -v dao/* -tags !integration
+	cd dao && go test -v
+	cd plugins/indicators/src && go test -v
+	cd service && go test -v
+
+integrationtest:
+	cd dao && go test -v -tags integration
+	cd plugins/indicators/src && go test -v -tags integration
+	cd service && go test -v -tags integration
+
+test: unittest integrationtest
 
 indicators:
 	cd plugins/indicators/src && go build -buildmode=plugin example.go && mv example.so ../
@@ -36,10 +45,12 @@ indicators:
 strategies:
 	cd plugins/strategies/src && go build -buildmode=plugin default.go && mv default.so ../
 
+plugins: indicators strategies
+
 clean:
 	cd plugins/indicators && rm -rf *.so
 	cd plugins/strategies && rm -rf *.so
 	rm -rf tradebot
 
-build: clean test indicators strategies
+build: clean plugins test
 	go build

@@ -10,7 +10,8 @@ type ChartDAO interface {
 	Update(chart ChartEntity) error
 	Find(user *common.User) ([]Chart, error)
 	Get(id uint) (ChartEntity, error)
-	GetIndicators(chart ChartEntity) ([]Indicator, error)
+	GetIndicators(chart ChartEntity) ([]ChartIndicator, error)
+	GetStrategies(chart ChartEntity) ([]ChartStrategy, error)
 	GetTrades(user *common.User) ([]Trade, error)
 	GetLastTrade(chart ChartEntity) (*Trade, error)
 }
@@ -23,7 +24,8 @@ type ChartDAOImpl struct {
 
 func NewChartDAO(ctx *common.Context) ChartDAO {
 	ctx.DB.AutoMigrate(&Chart{})
-	ctx.DB.AutoMigrate(&Indicator{})
+	ctx.DB.AutoMigrate(&ChartStrategy{})
+	ctx.DB.AutoMigrate(&ChartIndicator{})
 	ctx.DB.AutoMigrate(&Trade{})
 	return &ChartDAOImpl{ctx: ctx}
 }
@@ -56,7 +58,7 @@ func (chartDAO *ChartDAOImpl) Find(user *common.User) ([]Chart, error) {
 	}
 	for i, chart := range charts {
 		var trades []Trade
-		var indicators []Indicator
+		var indicators []ChartIndicator
 		if err := chartDAO.ctx.DB.Model(&chart).Related(&trades).Error; err != nil {
 			return charts, err
 		}
@@ -69,12 +71,20 @@ func (chartDAO *ChartDAOImpl) Find(user *common.User) ([]Chart, error) {
 	return charts, nil
 }
 
-func (chartDAO *ChartDAOImpl) GetIndicators(chart ChartEntity) ([]Indicator, error) {
-	var indicators []Indicator
+func (chartDAO *ChartDAOImpl) GetIndicators(chart ChartEntity) ([]ChartIndicator, error) {
+	var indicators []ChartIndicator
 	if err := chartDAO.ctx.DB.Order("id asc").Model(chart).Related(&indicators).Error; err != nil {
 		return nil, err
 	}
 	return indicators, nil
+}
+
+func (chartDAO *ChartDAOImpl) GetStrategies(chart ChartEntity) ([]ChartStrategy, error) {
+	var strategies []ChartStrategy
+	if err := chartDAO.ctx.DB.Order("id asc").Model(chart).Related(&strategies).Error; err != nil {
+		return nil, err
+	}
+	return strategies, nil
 }
 
 func (chartDAO *ChartDAOImpl) GetTrades(user *common.User) ([]Trade, error) {
@@ -107,11 +117,14 @@ type ChartEntity interface {
 	GetExchangeName() string
 	IsAutoTrade() bool
 	GetAutoTrade() uint
-	GetIndicators() []Indicator
-	SetIndicators(indicators []Indicator)
-	AddIndicator(indicator *Indicator)
-	GetTrades() []Trade
+	SetIndicators(indicators []ChartIndicator)
+	GetIndicators() []ChartIndicator
+	AddIndicator(indicator *ChartIndicator)
+	SetStrategies(strategies []ChartStrategy)
+	GetStrategies() []ChartStrategy
+	AddStrategy(strategy *ChartStrategy)
 	SetTrades(trades []Trade)
+	GetTrades() []Trade
 	AddTrade(trade *Trade)
 }
 
@@ -123,8 +136,9 @@ type Chart struct {
 	Exchange   string `gorm:"unique_index:idx_chart"`
 	Period     int
 	AutoTrade  uint
-	Indicators []Indicator `gorm:"ForeignKey:ChartID"`
-	Trades     []Trade     `gorm:"ForeignKey:ChartID"`
+	Indicators []ChartIndicator `gorm:"ForeignKey:ChartId"`
+	Strategies []ChartStrategy  `gorm:"ForeignKey:ChartId"`
+	Trades     []Trade          `gorm:"ForeignKey:ChartId"`
 	User       User
 	ChartEntity
 }
@@ -137,24 +151,36 @@ func (entity *Chart) GetUserId() uint {
 	return entity.UserId
 }
 
-func (entity *Chart) GetIndicators() []Indicator {
-	return entity.Indicators
-}
-
-func (entity *Chart) SetIndicators(indicators []Indicator) {
+func (entity *Chart) SetIndicators(indicators []ChartIndicator) {
 	entity.Indicators = indicators
 }
 
-func (entity *Chart) AddIndicator(indicator *Indicator) {
+func (entity *Chart) GetIndicators() []ChartIndicator {
+	return entity.Indicators
+}
+
+func (entity *Chart) AddIndicator(indicator *ChartIndicator) {
 	entity.Indicators = append(entity.Indicators, *indicator)
 }
 
-func (entity *Chart) GetTrades() []Trade {
-	return entity.Trades
+func (entity *Chart) SetStrategies(strategies []ChartStrategy) {
+	entity.Strategies = strategies
+}
+
+func (entity *Chart) GetStrategies() []ChartStrategy {
+	return entity.Strategies
+}
+
+func (entity *Chart) AddStrategy(strategy *ChartStrategy) {
+	entity.Strategies = append(entity.Strategies, *strategy)
 }
 
 func (entity *Chart) SetTrades(trades []Trade) {
 	entity.Trades = trades
+}
+
+func (entity *Chart) GetTrades() []Trade {
+	return entity.Trades
 }
 
 func (entity *Chart) AddTrade(trade *Trade) {

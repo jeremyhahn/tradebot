@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 )
@@ -54,7 +52,7 @@ func (obv *OBVImpl) Calculate(price float64) float64 {
 }
 
 func (obv *OBVImpl) OnPeriodChange(candle *common.Candlestick) {
-	fmt.Printf("[OBV] OnPeriodChange: %+v\n", candle)
+	//fmt.Printf("[OBV] OnPeriodChange: %+v\n", candle)
 	if obv.lastPrice == 0 && obv.lastVolume == 0 {
 		obv.lastPrice = candle.Close
 		return

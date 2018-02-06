@@ -27,7 +27,7 @@ type MockProfitService struct {
 
 /*
 func TestAutoTradeService(t *testing.T) {
-	ctx := test.NewUnitTestContext()
+	ctx := NewUnitTestContext()
 	chartDAO := new(MockChartDAO)
 	exchangeService := new(MockExchangeService)
 	tradeService := new(MockTradeService)

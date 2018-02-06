@@ -17,7 +17,9 @@ func TestChartDAO(t *testing.T) {
 		Username:      ctx.User.Username,
 		LocalCurrency: ctx.User.LocalCurrency}
 
-	chart, indicators, trades := createIntegrationTestChart(ctx)
+	chart := createIntegrationTestChart(ctx)
+	indicators := chart.GetIndicators()
+	trades := chart.GetTrades()
 
 	err := chartDAO.Create(chart)
 	assert.Equal(t, nil, err)
@@ -30,12 +32,12 @@ func TestChartDAO(t *testing.T) {
 	assert.Equal(t, chart.GetExchangeName(), persistedChart.GetExchangeName())
 	assert.Equal(t, chart.GetPeriod(), persistedChart.GetPeriod())
 	assert.Equal(t, chart.IsAutoTrade(), persistedChart.IsAutoTrade())
-	assert.Equal(t, 2, len(chart.GetIndicators()))
+	assert.Equal(t, 3, len(chart.GetIndicators()))
 	assert.Equal(t, 2, len(chart.GetTrades()))
 
 	persistedIndicators, terr := chartDAO.GetIndicators(chart)
 	assert.Equal(t, nil, terr)
-	assert.Equal(t, 2, len(persistedIndicators))
+	assert.Equal(t, 3, len(persistedIndicators))
 
 	assert.Equal(t, uint(1), persistedIndicators[0].Id)
 	assert.Equal(t, chart.GetId(), persistedIndicators[0].ChartId)
@@ -82,12 +84,12 @@ func TestChartDAO_Find(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	chartDAO := NewChartDAO(ctx)
 
-	chart, _, _ := createIntegrationTestChart(ctx)
+	chart := createIntegrationTestChart(ctx)
 	chartDAO.Create(chart)
 
-	chart, _, _ = createIntegrationTestChart(ctx)
-	chart.Base = "ETH"
-	chartDAO.Create(chart)
+	chart2 := createIntegrationTestChart(ctx)
+	chart2.Base = "ETH"
+	chartDAO.Create(chart2)
 
 	charts, err := chartDAO.Find(ctx.User)
 	assert.Equal(t, nil, err)
@@ -100,7 +102,7 @@ func TestChartDAO_GetLastTrade(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	chartDAO := NewChartDAO(ctx)
 
-	chart, _, _ := createIntegrationTestChart(ctx)
+	chart := createIntegrationTestChart(ctx)
 	chartDAO.Create(chart)
 
 	trade, err := chartDAO.GetLastTrade(chart)

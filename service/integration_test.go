@@ -18,7 +18,7 @@ import (
 var TEST_CONTEXT *common.Context
 var TEST_LOCK sync.Mutex
 var TEST_USERNAME = "test"
-var TEST_DBPATH = "/tmp/tradebot-integration-testing.db"
+var TEST_DBPATH = "/tmp/tradebot-integration-service-testing.db"
 
 func NewIntegrationTestContext() *common.Context {
 
@@ -51,17 +51,17 @@ func NewIntegrationTestContext() *common.Context {
 func CleanupIntegrationTest() {
 	if TEST_CONTEXT != nil {
 		TEST_CONTEXT.DB.Close()
-		TEST_LOCK.Unlock()
 		os.Remove(TEST_DBPATH)
+		TEST_LOCK.Unlock()
 	}
 }
 
-func createIntegrationTestChart(ctx *common.Context) (*dao.Chart, []dao.Indicator, []dao.Trade) {
-	indicators := []dao.Indicator{
-		dao.Indicator{
+func createIntegrationTestChart(ctx *common.Context) (*dao.Chart, []dao.ChartIndicator, []dao.Trade) {
+	indicators := []dao.ChartIndicator{
+		dao.ChartIndicator{
 			Name:       "RelativeStrengthIndex",
 			Parameters: "14,70,30"},
-		dao.Indicator{
+		dao.ChartIndicator{
 			Name:       "BollingerBands",
 			Parameters: "20,2"}}
 	trades := []dao.Trade{

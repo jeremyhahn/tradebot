@@ -20,7 +20,7 @@ type ChartService interface {
 	GetChart(id uint) (*common.Chart, error)
 	GetIndicator(chart *common.Chart, name string) (common.FinancialIndicator, error)
 	GetIndicators(chart *common.Chart) (map[string]common.FinancialIndicator, error)
-	CreateIndicator(dao *dao.Indicator) common.FinancialIndicator
+	CreateIndicator(dao *dao.ChartIndicator) common.FinancialIndicator
 }
 
 type TradeService interface {

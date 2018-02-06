@@ -13,7 +13,9 @@ func TestProfitDAO(t *testing.T) {
 	chartDAO := NewChartDAO(ctx)
 	profitDAO := NewProfitDAO(ctx)
 
-	chart, _, trades := createIntegrationTestChart(ctx)
+	chart := createIntegrationTestChart(ctx)
+	trades := chart.GetTrades()
+
 	chartDAO.Create(chart)
 
 	profit := &Profit{

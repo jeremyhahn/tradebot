@@ -36,13 +36,30 @@ type FinancialIndicator interface {
 	PeriodListener
 }
 
-type Indicator struct {
+type ChartIndicator struct {
 	Id         uint   `json:"id"`
 	ChartId    uint   `json:"chart_id"`
 	Name       string `json:"name"`
 	Parameters string `json:"parameters"`
 	Filename   string `json:"filename"`
 	FinancialIndicator
+}
+
+type ChartTradingStrategy interface {
+	GetId() uint
+	GetChartId() uint
+	GetName() string
+	GetParameters() string
+	GetDefaultParameters() string
+	GetRequiredIndicators() string
+}
+
+type ChartStrategy struct {
+	Id         uint   `json:"id"`
+	ChartId    uint   `json:"chart_id"`
+	Name       string `json:"name"`
+	Parameters string `json:"parameters"`
+	ChartTradingStrategy
 }
 
 type TradingStrategy interface {
@@ -158,15 +175,15 @@ type PriceChange struct {
 }
 
 type Chart struct {
-	Id         uint        `json:"id"`
-	Base       string      `json:"base"`
-	Quote      string      `json:"quote"`
-	Exchange   string      `json:"exchange"`
-	Period     int         `json:"period"`
-	Price      float64     `json:"price"`
-	AutoTrade  uint        `json:"autotrade"`
-	Indicators []Indicator `json:"indicators"`
-	Trades     []Trade     `json:"trades"`
+	Id         uint             `json:"id"`
+	Base       string           `json:"base"`
+	Quote      string           `json:"quote"`
+	Exchange   string           `json:"exchange"`
+	Period     int              `json:"period"`
+	Price      float64          `json:"price"`
+	AutoTrade  uint             `json:"autotrade"`
+	Indicators []ChartIndicator `json:"indicators"`
+	Trades     []Trade          `json:"trades"`
 }
 
 type CryptoExchange struct {

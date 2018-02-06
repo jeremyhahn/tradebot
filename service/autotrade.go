@@ -43,39 +43,38 @@ func (ats *AutoTradeServiceImpl) EndWorldHunger() error {
 			if err3 != nil {
 				return err3
 			}
+			//go func() {
+			streamErr := ats.chartService.Stream(&chart, func(newPrice float64) error {
+				params := &common.TradingStrategyParams{
+					CurrencyPair: &common.CurrencyPair{
+						Base:          chart.Base,
+						Quote:         chart.Quote,
+						LocalCurrency: ats.ctx.User.LocalCurrency},
+					Balances:   coins,
+					NewPrice:   newPrice,
+					LastTrade:  lastTrade,
+					Indicators: indicators}
 
-				//go func() {
-				streamErr := ats.chartService.Stream(&chart, func(newPrice float64) error {
-					params := &common.TradingStrategyParams{
-						CurrencyPair: &common.CurrencyPair{
-							Base:          chart.Base,
-							Quote:         chart.Quote,
-							LocalCurrency: ats.ctx.User.LocalCurrency},
-						Balances:   coins,
-						NewPrice:   newPrice,
-						LastTrade:  lastTrade,
-						Indicators: indicators}
-
-					strategy, err4 := strategies.CreateDefaultTradingStrategy(params)
-					if err4 != nil {
-						return err4
-					}
-					buy, sell, err5 := strategy.GetBuySellSignals()
-					if err5 != nil {
-						return err5
-					}
-					if buy {
-						ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ BUY SIGNAL $$$")
-					} else if sell {
-						ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ SELL SIGNAL $$$")
-					}
-					return nil
-				})
-				if streamErr != nil {
-					return streamErr
+				strategy, err4 := strategies.CreateDefaultTradingStrategy(params)
+				if err4 != nil {
+					return err4
+				}
+				buy, sell, err5 := strategy.GetBuySellSignals()
+				if err5 != nil {
+					return err5
+				}
+				if buy {
+					ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ BUY SIGNAL $$$")
+				} else if sell {
+					ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ SELL SIGNAL $$$")
 				}
 				return nil
-				//}()
+			})
+			if streamErr != nil {
+				return streamErr
+			}
+			return nil
+			//}()
 		*/
 	}
 	return nil
