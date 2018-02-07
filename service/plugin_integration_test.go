@@ -62,14 +62,14 @@ func TestPluginService_Indicator_RelativeStrengthIndex(t *testing.T) {
 	pluginService := CreatePluginService(ctx, "../plugins")
 	constructor, err := pluginService.GetIndicator("rsi.so", "RelativeStrengthIndex")
 	assert.Equal(t, nil, err)
-	indicator, err := constructor(createIntegrationTestCandles(), []string{"1", "2", "3"})
+	indicator, err := constructor(createIntegrationTestCandles(), []string{"14", "80", "20"})
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "RelativeStrengthIndex", indicator.GetName())
 	assert.Equal(t, "Relative Strength Index (RSI)", indicator.GetDisplayName())
-	assert.Equal(t, []string{"1", "2.000000", "3.000000"}, indicator.GetParameters())
+	assert.Equal(t, []string{"14", "80.000000", "20.000000"}, indicator.GetParameters())
 	assert.Equal(t, []string{"14", "70", "30"}, indicator.GetDefaultParameters())
 	rsi := indicator.(indicators.RelativeStrengthIndex)
-	assert.Equal(t, 56.52173913043478, rsi.Calculate(1000))
+	assert.Equal(t, 35.830474730988755, rsi.Calculate(2000))
 }
 
 func TestPluginService_Indicator_BollingerBands(t *testing.T) {
@@ -85,9 +85,9 @@ func TestPluginService_Indicator_BollingerBands(t *testing.T) {
 	assert.Equal(t, []string{"20", "2"}, indicator.GetDefaultParameters())
 	bollinger := indicator.(indicators.BollingerBands)
 	upper, middle, lower := bollinger.Calculate(1000)
-	assert.Equal(t, 1642.48, upper)
-	assert.Equal(t, 860.0, middle)
-	assert.Equal(t, 77.52, lower)
+	assert.Equal(t, 4588.21, upper)
+	assert.Equal(t, 3113.33, middle)
+	assert.Equal(t, 1638.45, lower)
 }
 
 func TestPluginService_Indicator_MACD(t *testing.T) {

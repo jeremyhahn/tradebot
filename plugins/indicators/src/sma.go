@@ -117,7 +117,7 @@ func (sma *SimpleMovingAverageImpl) GetGainsAndLosses() (float64, float64) {
 }
 
 func (sma *SimpleMovingAverageImpl) OnPeriodChange(candle *common.Candlestick) {
-	//fmt.Println("[SimpleMovingAverage] OnPeriodChange: ", candle.Date, candle.Close)
+	fmt.Println("[SMA] OnPeriodChange: %s", candle.ToString())
 	sma.Add(candle)
 }
 

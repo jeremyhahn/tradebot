@@ -3,7 +3,6 @@
 package service
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -172,7 +171,7 @@ func TestChartService_GetIndicators(t *testing.T) {
 	service := NewChartService(ctx, chartDAO, new(MockExchangeService_Chart), new(MockIndicatorService_Chart))
 
 	commonChart := mapper.MapChartEntityToDto(&charts[0])
-	Indicators, err := service.GetIndicators(&commonChart)
+	Indicators, err := service.GetIndicators(&commonChart, createIntegrationTestCandles())
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 3, len(Indicators))
 
@@ -260,7 +259,7 @@ func createChart(ctx *common.Context) *dao.Chart {
 }
 
 func (mcs *MockExchange_Chart) GetName() string {
-	return "Test"
+	return "gdax"
 }
 
 func (mcs *MockExchange_Chart) FormattedCurrencyPair(currencyPair *common.CurrencyPair) string {
@@ -274,7 +273,6 @@ func (mcs *MockExchange_Chart) GetPriceHistory(currencyPair *common.CurrencyPair
 }
 
 func (mcs *MockExchange_Chart) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceChange chan common.PriceChange) {
-	fmt.Println("Subscribing to feed")
 	priceChange <- common.PriceChange{
 		CurrencyPair: &common.CurrencyPair{
 			Base:          "BTC",
@@ -283,7 +281,6 @@ func (mcs *MockExchange_Chart) SubscribeToLiveFeed(currencyPair *common.Currency
 		Exchange: "gdax",
 		Price:    12345.0,
 		Satoshis: 0.12345678}
-	fmt.Println("Price change sent")
 }
 
 func (mes *MockExchangeService_Chart) CreateExchange(user *common.User, exchangeName string) common.Exchange {

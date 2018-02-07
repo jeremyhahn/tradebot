@@ -57,10 +57,18 @@ func TestDefaultTradingStrategy_DefaultConfig_SellSuccess(t *testing.T) {
 	assert.Equal(t, "BollingerBands", requiredIndicators[1])
 	assert.Equal(t, "MovingAverageConvergenceDivergence", requiredIndicators[2])
 
-	buy, sell, err := strategy.GetBuySellSignals()
+	buy, sell, data, err := strategy.Analyze()
 	assert.Equal(t, buy, false)
 	assert.Equal(t, sell, true)
+	assert.Equal(t, map[string]string{
+		"RelativeStrengthIndex":              "71.00",
+		"BollingerBands":                     "15000.00, 12500.00, 10000.00",
+		"MovingAverageConvergenceDivergence": "25.00, 20.00, 3.25"}, data)
 	assert.Equal(t, err, nil)
+}
+
+func (mrsi *MockRSI_StrategySell) GetName() string {
+	return "RelativeStrengthIndex"
 }
 
 func (mrsi *MockRSI_StrategySell) Calculate(price float64) float64 {
@@ -75,6 +83,18 @@ func (mrsi *MockRSI_StrategySell) IsOverSold(price float64) bool {
 	return false
 }
 
+func (mrsi *MockBBands_StrategySell) GetName() string {
+	return "BollingerBands"
+}
+
 func (mrsi *MockBBands_StrategySell) Calculate(price float64) (float64, float64, float64) {
 	return 15000.0, 12500.0, 10000.0
+}
+
+func (mrsi *MockMACD_StrategySell) GetName() string {
+	return "MovingAverageConvergenceDivergence"
+}
+
+func (mrsi *MockMACD_StrategySell) Calculate(price float64) (float64, float64, float64) {
+	return 25, 20, 3.25
 }

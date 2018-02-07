@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	ws "github.com/gorilla/websocket"
@@ -11,10 +12,12 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/util"
 	"github.com/op/go-logging"
 )
 
 var GDAXLastApiCall = time.Now().AddDate(0, 0, -1).Unix()
+var GDAX_MUTEX sync.Mutex
 
 type GDAX struct {
 	gdax            *gdax.Client
@@ -46,7 +49,8 @@ func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
 	start, end time.Time, granularity int) []common.Candlestick {
 
 	_gdax.respectRateLimit()
-	_gdax.logger.Debug("[GDAX.GetTradeHistory] Getting trade history")
+	_gdax.logger.Debug("[GDAX.GetPriceHistory] Getting price history %s - %s with granularity %d",
+		util.FormatDate(start), util.FormatDate(end), granularity)
 	var candlesticks []common.Candlestick
 	params := gdax.GetHistoricRatesParams{
 		Start:       start,
@@ -55,21 +59,29 @@ func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
 	rates, err := _gdax.gdax.GetHistoricRates(_gdax.FormattedCurrencyPair(currencyPair), params)
 	if err != nil {
 		if strings.Contains(err.Error(), "granularity too small for the requested time range") {
-			_gdax.logger.Debug("[GDAX.GetTradeHistory] Result set too big; chunking into smaller requests...")
-			var candlesticks []common.Candlestick
+			_gdax.logger.Debug("[GDAX.GetPriceHistory] Result set too big; chunking into smaller requests...")
+			var candles []common.Candlestick
 			diff := end.Sub(start)
 			days := int(diff.Hours() / 24)
+			var newEnd time.Time
 			for i := 0; i < days; i++ {
 				newStart := start.AddDate(0, 0, i)
-				newEnd := start.AddDate(0, 0, i).Add(time.Hour*23 + time.Minute*59 + time.Second*59)
+				newEnd = start.AddDate(0, 0, i).Add(time.Hour*23 + time.Minute*59 + time.Second*59)
+				_gdax.logger.Debugf("[GDAX.GetPriceHistory] newStart=%s, newEnd=%s", util.FormatDate(newStart), util.FormatDate(newEnd))
 				sticks := _gdax.GetPriceHistory(currencyPair, newStart, newEnd, granularity)
-				candlesticks = append(candlesticks, sticks...)
-			}
+				sticks = _gdax.reverseCandlesticks(sticks)
+				candles = append(candles, sticks...)
+			} /*
+				finalStart := start.AddDate(0, 0, days)
+				finalEnd := start.AddDate(0, 0, days).Add(time.Hour*23 + time.Minute*59 + time.Second*59)
+				_gdax.logger.Debugf("[GDAX.GetPriceHistory] finalStart=%s, finalEnd=%s", util.FormatDate(finalStart), util.FormatDate(finalEnd))
+				sticks := _gdax.GetPriceHistory(currencyPair, finalStart, finalEnd, granularity)
+				candles = append(candles, sticks...)*/
+			return candles
+		} else {
+			_gdax.logger.Errorf("[GDAX.GetPriceHistory] GDAX API Error: %s", err.Error())
 			return candlesticks
 		}
-		_gdax.logger.Errorf("[GDAX.GetTradeHistory] %s", err.Error())
-		time.Sleep(time.Second * 1)
-		return _gdax.GetPriceHistory(currencyPair, start, end, granularity)
 	}
 	for _, r := range rates {
 		candlesticks = append(candlesticks, common.Candlestick{
@@ -87,6 +99,8 @@ func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
 }
 
 func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Order {
+	_gdax.respectRateLimit()
+	_gdax.logger.Debug("[GDAX.GetOrderHistory] Getting order history")
 	var orders []common.Order
 	var ledger []gdax.LedgerEntry
 	accounts, err := _gdax.gdax.GetAccounts()
@@ -173,9 +187,11 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
 			Price:     price,
 			Total:     t})
 	}
+	GDAX_MUTEX.Lock()
 	_gdax.balances = coins
 	_gdax.netWorth = sum
 	_gdax.lastBalanceCall = time.Now().Unix()
+	GDAX_MUTEX.Unlock()
 	return coins, sum
 }
 
@@ -274,14 +290,25 @@ func (_gdax *GDAX) GetTradingFee() float64 {
 
 func (_gdax *GDAX) respectRateLimit() {
 	now := time.Now().Unix()
-	diff := now - _gdax.lastApiCall
-	for diff <= 30 && _gdax.apiCallCount >= 3 {
+	diff := now - GDAXLastApiCall
+	for diff <= 1 && _gdax.apiCallCount >= 3 {
 		_gdax.logger.Info("[GDAX.respectRateLimit] Cooling off")
-		_gdax.logger.Debugf("[GDAX.respectRateLimit] apiCallCount: %d, lastApiCall: %s",
-			_gdax.apiCallCount, _gdax.lastApiCall)
+		_gdax.logger.Debugf("[GDAX.respectRateLimit] apiCallCount: %d, lastApiCall: %d", _gdax.apiCallCount, GDAXLastApiCall)
 		time.Sleep(1 * time.Second)
-		GDAXLastApiCall = -1
+		GDAX_MUTEX.Lock()
+		_gdax.apiCallCount = 0
+		GDAX_MUTEX.Unlock()
 	}
+	GDAX_MUTEX.Lock()
 	GDAXLastApiCall = time.Now().Unix()
 	_gdax.apiCallCount += 1
+	GDAX_MUTEX.Unlock()
+}
+
+func (_gdax *GDAX) reverseCandlesticks(candles []common.Candlestick) []common.Candlestick {
+	var reversed []common.Candlestick
+	for i := len(candles) - 1; i > 0; i-- {
+		reversed = append(reversed, candles[i])
+	}
+	return reversed
 }

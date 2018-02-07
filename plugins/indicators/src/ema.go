@@ -142,7 +142,7 @@ func (ema *ExponentialMovingAverageImpl) GetGainsAndLosses() (float64, float64) 
 }
 
 func (ema *ExponentialMovingAverageImpl) OnPeriodChange(candle *common.Candlestick) {
-	//fmt.Println("[ExponentialMovingAverage] OnPeriodChange: ", candle.Date, candle.Close)
+	fmt.Println("[EMA] OnPeriodChange: %s", candle.ToString())
 	ema.Add(candle)
 }
 

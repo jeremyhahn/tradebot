@@ -12,6 +12,7 @@ import (
 type IndicatorService interface {
 	GetPlatformIndicator(name string) (dto.PlatformIndicator, error)
 	GetChartIndicator(chart *common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error)
+	GetChartIndicators(chart *common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error)
 }
 
 type IndicatorServiceImpl struct {
@@ -43,7 +44,7 @@ func (service *IndicatorServiceImpl) GetPlatformIndicator(name string) (dto.Plat
 
 func (service *IndicatorServiceImpl) GetChartIndicator(chart *common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
 	daoChart := &dao.Chart{Id: chart.Id}
-	userIndicator, err := service.chartIndicatorDAO.Get(daoChart, name)
+	chartIndicator, err := service.chartIndicatorDAO.Get(daoChart, name)
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +56,32 @@ func (service *IndicatorServiceImpl) GetChartIndicator(chart *common.Chart, name
 	if err != nil {
 		return nil, err
 	}
-	params := strings.Split(userIndicator.GetParameters(), ",")
+	params := strings.Split(chartIndicator.GetParameters(), ",")
 	return constructor(candles, params)
+}
+
+func (service *IndicatorServiceImpl) GetChartIndicators(chart *common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error) {
+	chartFinancialIndicators := make(map[string]common.FinancialIndicator, len(chart.Indicators))
+	daoChart := &dao.Chart{Id: chart.Id}
+	chartIndicators, err := service.chartIndicatorDAO.Find(daoChart)
+	if err != nil {
+		return nil, err
+	}
+	for _, ci := range chartIndicators {
+		indicator, err := service.GetPlatformIndicator(ci.GetName())
+		if err != nil {
+			return nil, err
+		}
+		constructor, err := service.pluginService.GetIndicator(indicator.GetFilename(), ci.GetName())
+		if err != nil {
+			return nil, err
+		}
+		params := strings.Split(ci.GetParameters(), ",")
+		FinancialIndicator, err := constructor(candles, params)
+		if err != nil {
+			return nil, err
+		}
+		chartFinancialIndicators[FinancialIndicator.GetName()] = FinancialIndicator
+	}
+	return chartFinancialIndicators, nil
 }
