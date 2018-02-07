@@ -62,8 +62,12 @@ func TestDefaultTradingStrategy_CustomTradeSize_ProfitMarginFixed1(t *testing.T)
 	assert.Equal(t, nil, err)
 	strategy := s.(*DefaultTradingStrategy)
 
-	_, sell, _ := strategy.GetBuySellSignals()
+	_, sell, data, _ := strategy.Analyze()
 	assert.Equal(t, sell, true)
+	assert.Equal(t, map[string]string{
+		"BollingerBands":                     "10000.00, 9000.00, 8000.00",
+		"MovingAverageConvergenceDivergence": "25.00, 20.00, 3.25",
+		"RelativeStrengthIndex":              "79.00"}, data)
 
 	minSellPrice := strategy.minSellPrice()
 	assert.Equal(t, minSellPrice, 24500.0)
@@ -112,7 +116,7 @@ func TestDefaultTradingStrategy_CustomTradeSize_ProfitMarginFixed2(t *testing.T)
 
 	strategy := s.(*DefaultTradingStrategy)
 
-	_, sell, _ := strategy.GetBuySellSignals()
+	_, sell, _, _ := strategy.Analyze()
 	assert.Equal(t, sell, true)
 
 	fees, tax := strategy.CalculateFeeAndTax(params.NewPrice)
@@ -120,6 +124,10 @@ func TestDefaultTradingStrategy_CustomTradeSize_ProfitMarginFixed2(t *testing.T)
 	assert.Equal(t, fees, 275.0)
 	assert.Equal(t, tax, 400.0)
 	assert.Equal(t, nil, strategy.sell())
+}
+
+func (mrsi *MockRSI_StrategyProfitMargin) GetName() string {
+	return "RelativeStrengthIndex"
 }
 
 func (mrsi *MockRSI_StrategyProfitMargin) Calculate(price float64) float64 {
@@ -134,6 +142,18 @@ func (mrsi *MockRSI_StrategyProfitMargin) IsOverSold(rsiValue float64) bool {
 	return false
 }
 
+func (mrsi *MockBBands_StrategyProfitMargin) GetName() string {
+	return "BollingerBands"
+}
+
 func (mrsi *MockBBands_StrategyProfitMargin) Calculate(price float64) (float64, float64, float64) {
 	return 10000.0, 9000.0, 8000.0
+}
+
+func (mrsi *MockMACD_StrategyProfitMargin) GetName() string {
+	return "MovingAverageConvergenceDivergence"
+}
+
+func (mrsi *MockMACD_StrategyProfitMargin) Calculate(price float64) (float64, float64, float64) {
+	return 25, 20, 3.25
 }

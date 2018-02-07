@@ -12,15 +12,16 @@ type AutoTradeService interface {
 type ChartService interface {
 	GetCurrencyPair(chart *common.Chart) *common.CurrencyPair
 	GetExchange(chart *common.Chart) common.Exchange
-	Stream(chart *common.Chart, strategyHandler func(price float64) error) error
+	Stream(chart *common.Chart, candlesticks []common.Candlestick, strategyHandler func(price float64) error) error
 	StopStream(chart *common.Chart)
 	GetCharts() ([]common.Chart, error)
 	GetTrades(chart *common.Chart) ([]common.Trade, error)
 	GetLastTrade(chart common.Chart) (*common.Trade, error)
 	GetChart(id uint) (*common.Chart, error)
-	GetIndicator(chart *common.Chart, name string) (common.FinancialIndicator, error)
-	GetIndicators(chart *common.Chart) (map[string]common.FinancialIndicator, error)
+	GetIndicator(chart *common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error)
+	GetIndicators(chart *common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error)
 	CreateIndicator(dao *dao.ChartIndicator) common.FinancialIndicator
+	LoadCandlesticks(chart *common.Chart, exchange common.Exchange) []common.Candlestick
 }
 
 type TradeService interface {

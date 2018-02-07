@@ -6,7 +6,7 @@ import (
 )
 
 type ChartMapper interface {
-	MapChartDtoToEntity(dto common.Chart) dao.Chart
+	MapChartDtoToEntity(dto common.Chart) dao.ChartEntity
 	MapChartEntityToDto(entity dao.ChartEntity) common.Chart
 	MapIndicatorEntityToDto(entity dao.ChartIndicator) common.ChartIndicator
 	MapIndicatorDtoToEntity(dto common.ChartIndicator) dao.ChartIndicator
@@ -25,6 +25,9 @@ func NewChartMapper(ctx *common.Context) ChartMapper {
 }
 
 func (mapper *ChartMapperImpl) MapTradeEntityToDto(entity dao.TradeEntity) common.Trade {
+	if entity == nil {
+		return common.Trade{}
+	}
 	return common.Trade{
 		Id:        entity.GetId(),
 		UserId:    entity.GetUserId(),
@@ -86,7 +89,7 @@ func (mapper *ChartMapperImpl) MapStrategyDtoToEntity(dto common.ChartStrategy) 
 		Parameters: dto.Parameters}
 }
 
-func (mapper *ChartMapperImpl) MapChartDtoToEntity(dto common.Chart) dao.Chart {
+func (mapper *ChartMapperImpl) MapChartDtoToEntity(dto common.Chart) dao.ChartEntity {
 	var daoChartIndicators []dao.ChartIndicator
 	for _, indicator := range dto.Indicators {
 		daoChartIndicators = append(daoChartIndicators, mapper.MapIndicatorDtoToEntity(indicator))
@@ -95,7 +98,7 @@ func (mapper *ChartMapperImpl) MapChartDtoToEntity(dto common.Chart) dao.Chart {
 	for _, trade := range dto.Trades {
 		daoTrades = append(daoTrades, mapper.MapTradeDtoToEntity(trade))
 	}
-	return dao.Chart{
+	return &dao.Chart{
 		Id:         dto.Id,
 		UserId:     mapper.ctx.User.Id,
 		Base:       dto.Base,

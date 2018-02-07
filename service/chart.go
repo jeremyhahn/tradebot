@@ -47,9 +47,10 @@ func (service *ChartServiceImpl) GetExchange(chart *common.Chart) common.Exchang
 	return service.exchangeService.GetExchange(service.ctx.User, chart.Exchange)
 }
 
-func (service *ChartServiceImpl) Stream(chart *common.Chart, strategyHandler func(price float64) error) error {
+func (service *ChartServiceImpl) Stream(chart *common.Chart,
+	candlesticks []common.Candlestick, strategyHandler func(price float64) error) error {
 
-	if _, ok := service.charts[chart.Id]; !ok {
+	if _, ok := service.charts[chart.Id]; ok {
 		return errors.New(fmt.Sprintf("Already streaming chart %s-%s", chart.Base, chart.Quote))
 	}
 
@@ -62,17 +63,19 @@ func (service *ChartServiceImpl) Stream(chart *common.Chart, strategyHandler fun
 	service.ctx.Logger.Infof("[ChartServiceImpl.Stream] Streaming %s %s chart data.",
 		exchange.GetName(), exchange.FormattedCurrencyPair(currencyPair))
 
-	indicators, err := service.GetIndicators(chart)
+	indicators, err := service.GetIndicators(chart, candlesticks)
 	if err != nil {
 		return err
 	}
+
+	service.priceStreams[chart.Id] = NewPriceStream(chart.Period)
 	for _, indicator := range indicators {
-		service.priceStreams[chart.Id] = NewPriceStream(chart.Period)
 		service.priceStreams[chart.Id].SubscribeToPeriod(indicator)
 	}
 
 	priceChange := make(chan common.PriceChange)
 	go exchange.SubscribeToLiveFeed(currencyPair, priceChange)
+
 	for {
 		select {
 		case <-service.closeChans[chart.Id]:
@@ -143,6 +146,9 @@ func (service *ChartServiceImpl) GetLastTrade(chart common.Chart) (*common.Trade
 	if err != nil {
 		return nil, err
 	}
+	if entity == nil {
+		return &common.Trade{}, nil
+	}
 	mapper := mapper.NewChartMapper(service.ctx)
 	tradeDTO := mapper.MapTradeEntityToDto(entity)
 	return &tradeDTO, nil
@@ -172,8 +178,8 @@ func (service *ChartServiceImpl) GetChart(id uint) (*common.Chart, error) {
 		Trades:     trades}, nil
 }
 
-func (service *ChartServiceImpl) GetIndicator(chart *common.Chart, name string) (common.FinancialIndicator, error) {
-	indicators, err := service.GetIndicators(chart)
+func (service *ChartServiceImpl) GetIndicator(chart *common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
+	indicators, err := service.GetIndicators(chart, candles)
 	if err != nil {
 		return nil, err
 	}
@@ -185,14 +191,13 @@ func (service *ChartServiceImpl) GetIndicator(chart *common.Chart, name string) 
 	return nil, errors.New(fmt.Sprintf("Unable to locate indicator: %s", name))
 }
 
-func (service *ChartServiceImpl) GetIndicators(chart *common.Chart) (map[string]common.FinancialIndicator, error) {
+func (service *ChartServiceImpl) GetIndicators(chart *common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error) {
 	indicators := make(map[string]common.FinancialIndicator, len(chart.Indicators))
 	entity := &dao.Chart{Id: chart.Id}
 	daoIndicators, err := service.chartDAO.GetIndicators(entity)
 	if err != nil {
 		return nil, err
 	}
-	candles := service.loadCandlesticks(chart, service.GetExchange(chart))
 	for _, daoIndicator := range daoIndicators {
 		indicator, err := service.indicatorService.GetChartIndicator(chart, daoIndicator.GetName(), candles)
 		if err != nil {
@@ -206,30 +211,29 @@ func (service *ChartServiceImpl) GetIndicators(chart *common.Chart) (map[string]
 	return indicators, nil
 }
 
-func (service *ChartServiceImpl) loadCandlesticks(chart *common.Chart, exchange common.Exchange) []common.Candlestick {
+func (service *ChartServiceImpl) LoadCandlesticks(chart *common.Chart, exchange common.Exchange) []common.Candlestick {
 	var candles []common.Candlestick
 	t := time.Now()
 	year, month, day := t.Date()
-	yesterday := time.Date(year, month, day-1, 0, 0, 0, 0, t.Location())
+	//yesterday := time.Date(year, month, day-1, 0, 0, 0, 0, t.Location())
+	lastWeek := time.Date(year, month, day-7, 0, 0, 0, 0, t.Location())
 	now := time.Now()
-
 	currencyPair := &common.CurrencyPair{
 		Base:          chart.Base,
 		Quote:         chart.Quote,
 		LocalCurrency: service.ctx.User.LocalCurrency}
-
-	service.ctx.Logger.Debugf("[ChartServiceImpl.loadCandlesticks] Getting %s %s trade history from %s - %s ",
-		exchange.GetName(), exchange.FormattedCurrencyPair(currencyPair), yesterday, now)
-
-	candles = exchange.GetPriceHistory(currencyPair, yesterday, now, chart.Period)
-	if len(candles) < 20 {
-		service.ctx.Logger.Errorf("[ChartServiceImpl.loadCandlesticks] Failed to load initial candlesticks from %s. Total records: %d",
+	service.ctx.Logger.Debugf("[ChartServiceImpl.LoadCandlesticks] Getting %s %s trade history from %s - %s ",
+		exchange.GetName(), exchange.FormattedCurrencyPair(currencyPair), lastWeek, now)
+	candles = exchange.GetPriceHistory(currencyPair, lastWeek, now, chart.Period)
+	if service.ctx.DebugMode {
+		for _, c := range candles {
+			service.ctx.Logger.Debug(c)
+		}
+	}
+	if len(candles) < 35 {
+		service.ctx.Logger.Errorf("[ChartServiceImpl.LoadCandlesticks] Failed to load initial price history from %s. Total candlesticks: %d",
 			exchange.GetName(), len(candles))
 		return candles
 	}
-	var reversed []common.Candlestick
-	for i := len(candles) - 1; i > 0; i-- {
-		reversed = append(reversed, candles[i])
-	}
-	return reversed
+	return candles
 }

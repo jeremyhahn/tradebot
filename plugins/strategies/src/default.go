@@ -89,24 +89,27 @@ func (strategy *DefaultTradingStrategy) GetParameters() *common.TradingStrategyP
 	return strategy.params
 }
 
-func (strategy *DefaultTradingStrategy) GetBuySellSignals() (bool, bool, error) {
+func (strategy *DefaultTradingStrategy) Analyze() (bool, bool, map[string]string, error) {
 	var buy, sell bool
-	strategy.countSignals()
+	signalData, err := strategy.countSignals()
+	if err != nil {
+		return buy, sell, signalData, err
+	}
 	if strategy.buySignals == strategy.config.RequiredBuySignals {
 		buy = true
 		err := strategy.buy()
 		if err != nil {
-			return buy, sell, err
+			return buy, sell, signalData, err
 		}
 	}
 	if strategy.sellSignals == strategy.config.RequiredSellSignals {
 		sell = true
 		err := strategy.sell()
 		if err != nil {
-			return buy, sell, err
+			return buy, sell, signalData, err
 		}
 	}
-	return buy, sell, nil
+	return buy, sell, signalData, nil
 }
 
 func (strategy *DefaultTradingStrategy) CalculateFeeAndTax(price float64) (float64, float64) {
@@ -157,10 +160,12 @@ func (strategy *DefaultTradingStrategy) minSellPrice() float64 {
 	return price + fee + tax
 }
 
-func (strategy *DefaultTradingStrategy) countSignals() error {
+func (strategy *DefaultTradingStrategy) countSignals() (map[string]string, error) {
+	signalData := make(map[string]string, len(strategy.params.Indicators))
+
 	rsi := strategy.params.Indicators["RelativeStrengthIndex"].(indicators.RelativeStrengthIndex)
 	if rsi == nil {
-		return errors.New("RelativeStrengthIndex indicator required")
+		return nil, errors.New("RelativeStrengthIndex indicator required")
 	}
 	rsiValue := rsi.Calculate(strategy.params.NewPrice)
 	if rsi.IsOverBought(rsiValue) {
@@ -168,19 +173,25 @@ func (strategy *DefaultTradingStrategy) countSignals() error {
 	} else if rsi.IsOverSold(rsiValue) {
 		strategy.buySignals++
 	}
+	signalData[rsi.GetName()] = fmt.Sprintf("%.2f", rsiValue)
+
 	bollinger := strategy.params.Indicators["BollingerBands"].(indicators.BollingerBands)
 	if rsi == nil {
-		return errors.New("BollingerBands indicator required")
+		return nil, errors.New("BollingerBands indicator required")
 	}
-	upper, _, lower := bollinger.Calculate(strategy.params.NewPrice)
+	upper, middle, lower := bollinger.Calculate(strategy.params.NewPrice)
 	if strategy.params.NewPrice > upper {
 		strategy.sellSignals++
 	} else if strategy.params.NewPrice < lower {
 		strategy.buySignals++
 	}
-	//macd := strategy.params.Indicators["MovingAverageConvergenceDivergence"].(indicators.MovingAverageConvergenceDivergence)
-	//value, signal, histogram := macd.Calculate(strategy.params.NewPrice)
-	return nil
+	signalData[bollinger.GetName()] = fmt.Sprintf("%.2f, %.2f, %.2f", upper, middle, lower)
+
+	macd := strategy.params.Indicators["MovingAverageConvergenceDivergence"].(indicators.MovingAverageConvergenceDivergence)
+	value, signal, histogram := macd.Calculate(strategy.params.NewPrice)
+	signalData[macd.GetName()] = fmt.Sprintf("%.2f, %.2f, %.2f", value, signal, histogram)
+
+	return signalData, nil
 }
 
 func (strategy *DefaultTradingStrategy) buy() error {

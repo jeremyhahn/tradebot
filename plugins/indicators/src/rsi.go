@@ -42,7 +42,7 @@ func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) 
 	period, _ := strconv.ParseInt(params[0], 10, 64)
 	overbought, _ := strconv.ParseFloat(params[1], 64)
 	oversold, _ := strconv.ParseFloat(params[2], 64)
-	smaIndicator, err := CreateSimpleMovingAverage(candles, []string{params[0]})
+	smaIndicator, err := CreateSimpleMovingAverage(candles[:period], []string{params[0]})
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) 
 	if candleLen > 0 {
 		lastPrice = candles[candleLen-1].Close
 	}
-	return &RelativeStrengthIndexImpl{
+	rsi := &RelativeStrengthIndexImpl{
 		name:        "RelativeStrengthIndex",
 		displayName: "Relative Strength Index (RSI)",
 		sma:         sma,
@@ -65,7 +65,13 @@ func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) 
 		params: &RelativeStrengthIndexParams{
 			Period:     period,
 			OverBought: overbought,
-			OverSold:   oversold}}, nil
+			OverSold:   oversold}}
+
+	for _, c := range candles[period:] {
+		rsi.OnPeriodChange(&c)
+	}
+
+	return rsi, nil
 }
 
 func (rsi *RelativeStrengthIndexImpl) Calculate(price float64) float64 {
@@ -98,7 +104,7 @@ func (rsi *RelativeStrengthIndexImpl) Calculate(price float64) float64 {
 }
 
 func (rsi *RelativeStrengthIndexImpl) OnPeriodChange(candle *common.Candlestick) {
-	//fmt.Println("[RSI] OnPeriodChange: ", candle.Date, candle.Close)
+	fmt.Println("[RSI] OnPeriodChange: %s", candle.ToString())
 	rsi.sma.Add(candle)
 	u, d := rsi.sma.GetGainsAndLosses()
 	difference := candle.Close - rsi.lastPrice

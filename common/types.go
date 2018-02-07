@@ -64,7 +64,7 @@ type ChartStrategy struct {
 
 type TradingStrategy interface {
 	GetRequiredIndicators() []string
-	GetBuySellSignals() (bool, bool, error)
+	Analyze() (bool, bool, map[string]string, error)
 	CalculateFeeAndTax(price float64) (float64, float64)
 	GetTradeAmounts() (float64, float64)
 	GetParameters() *TradingStrategyParams
@@ -105,9 +105,10 @@ type Order struct {
 }
 
 type Context struct {
-	Logger *logging.Logger
-	DB     *gorm.DB
-	User   *User
+	Logger    *logging.Logger
+	DB        *gorm.DB
+	User      *User
+	DebugMode bool
 }
 
 type MarketCap struct {
@@ -213,26 +214,11 @@ type Exchange interface {
 }
 
 type ChartData struct {
-	CurrencyPair        CurrencyPair `json:"currency"`
-	Exchange            string       `json:"exchange"`
-	Price               float64      `json:"price"`
-	Satoshis            float64      `json:"satoshis"`
-	MACDValue           float64      `json:"macd_value"`
-	MACDHistogram       float64      `json:"macd_histogram"`
-	MACDSignal          float64      `json:"macd_signal"`
-	MACDValueLive       float64      `json:"macd_value_live"`
-	MACDHistogramLive   float64      `json:"macd_histogram_live"`
-	MACDSignalLive      float64      `json:"macd_signal_live"`
-	RSI                 float64      `json:"rsi"`
-	RSILive             float64      `json:"rsi_live"`
-	BollingerUpper      float64      `json:"bband_upper"`
-	BollingerMiddle     float64      `json:"bband_middle"`
-	BollingerLower      float64      `json:"bband_lower"`
-	BollingerUpperLive  float64      `json:"bband_upper_live"`
-	BollingerMiddleLive float64      `json:"bband_middle_live"`
-	BollingerLowerLive  float64      `json:"bband_lower_live"`
-	OnBalanceVolume     float64      `json:"on_balance_volume"`
-	OnBalanceVolumeLive float64      `json:"on_balance_volume_live"`
+	CurrencyPair CurrencyPair      `json:"currency"`
+	Exchange     string            `json:"exchange"`
+	Price        float64           `json:"price"`
+	Satoshis     float64           `json:"satoshis"`
+	Indicators   map[string]string `json:"indicators"`
 }
 
 type PriceListener interface {

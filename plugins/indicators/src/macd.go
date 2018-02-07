@@ -119,7 +119,7 @@ func (macd *MovingAverageConvergenceDivergenceImpl) GetHistogram() float64 {
 }
 
 func (macd *MovingAverageConvergenceDivergenceImpl) OnPeriodChange(candle *common.Candlestick) {
-	//fmt.Println("[MovingAverageConvergenceDivergence] OnPeriodChange: ", candle.Date, candle.Close)
+	fmt.Println("[MACD] OnPeriodChange: %s", candle.ToString())
 	macd.ema1.Add(candle)
 	macd.ema2.Add(candle)
 	macd.value = macd.ema1.GetAverage() - macd.ema2.GetAverage()

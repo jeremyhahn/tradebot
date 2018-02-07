@@ -1,4 +1,4 @@
-//// +build integraion
+// +build integration
 
 package service
 
@@ -56,14 +56,24 @@ func CleanupIntegrationTest() {
 	}
 }
 
-func createIntegrationTestChart(ctx *common.Context) (*dao.Chart, []dao.ChartIndicator, []dao.Trade) {
-	indicators := []dao.ChartIndicator{
+func createIntegrationTestChart(ctx *common.Context) *dao.Chart {
+	userIndicators := []dao.ChartIndicator{
 		dao.ChartIndicator{
 			Name:       "RelativeStrengthIndex",
 			Parameters: "14,70,30"},
 		dao.ChartIndicator{
 			Name:       "BollingerBands",
-			Parameters: "20,2"}}
+			Parameters: "20,2"},
+		dao.ChartIndicator{
+			Name:       "MovingAverageConvergenceDivergence",
+			Parameters: "12,26,9"}}
+
+	userStrategies := []dao.ChartStrategy{
+		dao.ChartStrategy{
+			ChartId:    1,
+			Name:       "DefaultTradingStrategy",
+			Parameters: "1,2,3"}}
+
 	trades := []dao.Trade{
 		dao.Trade{
 			UserId:    ctx.User.Id,
@@ -85,16 +95,19 @@ func createIntegrationTestChart(ctx *common.Context) (*dao.Chart, []dao.ChartInd
 			Amount:    2,
 			Price:     12000,
 			ChartData: "test-trade-2"}}
+
 	chart := &dao.Chart{
 		UserId:     ctx.User.Id,
 		Base:       "BTC",
 		Quote:      "USD",
 		Exchange:   "gdax",
 		Period:     900, // 15 minutes
-		Indicators: indicators,
+		Indicators: userIndicators,
+		Strategies: userStrategies,
 		Trades:     trades,
 		AutoTrade:  1}
-	return chart, indicators, trades
+
+	return chart
 }
 
 func createIntegrationTestCandles() []common.Candlestick {

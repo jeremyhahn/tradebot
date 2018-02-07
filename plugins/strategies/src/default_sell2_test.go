@@ -57,10 +57,18 @@ func TestDefaultTradingStrategy_DefaultConfig_SellDoesntMeetMinimumRequired(t *t
 	assert.Equal(t, "BollingerBands", requiredIndicators[1])
 	assert.Equal(t, "MovingAverageConvergenceDivergence", requiredIndicators[2])
 
-	buy, sell, err := strategy.GetBuySellSignals()
+	buy, sell, data, err := strategy.Analyze()
 	assert.Equal(t, buy, false)
 	assert.Equal(t, sell, true)
+	assert.Equal(t, map[string]string{
+		"RelativeStrengthIndex":              "71.00",
+		"BollingerBands":                     "8000.00, 7000.00, 6000.00",
+		"MovingAverageConvergenceDivergence": "25.00, 20.00, 3.25"}, data)
 	assert.Equal(t, "Aborting sale. Doesn't meet minimum trade requirements. price=9000.000000, minRequired=11675.000000", err.Error())
+}
+
+func (mrsi *MockRSI_StrategySell2) GetName() string {
+	return "RelativeStrengthIndex"
 }
 
 func (mrsi *MockRSI_StrategySell2) Calculate(price float64) float64 {
@@ -75,6 +83,18 @@ func (mrsi *MockRSI_StrategySell2) IsOverSold(price float64) bool {
 	return false
 }
 
+func (mrsi *MockBBands_StrategySell2) GetName() string {
+	return "BollingerBands"
+}
+
 func (mrsi *MockBBands_StrategySell2) Calculate(price float64) (float64, float64, float64) {
 	return 8000.0, 7000.0, 6000.0
+}
+
+func (mrsi *MockMACD_StrategySell2) GetName() string {
+	return "MovingAverageConvergenceDivergence"
+}
+
+func (mrsi *MockMACD_StrategySell2) Calculate(price float64) (float64, float64, float64) {
+	return 25, 20, 3.25
 }

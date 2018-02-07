@@ -41,13 +41,17 @@ func CreateBollingerBands(candles []common.Candlestick, params []string) (common
 	if err != nil {
 		return nil, err
 	}
-	return &BollingerBandsImpl{
+	bollinger := &BollingerBandsImpl{
 		name:        "BollingerBands",
 		displayName: "Bollinger Bands®",
 		sma:         sma,
 		params: &BBandParams{
 			Period: period,
-			K:      k}}, nil
+			K:      k}}
+	for _, c := range candles[period:] {
+		bollinger.OnPeriodChange(&c)
+	}
+	return bollinger, nil
 }
 
 func (b *BollingerBandsImpl) GetUpper() float64 {
@@ -91,7 +95,7 @@ func (b *BollingerBandsImpl) calculateStandardDeviation(prices []float64, mean f
 }
 
 func (b *BollingerBandsImpl) OnPeriodChange(candle *common.Candlestick) {
-	//fmt.Println("[Bollinger] OnPeriodChange: ", candle.Date, candle.Close)
+	fmt.Println("[BollingerBands] OnPeriodChange: %s", candle.ToString())
 	b.sma.Add(candle)
 }
 

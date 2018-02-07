@@ -1,6 +1,9 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/mapper"
@@ -14,16 +17,26 @@ import (
 
 func main() {
 
+	debugFlag := flag.Bool("debug", false, "Enable debug level logging")
+	flag.Parse()
+
 	backend, _ := logging.NewSyslogBackend(common.APPNAME)
 	logging.SetBackend(backend)
+	if *debugFlag == false {
+		logging.SetLevel(logging.ERROR, "")
+	}
 	logger := logging.MustGetLogger(common.APPNAME)
+	if *debugFlag == true {
+		logger.Debug("Starting in debug mode...")
+	}
 
-	sqlite := InitSQLite()
+	sqlite := InitSQLite(*debugFlag)
 	defer sqlite.Close()
 
 	ctx := &common.Context{
-		DB:     sqlite,
-		Logger: logger}
+		DB:        sqlite,
+		Logger:    logger,
+		DebugMode: *debugFlag}
 
 	userDAO := dao.NewUserDAO(ctx)
 	ctx.User = userDAO.GetById(1)
@@ -31,24 +44,30 @@ func main() {
 	chartDAO := dao.NewChartDAO(ctx)
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
-	tradeDAO := dao.NewTradeDAO(ctx)
 	profitDAO := dao.NewProfitDAO(ctx)
+	tradeDAO := dao.NewTradeDAO(ctx)
+	strategyDAO := dao.NewStrategyDAO(ctx)
+	chartStrategyDAO := dao.NewChartStrategyDAO(ctx)
 
+	chartMapper := mapper.NewChartMapper(ctx)
 	indicatorMapper := mapper.NewIndicatorMapper()
+	strategyMapper := mapper.NewStrategyMapper()
 
 	marketcapService := service.NewMarketCapService(logger)
 	exchangeService := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx))
 	pluginService := service.NewPluginService(ctx)
 	indicatorService := service.NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
 	chartService := service.NewChartService(ctx, chartDAO, exchangeService, indicatorService)
-	tradeService := service.NewTradeService(ctx, tradeDAO)
 	profitService := service.NewProfitService(ctx, profitDAO)
+	tradeService := service.NewTradeService(ctx, tradeDAO)
+	strategyService := service.NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
 
 	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService,
-		profitService, tradeService, pluginService)
+		profitService, tradeService, strategyService)
+
 	err := autoTradeService.EndWorldHunger()
 	if err != nil {
-		ctx.Logger.Error(err.Error())
+		ctx.Logger.Errorf(fmt.Sprintf("[Error] %s", err.Error()))
 	}
 
 	ws := webservice.NewWebServer(ctx, 8080, marketcapService, exchangeService)
@@ -56,9 +75,9 @@ func main() {
 	ws.Run()
 }
 
-func InitSQLite() *gorm.DB {
+func InitSQLite(logMode bool) *gorm.DB {
 	db, err := gorm.Open("sqlite3", "./db/tradebot.db")
-	db.LogMode(true)
+	db.LogMode(logMode)
 	if err != nil {
 		panic(err)
 	}

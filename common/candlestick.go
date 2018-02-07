@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -49,4 +50,15 @@ func NewCandlestickPeriod(period int) time.Time {
 		}
 	}
 	return t
+}
+
+func (candle *Candlestick) ToString() string {
+	var base, quote string
+	if candle.CurrencyPair != nil {
+		base = candle.CurrencyPair.Base
+		quote = candle.CurrencyPair.Quote
+	}
+	return fmt.Sprintf("Exchange: %s, CurrencyPair: %s-%s, Period: %d, Date: %s, Open: %.2f, Close: %.2f, High: %.2f, Low: %.2f, Volume: %.2f",
+		candle.Exchange, base, quote, candle.Period, candle.Date, candle.Open,
+		candle.Close, candle.High, candle.Low, candle.Volume)
 }
