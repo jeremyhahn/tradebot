@@ -114,7 +114,13 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 				continue
 			}
 
-			symbol := fmt.Sprintf("%s%s", balance.Asset, b.ctx.User.LocalCurrency)
+			currencyPair := &common.CurrencyPair{
+				Base:          balance.Asset,
+				Quote:         b.ctx.User.LocalCurrency,
+				LocalCurrency: b.ctx.User.LocalCurrency}
+			localizedCurrencyPair := b.localizedCurrencyPair(currencyPair)
+			symbol := fmt.Sprintf("%s%s", localizedCurrencyPair.Base, "BTC")
+
 			ticker, err := b.client.NewPriceChangeStatsService().Symbol(symbol).Do(context.Background())
 			if err != nil {
 				b.logger.Errorf("[Binance.GetBalances] %s", err.Error())
@@ -252,7 +258,13 @@ func (b *Binance) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceCh
 }
 
 func (b *Binance) getBitcoin() *binance.PriceChangeStats {
-	stats, err := b.client.NewPriceChangeStatsService().Symbol("BTCUSDT").Do(context.Background())
+	currencyPair := &common.CurrencyPair{
+		Base:          "BTC",
+		Quote:         b.ctx.User.LocalCurrency,
+		LocalCurrency: b.ctx.User.LocalCurrency}
+	localizedCurrencyPair := b.localizedCurrencyPair(currencyPair)
+	symbol := fmt.Sprintf("%s%s", localizedCurrencyPair.Base, localizedCurrencyPair.Quote)
+	stats, err := b.client.NewPriceChangeStatsService().Symbol(symbol).Do(context.Background())
 	if err != nil {
 		b.logger.Errorf("[Binance.getBitcoin] %s", err.Error())
 	}

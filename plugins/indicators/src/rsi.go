@@ -109,7 +109,7 @@ func (rsi *RelativeStrengthIndexImpl) Calculate(price float64) float64 {
 }
 
 func (rsi *RelativeStrengthIndexImpl) OnPeriodChange(candle *common.Candlestick) {
-	fmt.Println("[RSI] OnPeriodChange: %s", candle.ToString())
+	//fmt.Println("[RSI] OnPeriodChange: %s", candle.ToString())
 	rsi.sma.Add(candle)
 	u, d := rsi.sma.GetGainsAndLosses()
 	difference := candle.Close - rsi.lastPrice

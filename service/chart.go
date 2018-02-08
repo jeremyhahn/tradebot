@@ -25,6 +25,8 @@ type ChartServiceImpl struct {
 func NewChartService(ctx *common.Context, chartDAO dao.ChartDAO, exchangeService ExchangeService,
 	indicatorService IndicatorService) ChartService {
 
+	fmt.Printf("2) %+v\n", ctx.User)
+
 	service := &ChartServiceImpl{
 		ctx:              ctx,
 		chartDAO:         chartDAO,

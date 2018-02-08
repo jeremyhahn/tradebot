@@ -52,7 +52,7 @@ func TestChartDAO(t *testing.T) {
 
 	trades := charts[0].GetTrades()
 	assert.Equal(t, 2, len(trades))
-	assert.Equal(t, true, trades[0].GetDate().Second() > 0)
+	assert.NotNil(t, trades[0].GetDate())
 	assert.Equal(t, "buy", trades[0].GetType())
 	assert.Equal(t, "BTC", trades[0].GetBase())
 	assert.Equal(t, "USD", trades[0].GetQuote())
@@ -121,7 +121,7 @@ func TestChartDAO_GetTrades(t *testing.T) {
 
 	trades := charts[0].GetTrades()
 	assert.Equal(t, 2, len(trades))
-	assert.Equal(t, true, trades[0].Date.Second() > 0)
+	assert.NotNil(t, trades[0].GetDate())
 	assert.Equal(t, "buy", trades[0].Type)
 	assert.Equal(t, "BTC", trades[0].Base)
 	assert.Equal(t, "USD", trades[0].Quote)

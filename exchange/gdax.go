@@ -50,7 +50,7 @@ func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
 	start, end time.Time, granularity int) []common.Candlestick {
 
 	_gdax.respectRateLimit()
-	_gdax.logger.Debug("[GDAX.GetPriceHistory] Getting price history %s - %s with granularity %d",
+	_gdax.logger.Debugf("[GDAX.GetPriceHistory] Getting price history %s - %s with granularity %d",
 		util.FormatDate(start), util.FormatDate(end), granularity)
 	var candlesticks []common.Candlestick
 	params := gdax.GetHistoricRatesParams{
