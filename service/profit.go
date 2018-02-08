@@ -5,19 +5,19 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 )
 
-type ProfitServiceImpl struct {
+type DefaultProfitService struct {
 	ctx       *common.Context
 	profitDAO dao.ProfitDAO
 	ProfitService
 }
 
 func NewProfitService(ctx *common.Context, profitDAO dao.ProfitDAO) ProfitService {
-	return &ProfitServiceImpl{
+	return &DefaultProfitService{
 		ctx:       ctx,
 		profitDAO: profitDAO}
 }
 
-func (ps *ProfitServiceImpl) Save(profit common.Profit) {
+func (ps *DefaultProfitService) Save(profit common.Profit) {
 	ps.profitDAO.Create(&dao.Profit{
 		UserId:   profit.GetUserId(),
 		TradeId:  profit.GetTradeId(),

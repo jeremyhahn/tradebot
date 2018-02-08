@@ -12,7 +12,7 @@ type StrategyService interface {
 	GetChartStrategies(chart common.Chart, params *common.TradingStrategyParams, candles []common.Candlestick) ([]common.TradingStrategy, error)
 }
 
-type StrategyServiceImpl struct {
+type DefaultStrategyService struct {
 	ctx              *common.Context
 	strategyDAO      dao.StrategyDAO
 	chartStrategyDAO dao.ChartStrategyDAO
@@ -27,7 +27,7 @@ func NewStrategyService(ctx *common.Context, strategyDAO dao.StrategyDAO,
 	chartStrategyDAO dao.ChartStrategyDAO, pluginService PluginService,
 	indicatorService IndicatorService, chartMapper mapper.ChartMapper,
 	strategyMapper mapper.StrategyMapper) StrategyService {
-	return &StrategyServiceImpl{
+	return &DefaultStrategyService{
 		ctx:              ctx,
 		strategyDAO:      strategyDAO,
 		chartStrategyDAO: chartStrategyDAO,
@@ -37,7 +37,7 @@ func NewStrategyService(ctx *common.Context, strategyDAO dao.StrategyDAO,
 		strategyMapper:   strategyMapper}
 }
 
-func (service *StrategyServiceImpl) GetStrategy(name string) (common.Strategy, error) {
+func (service *DefaultStrategyService) GetStrategy(name string) (common.Strategy, error) {
 	entity, err := service.strategyDAO.Get(name)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (service *StrategyServiceImpl) GetStrategy(name string) (common.Strategy, e
 	return service.strategyMapper.MapStrategyEntityToDto(entity), nil
 }
 
-func (service *StrategyServiceImpl) GetChartStrategy(chart common.Chart, name string, candles []common.Candlestick) (common.TradingStrategy, error) {
+func (service *DefaultStrategyService) GetChartStrategy(chart common.Chart, name string, candles []common.Candlestick) (common.TradingStrategy, error) {
 	financialIndicators, err := service.indicatorService.GetChartIndicators(chart, candles)
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func (service *StrategyServiceImpl) GetChartStrategy(chart common.Chart, name st
 	return constructor(&params)
 }
 
-func (service *StrategyServiceImpl) GetChartStrategies(chart common.Chart, params *common.TradingStrategyParams,
+func (service *DefaultStrategyService) GetChartStrategies(chart common.Chart, params *common.TradingStrategyParams,
 	candles []common.Candlestick) ([]common.TradingStrategy, error) {
 	var strategies []common.TradingStrategy
 	daoChart := service.chartMapper.MapChartDtoToEntity(chart)

@@ -14,7 +14,7 @@ type IndicatorService interface {
 	GetChartIndicators(chart common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error)
 }
 
-type IndicatorServiceImpl struct {
+type DefaultIndicatorService struct {
 	ctx               *common.Context
 	indicatorDAO      dao.IndicatorDAO
 	chartIndicatorDAO dao.ChartIndicatorDAO
@@ -25,7 +25,7 @@ type IndicatorServiceImpl struct {
 
 func NewIndicatorService(ctx *common.Context, indicatorDAO dao.IndicatorDAO,
 	chartIndicatorDAO dao.ChartIndicatorDAO, pluginService PluginService, indicatorMapper mapper.IndicatorMapper) IndicatorService {
-	return &IndicatorServiceImpl{
+	return &DefaultIndicatorService{
 		ctx:               ctx,
 		indicatorDAO:      indicatorDAO,
 		chartIndicatorDAO: chartIndicatorDAO,
@@ -33,7 +33,7 @@ func NewIndicatorService(ctx *common.Context, indicatorDAO dao.IndicatorDAO,
 		indicatorMapper:   indicatorMapper}
 }
 
-func (service *IndicatorServiceImpl) GetIndicator(name string) (common.Indicator, error) {
+func (service *DefaultIndicatorService) GetIndicator(name string) (common.Indicator, error) {
 	entity, err := service.indicatorDAO.Get(name)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (service *IndicatorServiceImpl) GetIndicator(name string) (common.Indicator
 	return service.indicatorMapper.MapIndicatorEntityToDto(entity), nil
 }
 
-func (service *IndicatorServiceImpl) GetChartIndicator(chart common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
+func (service *DefaultIndicatorService) GetChartIndicator(chart common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
 	daoChart := &dao.Chart{Id: chart.GetId()}
 	chartIndicator, err := service.chartIndicatorDAO.Get(daoChart, name)
 	if err != nil {
@@ -59,7 +59,7 @@ func (service *IndicatorServiceImpl) GetChartIndicator(chart common.Chart, name 
 	return constructor(candles, params)
 }
 
-func (service *IndicatorServiceImpl) GetChartIndicators(chart common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error) {
+func (service *DefaultIndicatorService) GetChartIndicators(chart common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error) {
 	chartFinancialIndicators := make(map[string]common.FinancialIndicator, len(chart.GetIndicators()))
 	daoChart := &dao.Chart{Id: chart.GetId()}
 	chartIndicators, err := service.chartIndicatorDAO.Find(daoChart)

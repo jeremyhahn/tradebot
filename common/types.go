@@ -58,6 +58,7 @@ type Chart interface {
 	GetIndicators() []ChartIndicator
 	GetStrategies() []ChartStrategy
 	GetTrades() []Trade
+	ToJSON() (string, error)
 }
 
 type ChartIndicator interface {

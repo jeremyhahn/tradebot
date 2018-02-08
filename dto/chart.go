@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"encoding/json"
+
+	"github.com/jeremyhahn/tradebot/common"
+)
 
 type ChartDTO struct {
 	Id         uint                    `json:"id"`
@@ -62,4 +66,12 @@ func (chart ChartDTO) GetStrategies() []common.ChartStrategy {
 
 func (chart ChartDTO) GetTrades() []common.Trade {
 	return chart.Trades
+}
+
+func (chart ChartDTO) ToJSON() (string, error) {
+	jsonData, err := json.Marshal(chart)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonData), nil
 }

@@ -6,19 +6,19 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 )
 
-type OrderServiceImpl struct {
+type DefaultOrderService struct {
 	ctx             *common.Context
 	exchangeService ExchangeService
 	OrderService
 }
 
 func NewOrderService(ctx *common.Context, exchangeService ExchangeService) OrderService {
-	return &OrderServiceImpl{
+	return &DefaultOrderService{
 		ctx:             ctx,
 		exchangeService: exchangeService}
 }
 
-func (os OrderServiceImpl) GetOrderHistory() []common.Order {
+func (os DefaultOrderService) GetOrderHistory() []common.Order {
 	var orders []common.Order
 
 	// TODO: Look up currency pairs from DB
