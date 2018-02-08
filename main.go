@@ -17,26 +17,27 @@ import (
 
 func main() {
 
+	portFlag := flag.Int("port", 8080, "Web server listen port")
+	sslFlag := flag.Bool("ssl", true, "Enable debug level logging")
 	debugFlag := flag.Bool("debug", false, "Enable debug level logging")
 	flag.Parse()
 
 	backend, _ := logging.NewSyslogBackend(common.APPNAME)
+	logger := logging.MustGetLogger(common.APPNAME)
 	logging.SetBackend(backend)
 	if *debugFlag == false {
-		logging.SetLevel(logging.ERROR, "")
-	}
-	logger := logging.MustGetLogger(common.APPNAME)
-	if *debugFlag == true {
 		logger.Debug("Starting in debug mode...")
+		logging.SetLevel(logging.ERROR, "")
 	}
 
 	sqlite := InitSQLite(*debugFlag)
 	defer sqlite.Close()
 
 	ctx := &common.Context{
-		DB:        sqlite,
-		Logger:    logger,
-		DebugMode: *debugFlag}
+		DB:     sqlite,
+		Logger: logger,
+		Debug:  *debugFlag,
+		SSL:    *sslFlag}
 
 	userDAO := dao.NewUserDAO(ctx)
 	ctx.User = userDAO.GetById(1)
@@ -72,7 +73,7 @@ func main() {
 		ctx.Logger.Errorf(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
-	ws := webservice.NewWebServer(ctx, 8080, marketcapService, exchangeService)
+	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService, exchangeService)
 	go ws.Start()
 	ws.Run()
 }

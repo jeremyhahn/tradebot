@@ -34,14 +34,16 @@ func NewWebServer(ctx *common.Context, port int, marketcapService *service.Marke
 
 func (ws *WebServer) Start() {
 
-	ws.ctx.Logger.Debug("[Web] Starting web services on port: ", ws.port)
+	ws.ctx.Logger.Debug("[WebServer] Starting on port: ", ws.port)
+
+	// Static content
 	http.Handle("/", http.FileServer(http.Dir("webui/public")))
 
-	// RestAPI
+	// RestAPI Handlers
 	ohrs := restapi.NewOrderHistoryRestService(ws.ctx, ws.exchangeService)
 	http.HandleFunc("/orderhistory", ohrs.GetOrderHistory)
 
-	// Websocket
+	// Websocket Handlers
 	http.HandleFunc("/portfolio", func(w http.ResponseWriter, r *http.Request) {
 		portfolioHub := NewPortfolioHub(ws.ctx.Logger)
 		go portfolioHub.Run()
@@ -49,9 +51,26 @@ func (ws *WebServer) Start() {
 		ph.onConnect(w, r)
 	})
 
-	err := http.ListenAndServe(fmt.Sprintf(":%d", ws.port), nil)
-	if err != nil {
-		ws.ctx.Logger.Error("[Web] Unable to start server: ", err)
+	sPort := fmt.Sprintf(":%d", ws.port)
+	if ws.ctx.SSL {
+
+		// Redirect HTTP -> HTTPS
+		go http.ListenAndServe(sPort, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "https://"+r.Host+r.URL.String(), http.StatusMovedPermanently)
+		}))
+
+		// HTTPS Requests
+		err := http.ListenAndServeTLS(fmt.Sprintf(":%d", ws.port), "ssl/cert.pem", "ssl/key.pem", nil)
+		if err != nil {
+			ws.ctx.Logger.Fatalf("[WebServer] Unable to start TLS web server: %s", err.Error())
+		}
+	} else {
+
+		// HTTP Requests
+		err := http.ListenAndServe(sPort, nil)
+		if err != nil {
+			ws.ctx.Logger.Fatalf("[WebServer] Unable to start web server: %s", err.Error())
+		}
 	}
 }
 

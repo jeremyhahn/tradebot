@@ -10,6 +10,10 @@ export PATH := $(GOPATH)/bin:$(PATH)
 
 default: build
 
+certgen:
+	mkdir -p ssl
+	openssl req -newkey rsa:2048 -nodes -keyout ssl/key.pem -x509 -days 365 -out ssl/cert.pem
+
 deps:
 	go get "github.com/stretchr/testify"
 	go get "github.com/op/go-logging"
@@ -48,6 +52,7 @@ strategies:
 plugins: indicators strategies
 
 clean:
+	rm -rf ssl/
 	cd plugins/indicators && rm -rf *.so
 	cd plugins/strategies && rm -rf *.so
 	rm -rf tradebot

@@ -281,6 +281,10 @@ func (b *Binance) getBitcoinPrice() float64 {
 }
 
 func (b *Binance) parseBitcoinPrice(bitcoin *binance.PriceChangeStats) float64 {
+	if bitcoin == nil {
+		b.logger.Error("[Binance.parseBitcoinPrice] Null pointer returned from Binance library")
+		return 0.0
+	}
 	f, err := strconv.ParseFloat(bitcoin.LastPrice, 8)
 	if err != nil {
 		b.logger.Errorf("[Binance.parseBitcoinPrice] %s", err.Error())
