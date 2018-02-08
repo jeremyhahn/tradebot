@@ -4,43 +4,36 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/mapper"
 )
 
-type TradeServiceImpl struct {
-	ctx      *common.Context
-	tradeDAO dao.TradeDAO
+type DefaultTradeService struct {
+	ctx         *common.Context
+	tradeDAO    dao.TradeDAO
+	tradeMapper mapper.TradeMapper
 	TradeService
 }
 
-func NewTradeService(ctx *common.Context, tradeDAO dao.TradeDAO) TradeService {
-	return &TradeServiceImpl{
-		ctx:      ctx,
-		tradeDAO: tradeDAO}
+func NewTradeService(ctx *common.Context, tradeDAO dao.TradeDAO, tradeMapper mapper.TradeMapper) TradeService {
+	return &DefaultTradeService{
+		ctx:         ctx,
+		tradeDAO:    tradeDAO,
+		tradeMapper: tradeMapper}
 }
 
-func (ts *TradeServiceImpl) Buy(exchange common.Exchange, trade common.Trade) {
-	ts.ctx.Logger.Debugf("[TradeServiceImpl.Buy] %+v\n", trade)
+func (ts *DefaultTradeService) Buy(exchange common.Exchange, trade common.Trade) {
+	ts.ctx.Logger.Debugf("[DefaultTradeService.Buy] %+v\n", trade)
 }
 
-func (ts *TradeServiceImpl) Sell(exchange common.Exchange, trade common.Trade) {
-	ts.ctx.Logger.Debugf("[TradeServiceImpl.Sell] %+v\n", trade)
+func (ts *DefaultTradeService) Sell(exchange common.Exchange, trade common.Trade) {
+	ts.ctx.Logger.Debugf("[DefaultTradeService.Sell] %+v\n", trade)
 }
 
-func (ts *TradeServiceImpl) Save(trade common.Trade) {
-	ts.tradeDAO.Create(&dao.Trade{
-		Id:        trade.GetId(),
-		ChartId:   trade.GetChartId(),
-		Date:      trade.GetDate(),
-		Exchange:  trade.GetExchange(),
-		Base:      trade.GetBase(),
-		Quote:     trade.GetQuote(),
-		Type:      trade.GetType(),
-		Price:     trade.GetPrice(),
-		Amount:    trade.GetAmount(),
-		ChartData: trade.GetChartData()})
+func (ts *DefaultTradeService) Save(dto common.Trade) {
+	ts.tradeDAO.Create(ts.tradeMapper.MapTradeDtoToEntity(dto))
 }
 
-func (ts *TradeServiceImpl) GetLastTrade(chart common.Chart) common.Trade {
+func (ts *DefaultTradeService) GetLastTrade(chart common.Chart) common.Trade {
 	daoChart := &dao.Chart{Id: chart.GetId()}
 	entity := ts.tradeDAO.GetLastTrade(daoChart)
 	return &dto.TradeDTO{

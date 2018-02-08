@@ -6,7 +6,7 @@ import (
 	"github.com/jeremyhahn/tradebot/exchange"
 )
 
-type ExchangeServiceImpl struct {
+type DefaultExchangeService struct {
 	ctx         *common.Context
 	dao         dao.ExchangeDAO
 	exchangeMap map[string]func(*common.Context, *dao.UserCryptoExchange) common.Exchange
@@ -14,7 +14,7 @@ type ExchangeServiceImpl struct {
 }
 
 func NewExchangeService(ctx *common.Context, exchangeDAO dao.ExchangeDAO) ExchangeService {
-	return &ExchangeServiceImpl{
+	return &DefaultExchangeService{
 		ctx: ctx,
 		dao: exchangeDAO,
 		exchangeMap: map[string]func(ctx *common.Context, exchange *dao.UserCryptoExchange) common.Exchange{
@@ -23,13 +23,13 @@ func NewExchangeService(ctx *common.Context, exchangeDAO dao.ExchangeDAO) Exchan
 			"binance": exchange.NewBinance}}
 }
 
-func (service *ExchangeServiceImpl) CreateExchange(user *common.User, exchangeName string) common.Exchange {
+func (service *DefaultExchangeService) CreateExchange(user *common.User, exchangeName string) common.Exchange {
 	userDAO := dao.NewUserDAO(service.ctx)
 	exchange := userDAO.GetExchange(service.ctx.User, exchangeName)
 	return service.exchangeMap[exchangeName](service.ctx, exchange)
 }
 
-func (service *ExchangeServiceImpl) GetExchanges(user *common.User) []common.Exchange {
+func (service *DefaultExchangeService) GetExchanges(user *common.User) []common.Exchange {
 	var exchanges []common.Exchange
 	userDAO := dao.NewUserDAO(service.ctx)
 	userExchanges := userDAO.GetExchanges(user)
@@ -39,7 +39,7 @@ func (service *ExchangeServiceImpl) GetExchanges(user *common.User) []common.Exc
 	return exchanges
 }
 
-func (service *ExchangeServiceImpl) GetExchange(user *common.User, name string) common.Exchange {
+func (service *DefaultExchangeService) GetExchange(user *common.User, name string) common.Exchange {
 	for _, ex := range service.GetExchanges(user) {
 		if ex.GetName() == name {
 			return ex

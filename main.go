@@ -52,22 +52,24 @@ func main() {
 	chartMapper := mapper.NewChartMapper(ctx)
 	indicatorMapper := mapper.NewIndicatorMapper()
 	strategyMapper := mapper.NewStrategyMapper()
+	tradeMapper := mapper.NewTradeMapper()
 
 	marketcapService := service.NewMarketCapService(logger)
 	exchangeService := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx))
 	pluginService := service.NewPluginService(ctx)
-	indicatorService := service.NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
+	indicatorService := service.NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO,
+		pluginService, indicatorMapper)
 	chartService := service.NewChartService(ctx, chartDAO, exchangeService, indicatorService)
 	profitService := service.NewProfitService(ctx, profitDAO)
-	tradeService := service.NewTradeService(ctx, tradeDAO)
-	strategyService := service.NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
-
+	tradeService := service.NewTradeService(ctx, tradeDAO, tradeMapper)
+	strategyService := service.NewStrategyService(ctx, strategyDAO, chartStrategyDAO,
+		pluginService, indicatorService, chartMapper, strategyMapper)
 	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService,
 		profitService, tradeService, strategyService)
 
 	err := autoTradeService.EndWorldHunger()
 	if err != nil {
-		ctx.Logger.Errorf(fmt.Sprintf("[Error] %s", err.Error()))
+		ctx.Logger.Errorf(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
 	ws := webservice.NewWebServer(ctx, 8080, marketcapService, exchangeService)

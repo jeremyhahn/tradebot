@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/mapper"
 )
 
 type AutoTradeService interface {
@@ -25,8 +26,9 @@ type ChartService interface {
 }
 
 type TradeService interface {
-	Save(trade common.Trade)
+	Save(dto common.Trade)
 	GetLastTrade(chart common.Chart) common.Trade
+	GetMapper() mapper.TradeMapper
 }
 
 type ProfitService interface {
