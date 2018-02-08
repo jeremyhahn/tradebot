@@ -14,6 +14,7 @@ deps:
 	go get "github.com/op/go-logging"
 	go get "github.com/jinzhu/gorm"
 	go get "github.com/jinzhu/gorm/dialects/sqlite"
+#	go get "github.com/jinzhu/gorm/dialects/mysql"
 	go get "github.com/op/go-logging"
 	go get "github.com/gorilla/websocket"
 	go get "github.com/preichenberger/go-gdax"

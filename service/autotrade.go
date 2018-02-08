@@ -52,42 +52,42 @@ func (ats *AutoTradeServiceImpl) EndWorldHunger() error {
 			return err
 		}
 
-		go func() {
+		//go func() {
 
-			streamErr := ats.chartService.Stream(chart, candlesticks, func(newPrice float64) error {
+		streamErr := ats.chartService.Stream(chart, candlesticks, func(newPrice float64) error {
 
-				params := common.TradingStrategyParams{
-					CurrencyPair: currencyPair,
-					Balances:     coins,
-					NewPrice:     newPrice,
-					LastTrade:    lastTrade,
-					Indicators:   indicators}
+			params := common.TradingStrategyParams{
+				CurrencyPair: currencyPair,
+				Balances:     coins,
+				NewPrice:     newPrice,
+				LastTrade:    lastTrade,
+				Indicators:   indicators}
 
-				strategies, err := ats.strategyService.GetChartStrategies(chart, &params, candlesticks)
+			strategies, err := ats.strategyService.GetChartStrategies(chart, &params, candlesticks)
+			if err != nil {
+				return err
+			}
+
+			for _, strategy := range strategies {
+
+				buy, sell, data, err := strategy.Analyze()
+				ats.ctx.Logger.Debugf("[AutoTradeServiceImpl.EndWorldHunger] Indicator data: %+v\n", data)
 				if err != nil {
 					return err
 				}
 
-				for _, strategy := range strategies {
-
-					buy, sell, data, err := strategy.Analyze()
-					ats.ctx.Logger.Debugf("[AutoTradeServiceImpl.EndWorldHunger] Indicator data: %+v\n", data)
-					if err != nil {
-						return err
-					}
-
-					if buy {
-						ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ BUY SIGNAL $$$")
-					} else if sell {
-						ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ SELL SIGNAL $$$")
-					}
+				if buy {
+					ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ BUY SIGNAL $$$")
+				} else if sell {
+					ats.ctx.Logger.Debug("[AutoTradeServiceImpl.EndWorldHunger] $$$ SELL SIGNAL $$$")
 				}
-				return nil
-			})
-			if streamErr != nil {
-				ats.ctx.Logger.Error(streamErr.Error())
 			}
-		}()
+			return nil
+		})
+		if streamErr != nil {
+			ats.ctx.Logger.Error(streamErr.Error())
+		}
+		//}()
 
 	}
 	return nil
