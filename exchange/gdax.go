@@ -292,7 +292,7 @@ func (_gdax *GDAX) GetTradingFee() float64 {
 func (_gdax *GDAX) respectRateLimit() {
 	now := time.Now().Unix()
 	diff := now - GDAXLastApiCall
-	for diff <= 1 && _gdax.apiCallCount >= 3 {
+	for diff <= 30 && _gdax.apiCallCount >= 3 {
 		_gdax.logger.Info("[GDAX.respectRateLimit] Cooling off")
 		_gdax.logger.Debugf("[GDAX.respectRateLimit] apiCallCount: %d, lastApiCall: %d", _gdax.apiCallCount, GDAXLastApiCall)
 		time.Sleep(1 * time.Second)

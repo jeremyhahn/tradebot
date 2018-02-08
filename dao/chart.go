@@ -1,8 +1,6 @@
 package dao
 
 import (
-	"errors"
-
 	"github.com/jeremyhahn/tradebot/common"
 )
 
@@ -105,7 +103,7 @@ func (chartDAO *ChartDAOImpl) GetLastTrade(chart ChartEntity) (*Trade, error) {
 	}
 	tradeLen := len(trades)
 	if tradeLen < 1 || tradeLen > 1 {
-		return nil, errors.New("Failed to retreive last trade")
+		return nil, nil
 	}
 	return &trades[0], nil
 }
