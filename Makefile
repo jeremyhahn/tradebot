@@ -11,16 +11,15 @@ export PATH := $(GOPATH)/bin:$(PATH)
 default: build
 
 deps:
+	go get "github.com/stretchr/testify"
 	go get "github.com/op/go-logging"
 	go get "github.com/jinzhu/gorm"
 	go get "github.com/jinzhu/gorm/dialects/sqlite"
 #	go get "github.com/jinzhu/gorm/dialects/mysql"
-	go get "github.com/op/go-logging"
 	go get "github.com/gorilla/websocket"
 	go get "github.com/preichenberger/go-gdax"
 	go get "github.com/toorop/go-bittrex"
 	go get "github.com/adshao/go-binance"
-	go get "github.com/stretchr/testify"
 
 unittest:
 	cd dao && go test -v
