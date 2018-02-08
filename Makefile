@@ -10,10 +10,6 @@ export PATH := $(GOPATH)/bin:$(PATH)
 
 default: build
 
-certgen:
-	mkdir -p ssl
-	openssl req -newkey rsa:2048 -nodes -keyout ssl/key.pem -x509 -days 365 -out ssl/cert.pem
-
 deps:
 	go get "github.com/stretchr/testify"
 	go get "github.com/op/go-logging"
@@ -24,6 +20,11 @@ deps:
 	go get "github.com/preichenberger/go-gdax"
 	go get "github.com/toorop/go-bittrex"
 	go get "github.com/adshao/go-binance"
+
+cert:
+	mkdir -p ssl
+	openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -keyout ssl/key.pem -out ssl/cert.pem \
+    -subj "/C=US/ST=Massachusetts/L=Boston/O=Automate The Things, LLC/CN=localhost"
 
 unittest:
 	cd dao && go test -v
@@ -66,4 +67,5 @@ quickdebug:
 quickbuild:
 	go build -ldflags "-w"
 
-build: clean plugins quickbuild test
+build: clean cert plugins test
+	go build
