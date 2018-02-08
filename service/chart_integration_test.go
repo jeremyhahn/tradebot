@@ -52,14 +52,14 @@ func TestChartDAO(t *testing.T) {
 
 	trades := charts[0].GetTrades()
 	assert.Equal(t, 2, len(trades))
-	assert.Equal(t, true, trades[0].Date.Second() > 0)
-	assert.Equal(t, "buy", trades[0].Type)
-	assert.Equal(t, "BTC", trades[0].Base)
-	assert.Equal(t, "USD", trades[0].Quote)
-	assert.Equal(t, "gdax", trades[0].Exchange)
-	assert.Equal(t, 1.0, trades[0].Amount)
-	assert.Equal(t, 10000.0, trades[0].Price)
-	assert.Equal(t, uint(1), trades[0].UserId)
+	assert.Equal(t, true, trades[0].GetDate().Second() > 0)
+	assert.Equal(t, "buy", trades[0].GetType())
+	assert.Equal(t, "BTC", trades[0].GetBase())
+	assert.Equal(t, "USD", trades[0].GetQuote())
+	assert.Equal(t, "gdax", trades[0].GetExchangeName())
+	assert.Equal(t, 1.0, trades[0].GetAmount())
+	assert.Equal(t, 10000.0, trades[0].GetPrice())
+	assert.Equal(t, uint(1), trades[0].GetUserId())
 
 	indicators := charts[0].GetIndicators()
 	assert.Equal(t, 3, len(indicators))
@@ -171,7 +171,7 @@ func TestChartService_GetIndicators(t *testing.T) {
 	service := NewChartService(ctx, chartDAO, new(MockExchangeService_Chart), new(MockIndicatorService_Chart))
 
 	commonChart := mapper.MapChartEntityToDto(&charts[0])
-	Indicators, err := service.GetIndicators(&commonChart, createIntegrationTestCandles())
+	Indicators, err := service.GetIndicators(commonChart, createIntegrationTestCandles())
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 3, len(Indicators))
 
@@ -306,7 +306,7 @@ func (mes *MockExchangeService_Chart) GetExchanges(user *common.User) []common.E
 	return []common.Exchange{exchange.NewGDAX(ctx, testExchange)}
 }
 
-func (mes *MockIndicatorService_Chart) GetChartIndicator(chart *common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
+func (mes *MockIndicatorService_Chart) GetChartIndicator(chart common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
 	return new(MockFinancialIndicator_Chart), nil
 }
 

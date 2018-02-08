@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"errors"
+
 	"github.com/jeremyhahn/tradebot/common"
 )
 
@@ -43,11 +45,11 @@ func (chartDAO *ChartDAOImpl) Update(chart ChartEntity) error {
 }
 
 func (chartDAO *ChartDAOImpl) Get(id uint) (ChartEntity, error) {
-	chart := &Chart{}
+	chart := Chart{}
 	if err := chartDAO.ctx.DB.First(&chart, id).Error; err != nil {
 		return nil, err
 	}
-	return chart, nil
+	return &chart, nil
 }
 
 func (chartDAO *ChartDAOImpl) Find(user *common.User) ([]Chart, error) {
@@ -103,7 +105,7 @@ func (chartDAO *ChartDAOImpl) GetLastTrade(chart ChartEntity) (*Trade, error) {
 	}
 	tradeLen := len(trades)
 	if tradeLen < 1 || tradeLen > 1 {
-		return nil, nil
+		return nil, errors.New("Failed to retreive last trade")
 	}
 	return &trades[0], nil
 }
@@ -125,7 +127,7 @@ type ChartEntity interface {
 	AddStrategy(strategy *ChartStrategy)
 	SetTrades(trades []Trade)
 	GetTrades() []Trade
-	AddTrade(trade *Trade)
+	AddTrade(trade Trade)
 }
 
 type Chart struct {
@@ -183,8 +185,8 @@ func (entity *Chart) GetTrades() []Trade {
 	return entity.Trades
 }
 
-func (entity *Chart) AddTrade(trade *Trade) {
-	entity.Trades = append(entity.Trades, *trade)
+func (entity *Chart) AddTrade(trade Trade) {
+	entity.Trades = append(entity.Trades, trade)
 }
 
 func (entity *Chart) GetBase() string {

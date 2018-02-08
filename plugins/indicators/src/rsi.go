@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -42,12 +43,16 @@ func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) 
 	period, _ := strconv.ParseInt(params[0], 10, 64)
 	overbought, _ := strconv.ParseFloat(params[1], 64)
 	oversold, _ := strconv.ParseFloat(params[2], 64)
+	candleLen := len(candles)
+	if candleLen < int(period) {
+		return nil, errors.New(fmt.Sprintf(
+			"RelativeStrengthIndex requires candlestick length of %d, received %d", int(period), candleLen))
+	}
 	smaIndicator, err := CreateSimpleMovingAverage(candles[:period], []string{params[0]})
 	if err != nil {
 		return nil, err
 	}
 	sma := smaIndicator.(indicators.SimpleMovingAverage)
-	candleLen := len(candles)
 	lastPrice := 0.0
 	if candleLen > 0 {
 		lastPrice = candles[candleLen-1].Close

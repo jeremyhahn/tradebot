@@ -5,14 +5,13 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
-	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/mapper"
 )
 
 type IndicatorService interface {
-	GetPlatformIndicator(name string) (dto.PlatformIndicator, error)
-	GetChartIndicator(chart *common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error)
-	GetChartIndicators(chart *common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error)
+	GetIndicator(name string) (common.Indicator, error)
+	GetChartIndicator(chart common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error)
+	GetChartIndicators(chart common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error)
 }
 
 type IndicatorServiceImpl struct {
@@ -34,7 +33,7 @@ func NewIndicatorService(ctx *common.Context, indicatorDAO dao.IndicatorDAO,
 		indicatorMapper:   indicatorMapper}
 }
 
-func (service *IndicatorServiceImpl) GetPlatformIndicator(name string) (dto.PlatformIndicator, error) {
+func (service *IndicatorServiceImpl) GetIndicator(name string) (common.Indicator, error) {
 	entity, err := service.indicatorDAO.Get(name)
 	if err != nil {
 		return nil, err
@@ -42,13 +41,13 @@ func (service *IndicatorServiceImpl) GetPlatformIndicator(name string) (dto.Plat
 	return service.indicatorMapper.MapIndicatorEntityToDto(entity), nil
 }
 
-func (service *IndicatorServiceImpl) GetChartIndicator(chart *common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
-	daoChart := &dao.Chart{Id: chart.Id}
+func (service *IndicatorServiceImpl) GetChartIndicator(chart common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
+	daoChart := &dao.Chart{Id: chart.GetId()}
 	chartIndicator, err := service.chartIndicatorDAO.Get(daoChart, name)
 	if err != nil {
 		return nil, err
 	}
-	indicator, err := service.GetPlatformIndicator(name)
+	indicator, err := service.GetIndicator(name)
 	if err != nil {
 		return nil, err
 	}
@@ -60,15 +59,15 @@ func (service *IndicatorServiceImpl) GetChartIndicator(chart *common.Chart, name
 	return constructor(candles, params)
 }
 
-func (service *IndicatorServiceImpl) GetChartIndicators(chart *common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error) {
-	chartFinancialIndicators := make(map[string]common.FinancialIndicator, len(chart.Indicators))
-	daoChart := &dao.Chart{Id: chart.Id}
+func (service *IndicatorServiceImpl) GetChartIndicators(chart common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error) {
+	chartFinancialIndicators := make(map[string]common.FinancialIndicator, len(chart.GetIndicators()))
+	daoChart := &dao.Chart{Id: chart.GetId()}
 	chartIndicators, err := service.chartIndicatorDAO.Find(daoChart)
 	if err != nil {
 		return nil, err
 	}
 	for _, ci := range chartIndicators {
-		indicator, err := service.GetPlatformIndicator(ci.GetName())
+		indicator, err := service.GetIndicator(ci.GetName())
 		if err != nil {
 			return nil, err
 		}

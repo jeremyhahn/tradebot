@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +32,7 @@ func TestDefaultTradingStrategy_DefaultConfig_SellDoesntMeetMinimumRequired(t *t
 		"RelativeStrengthIndex":              new(MockRSI_StrategySell2),
 		"BollingerBands":                     new(MockBBands_StrategySell2),
 		"MovingAverageConvergenceDivergence": new(MockMACD_StrategySell2)}
-	lastTrade := &common.Trade{
+	lastTrade := &dto.TradeDTO{
 		Id:       1,
 		ChartId:  1,
 		Base:     "BTC",

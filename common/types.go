@@ -17,15 +17,98 @@ const (
 	CANDLESTICK_MIN_LOAD  = 250
 )
 
-type Profit struct {
-	UserId   uint    `json:"id"`
-	TradeId  uint    `json:"trade_id"`
-	Quantity float64 `json:"quantity"`
-	Bought   float64 `json:"bought"`
-	Sold     float64 `json:"sold"`
-	Fee      float64 `json:"fee"`
-	Tax      float64 `json:"tax"`
-	Total    float64 `json:"total"`
+type Context struct {
+	Logger    *logging.Logger
+	DB        *gorm.DB
+	User      *User
+	DebugMode bool
+}
+
+type TradingStrategyParams struct {
+	CurrencyPair *CurrencyPair
+	Balances     []Coin
+	Indicators   map[string]FinancialIndicator
+	NewPrice     float64
+	LastTrade    Trade
+	TradeFee     float64
+	Config       []string
+}
+
+type Indicator interface {
+	GetName() string
+	GetFilename() string
+	GetVersion() string
+}
+
+type Strategy interface {
+	GetName() string
+	GetFilename() string
+	GetVersion() string
+}
+
+type Chart interface {
+	GetId() uint
+	GetBase() string
+	GetQuote() string
+	GetExchange() string
+	GetPeriod() int
+	GetPrice() float64
+	GetAutoTrade() uint
+	IsAutoTrade() bool
+	GetIndicators() []ChartIndicator
+	GetStrategies() []ChartStrategy
+	GetTrades() []Trade
+}
+
+type ChartIndicator interface {
+	GetId() uint
+	GetChartId() uint
+	GetName() string
+	GetParameters() string
+	GetFilename() string
+}
+
+type ChartStrategy interface {
+	GetId() uint
+	GetChartId() uint
+	GetName() string
+	GetParameters() string
+	GetFilename() string
+}
+
+type Trade interface {
+	GetId() uint
+	GetChartId() uint
+	GetUserId() uint
+	GetBase() string
+	GetQuote() string
+	GetExchange() string
+	GetDate() time.Time
+	GetType() string
+	GetPrice() float64
+	GetAmount() float64
+	GetChartData() string
+}
+
+type Order interface {
+	GetId() string
+	GetExchange() string
+	GetDate() time.Time
+	GetType() string
+	GetCurrency() string
+	GetQuantity() float64
+	GetPrice() float64
+}
+
+type Profit interface {
+	GetUserId() uint
+	GetTradeId() uint
+	GetQuantity() float64
+	GetBought() float64
+	GetSold() float64
+	GetFee() float64
+	GetTax() float64
+	GetTotal() float64
 }
 
 type FinancialIndicator interface {
@@ -36,13 +119,12 @@ type FinancialIndicator interface {
 	PeriodListener
 }
 
-type ChartIndicator struct {
-	Id         uint   `json:"id"`
-	ChartId    uint   `json:"chart_id"`
-	Name       string `json:"name"`
-	Parameters string `json:"parameters"`
-	Filename   string `json:"filename"`
-	FinancialIndicator
+type TradingStrategy interface {
+	GetRequiredIndicators() []string
+	Analyze() (bool, bool, map[string]string, error)
+	CalculateFeeAndTax(price float64) (float64, float64)
+	GetTradeAmounts() (float64, float64)
+	GetParameters() *TradingStrategyParams
 }
 
 type ChartTradingStrategy interface {
@@ -52,63 +134,6 @@ type ChartTradingStrategy interface {
 	GetParameters() string
 	GetDefaultParameters() string
 	GetRequiredIndicators() string
-}
-
-type ChartStrategy struct {
-	Id         uint   `json:"id"`
-	ChartId    uint   `json:"chart_id"`
-	Name       string `json:"name"`
-	Parameters string `json:"parameters"`
-	ChartTradingStrategy
-}
-
-type TradingStrategy interface {
-	GetRequiredIndicators() []string
-	Analyze() (bool, bool, map[string]string, error)
-	CalculateFeeAndTax(price float64) (float64, float64)
-	GetTradeAmounts() (float64, float64)
-	GetParameters() *TradingStrategyParams
-}
-
-type TradingStrategyParams struct {
-	CurrencyPair *CurrencyPair
-	Balances     []Coin
-	Indicators   map[string]FinancialIndicator
-	NewPrice     float64
-	LastTrade    *Trade
-	TradeFee     float64
-	Config       []string
-}
-
-type Trade struct {
-	Id        uint      `json:"id"`
-	ChartId   uint      `json:"chart_id"`
-	UserId    uint      `json:"user_id"`
-	Base      string    `json:"base"`
-	Quote     string    `json:"quote"`
-	Exchange  string    `json:"exchange"`
-	Date      time.Time `json:"date"`
-	Type      string    `json:"type"`
-	Price     float64   `json:"price"`
-	Amount    float64   `json:"amount"`
-	ChartData string    `json:"chart_data"`
-}
-
-type Order struct {
-	Id       string    `json:"id"`
-	Exchange string    `json:"exchange"`
-	Date     time.Time `json:"date"`
-	Type     string    `json:"type"`
-	Currency string    `json:"currency"`
-	Quantity float64   `json:"quantity"`
-	Price    float64   `json:"price"`
-}
-
-type Context struct {
-	Logger    *logging.Logger
-	DB        *gorm.DB
-	User      *User
-	DebugMode bool
 }
 
 type MarketCap struct {
@@ -173,18 +198,6 @@ type PriceChange struct {
 	CurrencyPair *CurrencyPair `json:"currencyPair"`
 	Satoshis     float64       `json:"satoshis"`
 	Price        float64       `json:"price"`
-}
-
-type Chart struct {
-	Id         uint             `json:"id"`
-	Base       string           `json:"base"`
-	Quote      string           `json:"quote"`
-	Exchange   string           `json:"exchange"`
-	Period     int              `json:"period"`
-	Price      float64          `json:"price"`
-	AutoTrade  uint             `json:"autotrade"`
-	Indicators []ChartIndicator `json:"indicators"`
-	Trades     []Trade          `json:"trades"`
 }
 
 type CryptoExchange struct {

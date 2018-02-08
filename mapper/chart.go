@@ -3,6 +3,7 @@ package mapper
 import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
 )
 
 type ChartMapper interface {
@@ -12,23 +13,20 @@ type ChartMapper interface {
 	MapIndicatorDtoToEntity(dto common.ChartIndicator) dao.ChartIndicator
 	MapStrategyEntityToDto(entity dao.ChartStrategy) common.ChartStrategy
 	MapStrategyDtoToEntity(dto common.ChartStrategy) dao.ChartStrategy
-	MapTradeEntityToDto(entity dao.TradeEntity) common.Trade
+	MapTradeEntityToDto(entity *dao.Trade) common.Trade
 	MapTradeDtoToEntity(trade common.Trade) dao.Trade
 }
 
-type ChartMapperImpl struct {
+type DefaultChartMapper struct {
 	ctx *common.Context
 }
 
 func NewChartMapper(ctx *common.Context) ChartMapper {
-	return &ChartMapperImpl{ctx: ctx}
+	return &DefaultChartMapper{ctx: ctx}
 }
 
-func (mapper *ChartMapperImpl) MapTradeEntityToDto(entity dao.TradeEntity) common.Trade {
-	if entity == nil {
-		return common.Trade{}
-	}
-	return common.Trade{
+func (mapper *DefaultChartMapper) MapTradeEntityToDto(entity *dao.Trade) common.Trade {
+	return &dto.TradeDTO{
 		Id:        entity.GetId(),
 		UserId:    entity.GetUserId(),
 		ChartId:   entity.GetChartId(),
@@ -42,84 +40,93 @@ func (mapper *ChartMapperImpl) MapTradeEntityToDto(entity dao.TradeEntity) commo
 		ChartData: entity.GetChartData()}
 }
 
-func (mapper *ChartMapperImpl) MapTradeDtoToEntity(trade common.Trade) dao.Trade {
+func (mapper *DefaultChartMapper) MapTradeDtoToEntity(trade common.Trade) dao.Trade {
 	return dao.Trade{
-		Id:        trade.Id,
+		Id:        trade.GetId(),
 		UserId:    mapper.ctx.User.Id,
-		ChartId:   trade.ChartId,
-		Date:      trade.Date,
-		Exchange:  trade.Exchange,
-		Type:      trade.Type,
-		Base:      trade.Base,
-		Quote:     trade.Quote,
-		Amount:    trade.Amount,
-		Price:     trade.Price,
-		ChartData: trade.ChartData}
+		ChartId:   trade.GetChartId(),
+		Date:      trade.GetDate(),
+		Exchange:  trade.GetExchange(),
+		Type:      trade.GetType(),
+		Base:      trade.GetBase(),
+		Quote:     trade.GetQuote(),
+		Amount:    trade.GetAmount(),
+		Price:     trade.GetPrice(),
+		ChartData: trade.GetChartData()}
 }
 
-func (mapper *ChartMapperImpl) MapIndicatorEntityToDto(entity dao.ChartIndicator) common.ChartIndicator {
-	return common.ChartIndicator{
+func (mapper *DefaultChartMapper) MapIndicatorEntityToDto(entity dao.ChartIndicator) common.ChartIndicator {
+	return &dto.ChartIndicatorDTO{
 		Id:         entity.Id,
 		ChartId:    entity.ChartId,
 		Name:       entity.Name,
 		Parameters: entity.Parameters}
 }
 
-func (mapper *ChartMapperImpl) MapIndicatorDtoToEntity(dto common.ChartIndicator) dao.ChartIndicator {
+func (mapper *DefaultChartMapper) MapIndicatorDtoToEntity(dto common.ChartIndicator) dao.ChartIndicator {
 	return dao.ChartIndicator{
-		Id:         dto.Id,
-		ChartId:    dto.ChartId,
-		Name:       dto.Name,
-		Parameters: dto.Parameters}
+		Id:         dto.GetId(),
+		ChartId:    dto.GetChartId(),
+		Name:       dto.GetName(),
+		Parameters: dto.GetParameters()}
 }
 
-func (mapper *ChartMapperImpl) MapStrategyEntityToDto(entity dao.ChartStrategy) common.ChartStrategy {
-	return common.ChartStrategy{
-		Id:         entity.Id,
-		ChartId:    entity.ChartId,
-		Name:       entity.Name,
-		Parameters: entity.Parameters}
+func (mapper *DefaultChartMapper) MapStrategyEntityToDto(entity dao.ChartStrategy) common.ChartStrategy {
+	return &dto.ChartStrategyDTO{
+		Id:         entity.GetId(),
+		ChartId:    entity.GetChartId(),
+		Name:       entity.GetName(),
+		Parameters: entity.GetParameters()}
 }
 
-func (mapper *ChartMapperImpl) MapStrategyDtoToEntity(dto common.ChartStrategy) dao.ChartStrategy {
+func (mapper *DefaultChartMapper) MapStrategyDtoToEntity(dto common.ChartStrategy) dao.ChartStrategy {
 	return dao.ChartStrategy{
-		Id:         dto.Id,
-		ChartId:    dto.ChartId,
-		Name:       dto.Name,
-		Parameters: dto.Parameters}
+		Id:         dto.GetId(),
+		ChartId:    dto.GetChartId(),
+		Name:       dto.GetName(),
+		Parameters: dto.GetParameters()}
 }
 
-func (mapper *ChartMapperImpl) MapChartDtoToEntity(dto common.Chart) dao.ChartEntity {
+func (mapper *DefaultChartMapper) MapChartDtoToEntity(dto common.Chart) dao.ChartEntity {
 	var daoChartIndicators []dao.ChartIndicator
-	for _, indicator := range dto.Indicators {
+	for _, indicator := range dto.GetIndicators() {
 		daoChartIndicators = append(daoChartIndicators, mapper.MapIndicatorDtoToEntity(indicator))
 	}
+	var daoChartStrategies []dao.ChartStrategy
+	for _, strategy := range dto.GetStrategies() {
+		daoChartStrategies = append(daoChartStrategies, mapper.MapStrategyDtoToEntity(strategy))
+	}
 	var daoTrades []dao.Trade
-	for _, trade := range dto.Trades {
+	for _, trade := range dto.GetTrades() {
 		daoTrades = append(daoTrades, mapper.MapTradeDtoToEntity(trade))
 	}
 	return &dao.Chart{
-		Id:         dto.Id,
+		Id:         dto.GetId(),
 		UserId:     mapper.ctx.User.Id,
-		Base:       dto.Base,
-		Quote:      dto.Quote,
-		Exchange:   dto.Exchange,
-		Period:     dto.Period,
-		AutoTrade:  dto.AutoTrade,
+		Base:       dto.GetBase(),
+		Quote:      dto.GetQuote(),
+		Exchange:   dto.GetExchange(),
+		Period:     dto.GetPeriod(),
+		AutoTrade:  dto.GetAutoTrade(),
 		Indicators: daoChartIndicators,
+		Strategies: daoChartStrategies,
 		Trades:     daoTrades}
 }
 
-func (mapper *ChartMapperImpl) MapChartEntityToDto(entity dao.ChartEntity) common.Chart {
+func (mapper *DefaultChartMapper) MapChartEntityToDto(entity dao.ChartEntity) common.Chart {
 	var indicators []common.ChartIndicator
 	for _, indicator := range entity.GetIndicators() {
 		indicators = append(indicators, mapper.MapIndicatorEntityToDto(indicator))
+	}
+	var strategies []common.ChartStrategy
+	for _, strategy := range entity.GetStrategies() {
+		strategies = append(strategies, mapper.MapStrategyEntityToDto(strategy))
 	}
 	var trades []common.Trade
 	for _, trade := range entity.GetTrades() {
 		trades = append(trades, mapper.MapTradeEntityToDto(&trade))
 	}
-	return common.Chart{
+	return dto.ChartDTO{
 		Id:         entity.GetId(),
 		Base:       entity.GetBase(),
 		Quote:      entity.GetQuote(),
@@ -127,5 +134,6 @@ func (mapper *ChartMapperImpl) MapChartEntityToDto(entity dao.ChartEntity) commo
 		Period:     entity.GetPeriod(),
 		AutoTrade:  entity.GetAutoTrade(),
 		Indicators: indicators,
+		Strategies: strategies,
 		Trades:     trades}
 }

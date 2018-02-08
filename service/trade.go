@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
 )
 
 type TradeServiceImpl struct {
@@ -25,24 +26,24 @@ func (ts *TradeServiceImpl) Sell(exchange common.Exchange, trade common.Trade) {
 	ts.ctx.Logger.Debugf("[TradeServiceImpl.Sell] %+v\n", trade)
 }
 
-func (ts *TradeServiceImpl) Save(trade *common.Trade) {
+func (ts *TradeServiceImpl) Save(trade common.Trade) {
 	ts.tradeDAO.Create(&dao.Trade{
-		Id:        trade.Id,
-		ChartId:   trade.ChartId,
-		Date:      trade.Date,
-		Exchange:  trade.Exchange,
-		Base:      trade.Base,
-		Quote:     trade.Quote,
-		Type:      trade.Type,
-		Price:     trade.Price,
-		Amount:    trade.Amount,
-		ChartData: trade.ChartData})
+		Id:        trade.GetId(),
+		ChartId:   trade.GetChartId(),
+		Date:      trade.GetDate(),
+		Exchange:  trade.GetExchange(),
+		Base:      trade.GetBase(),
+		Quote:     trade.GetQuote(),
+		Type:      trade.GetType(),
+		Price:     trade.GetPrice(),
+		Amount:    trade.GetAmount(),
+		ChartData: trade.GetChartData()})
 }
 
-func (ts *TradeServiceImpl) GetLastTrade(chart *common.Chart) *common.Trade {
-	daoChart := &dao.Chart{Id: chart.Id}
+func (ts *TradeServiceImpl) GetLastTrade(chart common.Chart) common.Trade {
+	daoChart := &dao.Chart{Id: chart.GetId()}
 	entity := ts.tradeDAO.GetLastTrade(daoChart)
-	return &common.Trade{
+	return &dto.TradeDTO{
 		Id:        entity.Id,
 		UserId:    ts.ctx.User.Id,
 		ChartId:   entity.ChartId,

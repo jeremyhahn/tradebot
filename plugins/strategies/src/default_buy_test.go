@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ func TestDefaultTradingStrategy_DefaultConfig_Buy(t *testing.T) {
 		Indicators:   strategyIndicators,
 		NewPrice:     11000,
 		TradeFee:     .025,
-		LastTrade: &common.Trade{
+		LastTrade: &dto.TradeDTO{
 			Id:       1,
 			ChartId:  1,
 			Base:     "BTC",

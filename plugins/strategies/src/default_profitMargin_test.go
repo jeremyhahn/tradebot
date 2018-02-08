@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +32,7 @@ func TestDefaultTradingStrategy_CustomTradeSize_ProfitMarginFixed1(t *testing.T)
 		"RelativeStrengthIndex":              new(MockRSI_StrategyProfitMargin),
 		"BollingerBands":                     new(MockBBands_StrategyProfitMargin),
 		"MovingAverageConvergenceDivergence": new(MockMACD_StrategyProfitMargin)}
-	lastTrade := &common.Trade{
+	lastTrade := &dto.TradeDTO{
 		Id:       1,
 		ChartId:  1,
 		Base:     "BTC",
@@ -84,7 +85,7 @@ func TestDefaultTradingStrategy_CustomTradeSize_ProfitMarginFixed2(t *testing.T)
 		"RelativeStrengthIndex":              new(MockRSI_StrategyProfitMargin),
 		"BollingerBands":                     new(MockBBands_StrategyProfitMargin),
 		"MovingAverageConvergenceDivergence": new(MockMACD_StrategyProfitMargin)}
-	lastTrade := &common.Trade{
+	lastTrade := &dto.TradeDTO{
 		Id:       1,
 		ChartId:  1,
 		Base:     "BTC",

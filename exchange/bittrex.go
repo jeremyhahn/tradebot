@@ -7,6 +7,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
 	logging "github.com/op/go-logging"
 	bittrex "github.com/toorop/go-bittrex"
 )
@@ -84,7 +85,7 @@ func (b *Bittrex) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Or
 	for _, o := range orderHistory {
 		q, _ := o.Quantity.Float64()
 		p, _ := o.Price.Float64()
-		orders = append(orders, common.Order{
+		orders = append(orders, &dto.OrderDTO{
 			Id:       o.OrderUuid,
 			Exchange: "bittrex",
 			Date:     o.TimeStamp.Time,
