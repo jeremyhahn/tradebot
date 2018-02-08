@@ -9,7 +9,6 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/mapper"
-	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
 type ChartServiceImpl struct {
