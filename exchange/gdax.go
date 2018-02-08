@@ -67,14 +67,12 @@ func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
 			for i := 0; i < days; i++ {
 				newStart := start.AddDate(0, 0, i)
 				newEnd = start.AddDate(0, 0, i).Add(time.Hour*23 + time.Minute*59 + time.Second*59)
-				_gdax.logger.Debugf("[GDAX.GetPriceHistory] newStart=%s, newEnd=%s", util.FormatDate(newStart), util.FormatDate(newEnd))
 				sticks := _gdax.GetPriceHistory(currencyPair, newStart, newEnd, granularity)
 				sticks = _gdax.reverseCandlesticks(sticks)
 				candlesticks = append(candlesticks, sticks...)
 			}
 			finalStart := start.AddDate(0, 0, days)
 			finalEnd := end.AddDate(0, 0, 0).Add(time.Duration(granularity*-1) * time.Second)
-			_gdax.logger.Debugf("[GDAX.GetPriceHistory] finalStart=%s, end=%s", util.FormatDate(finalStart), util.FormatDate(finalEnd))
 			sticks := _gdax.GetPriceHistory(currencyPair, finalStart, finalEnd, granularity)
 			sticks = _gdax.reverseCandlesticks(sticks)
 			candlesticks = append(candlesticks, sticks...)

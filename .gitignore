@@ -10,3 +10,4 @@ indicators/debug.test
 webui/yarn-error.log
 webui/public/scripts
 **/*.so
+ssl/*

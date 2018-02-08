@@ -24,9 +24,6 @@ type DefaultChartService struct {
 
 func NewChartService(ctx *common.Context, chartDAO dao.ChartDAO, exchangeService ExchangeService,
 	indicatorService IndicatorService) ChartService {
-
-	fmt.Printf("2) %+v\n", ctx.User)
-
 	service := &DefaultChartService{
 		ctx:              ctx,
 		chartDAO:         chartDAO,
@@ -228,9 +225,9 @@ func (service *DefaultChartService) LoadCandlesticks(chart common.Chart, exchang
 	service.ctx.Logger.Debugf("[DefaultChartService.LoadCandlesticks] Getting %s %s trade history from %s - %s ",
 		exchange.GetName(), exchange.FormattedCurrencyPair(currencyPair), lastWeek, now)
 	candles = exchange.GetPriceHistory(currencyPair, lastWeek, now, chart.GetPeriod())
-	if service.ctx.DebugMode {
+	if service.ctx.Debug {
 		for _, c := range candles {
-			service.ctx.Logger.Debug(c)
+			service.ctx.Logger.Debugf("Prewarming kline: %s", c.ToString())
 		}
 	}
 	if len(candles) < 35 {
