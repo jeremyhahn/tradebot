@@ -104,17 +104,22 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 	if err != nil {
 		b.logger.Errorf("[Bittrex.GetBalances] %s", err.Error())
 	}
+	btcCurrencyPair := &common.CurrencyPair{
+		Base:          "BTC",
+		Quote:         b.ctx.User.LocalCurrency,
+		LocalCurrency: b.ctx.User.LocalCurrency}
+	localizedBtcCurrencyPair := b.localizedCurrencyPair(btcCurrencyPair)
 	for _, bal := range balances {
 		var currency string
 		if bal.Currency == "BTC" {
-			currency = fmt.Sprintf("%s-%s", b.ctx.User.LocalCurrency, bal.Currency)
+			currency = fmt.Sprintf("%s-BTC", localizedBtcCurrencyPair.LocalCurrency)
 		} else {
 			currency = fmt.Sprintf("%s-%s", "BTC", bal.Currency)
 		}
 		b.logger.Debugf("[Bittrex.GetBalances] Getting %s ticker", currency)
 		ticker, terr := b.client.GetTicker(currency)
 		if terr != nil {
-			b.logger.Errorf("[Bittrex.GetBalances] %s", terr.Error())
+			b.logger.Errorf("[Bittrex.GetBalances] %s. currency: %s", terr.Error(), currency)
 			continue
 		}
 		price, exact := ticker.Last.Float64()
@@ -236,8 +241,9 @@ func (b *Bittrex) localizedCurrencyPair(currencyPair *common.CurrencyPair) *comm
 	var cp *common.CurrencyPair
 	if currencyPair.Quote == "USD" {
 		cp = &common.CurrencyPair{
-			Base:  "USDT",
-			Quote: currencyPair.Base}
+			Base:          "USDT",
+			Quote:         currencyPair.Base,
+			LocalCurrency: "USDT"}
 	} else {
 		cp = currencyPair
 	}
