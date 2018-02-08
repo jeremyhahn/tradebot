@@ -57,7 +57,7 @@ class Portfolio extends React.Component {
 		var ws = this.ws
 		this.ws.onopen = function() {
 			 ws.send(JSON.stringify({
-				 user: {id: 1, username: "jhahn"}
+				 user: {id: 1, username: "jhahn", local_currency: "USD"}
 			 }));
 		};
 		this.ws.onclose = function() {

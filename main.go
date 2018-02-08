@@ -22,8 +22,10 @@ func main() {
 
 	backend, _ := logging.NewSyslogBackend(common.APPNAME)
 	logging.SetBackend(backend)
+	if *debugFlag == false {
+		logging.SetLevel(logging.ERROR, "")
+	}
 	logger := logging.MustGetLogger(common.APPNAME)
-
 	if *debugFlag == true {
 		logger.Debug("Starting in debug mode...")
 	}

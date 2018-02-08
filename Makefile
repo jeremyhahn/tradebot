@@ -34,16 +34,16 @@ integrationtest:
 test: unittest integrationtest
 
 indicators:
-	cd plugins/indicators/src && go build -buildmode=plugin example.go && mv example.so ../
-	cd plugins/indicators/src && go build -buildmode=plugin sma.go && mv sma.so ../
-	cd plugins/indicators/src && go build -buildmode=plugin ema.go && mv ema.so ../
-	cd plugins/indicators/src && go build -buildmode=plugin rsi.go sma.go && mv rsi.so ../
-	cd plugins/indicators/src && go build -buildmode=plugin bollinger_bands.go sma.go && mv bollinger_bands.so ../
-	cd plugins/indicators/src && go build -buildmode=plugin macd.go ema.go && mv macd.so ../
-	cd plugins/indicators/src && go build -buildmode=plugin obv.go && mv obv.so ../
+	cd plugins/indicators/src && go build -buildmode=plugin -o ../example.so example.go
+	cd plugins/indicators/src && go build -buildmode=plugin -o ../sma.so sma.go
+	cd plugins/indicators/src && go build -buildmode=plugin -o ../ema.so ema.go
+	cd plugins/indicators/src && go build -buildmode=plugin -o ../rsi.so rsi.go sma.go
+	cd plugins/indicators/src && go build -buildmode=plugin -o ../bollinger_bands.so bollinger_bands.go sma.go
+	cd plugins/indicators/src && go build -buildmode=plugin -o ../macd.so macd.go ema.go
+	cd plugins/indicators/src && go build -buildmode=plugin -o ../obv.so obv.go
 
 strategies:
-	cd plugins/strategies/src && go build -buildmode=plugin default.go && mv default.so ../
+	cd plugins/strategies/src && go build -buildmode=plugin -o ../default.so default.go
 
 plugins: indicators strategies
 
@@ -52,13 +52,13 @@ clean:
 	cd plugins/strategies && rm -rf *.so
 	rm -rf tradebot
 
-debugbuild: clean plugins
-		go build -gcflags "-N -l"
+builddebug: clean plugins
+	go build -gcflags "-N -l"
 
 quickdebug:
-		go build -gcflags "-N -l"
-
-build: clean plugins quickbuild test
+	go build -gcflags "-N -l"
 
 quickbuild:
-		go build -ldflags "-w"
+	go build -ldflags "-w"
+
+build: clean plugins quickbuild test

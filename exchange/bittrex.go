@@ -175,7 +175,13 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 }
 
 func (b *Bittrex) getBitcoinPrice() float64 {
-	summary, err := b.client.GetMarketSummary(fmt.Sprintf("%s-BTC", b.ctx.User.LocalCurrency))
+	currencyPair := &common.CurrencyPair{
+		Base:          "BTC",
+		Quote:         b.ctx.User.LocalCurrency,
+		LocalCurrency: b.ctx.User.LocalCurrency}
+	localizedCurrencyPair := b.localizedCurrencyPair(currencyPair)
+	symbol := fmt.Sprintf("%s-%s", localizedCurrencyPair.Base, localizedCurrencyPair.Quote)
+	summary, err := b.client.GetMarketSummary(symbol)
 	if err != nil {
 		b.logger.Errorf("[Bittrex.getBitcoinPrice] %s", err.Error())
 	}
