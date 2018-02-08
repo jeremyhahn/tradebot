@@ -6,7 +6,7 @@ type ProfitDAO interface {
 	Create(profit ProfitEntity) error
 	Save(profit ProfitEntity) error
 	Find() ([]Profit, error)
-	GetByTrade(trade *Trade) (ProfitEntity, error)
+	GetByTrade(trade TradeEntity) (ProfitEntity, error)
 }
 
 type ProfitDAOImpl struct {
@@ -62,7 +62,7 @@ func (dao *ProfitDAOImpl) Find() ([]Profit, error) {
 	return profits, nil
 }
 
-func (dao *ProfitDAOImpl) GetByTrade(trade *Trade) (ProfitEntity, error) {
+func (dao *ProfitDAOImpl) GetByTrade(trade TradeEntity) (ProfitEntity, error) {
 	var profit Profit
 	if err := dao.ctx.DB.Model(trade).Related(&profit).Error; err != nil {
 		return nil, err

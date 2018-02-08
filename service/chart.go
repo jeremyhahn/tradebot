@@ -7,6 +7,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/mapper"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
@@ -14,7 +15,7 @@ import (
 type ChartServiceImpl struct {
 	ctx              *common.Context
 	chartDAO         dao.ChartDAO
-	charts           map[uint]*common.Chart
+	charts           map[uint]common.Chart
 	priceStreams     map[uint]PriceStream
 	closeChans       map[uint]chan bool
 	exchangeService  ExchangeService
@@ -28,7 +29,7 @@ func NewChartService(ctx *common.Context, chartDAO dao.ChartDAO, exchangeService
 	service := &ChartServiceImpl{
 		ctx:              ctx,
 		chartDAO:         chartDAO,
-		charts:           make(map[uint]*common.Chart),
+		charts:           make(map[uint]common.Chart),
 		priceStreams:     make(map[uint]PriceStream),
 		closeChans:       make(map[uint]chan bool),
 		exchangeService:  exchangeService,
@@ -36,26 +37,28 @@ func NewChartService(ctx *common.Context, chartDAO dao.ChartDAO, exchangeService
 	return service
 }
 
-func (service *ChartServiceImpl) GetCurrencyPair(chart *common.Chart) *common.CurrencyPair {
+func (service *ChartServiceImpl) GetCurrencyPair(chart common.Chart) *common.CurrencyPair {
 	return &common.CurrencyPair{
-		Base:          chart.Base,
-		Quote:         chart.Quote,
+		Base:          chart.GetBase(),
+		Quote:         chart.GetQuote(),
 		LocalCurrency: service.ctx.User.LocalCurrency}
 }
 
-func (service *ChartServiceImpl) GetExchange(chart *common.Chart) common.Exchange {
-	return service.exchangeService.GetExchange(service.ctx.User, chart.Exchange)
+func (service *ChartServiceImpl) GetExchange(chart common.Chart) common.Exchange {
+	return service.exchangeService.GetExchange(service.ctx.User, chart.GetExchange())
 }
 
-func (service *ChartServiceImpl) Stream(chart *common.Chart,
+func (service *ChartServiceImpl) Stream(chart common.Chart,
 	candlesticks []common.Candlestick, strategyHandler func(price float64) error) error {
 
-	if _, ok := service.charts[chart.Id]; ok {
-		return errors.New(fmt.Sprintf("Already streaming chart %s-%s", chart.Base, chart.Quote))
+	chartId := chart.GetId()
+
+	if _, ok := service.charts[chartId]; ok {
+		return errors.New(fmt.Sprintf("Already streaming chart %s-%s", chart.GetBase(), chart.GetQuote()))
 	}
 
-	service.charts[chart.Id] = chart
-	service.closeChans[chart.Id] = make(chan bool)
+	service.charts[chartId] = chart
+	service.closeChans[chartId] = make(chan bool)
 
 	currencyPair := service.GetCurrencyPair(chart)
 	exchange := service.GetExchange(chart)
@@ -68,9 +71,9 @@ func (service *ChartServiceImpl) Stream(chart *common.Chart,
 		return err
 	}
 
-	service.priceStreams[chart.Id] = NewPriceStream(chart.Period)
+	service.priceStreams[chartId] = NewPriceStream(chart.GetPeriod())
 	for _, indicator := range indicators {
-		service.priceStreams[chart.Id].SubscribeToPeriod(indicator)
+		service.priceStreams[chartId].SubscribeToPeriod(indicator)
 	}
 
 	priceChange := make(chan common.PriceChange)
@@ -78,15 +81,14 @@ func (service *ChartServiceImpl) Stream(chart *common.Chart,
 
 	for {
 		select {
-		case <-service.closeChans[chart.Id]:
+		case <-service.closeChans[chartId]:
 			service.ctx.Logger.Debug("[ChartServiceImpl.Stream] Closing stream")
-			delete(service.charts, chart.Id)
-			delete(service.closeChans, chart.Id)
+			delete(service.charts, chartId)
+			delete(service.closeChans, chartId)
 			return nil
 		default:
-			priceChange := service.priceStreams[chart.Id].Listen(priceChange)
-			chart.Price = priceChange.Price
-			strategyErr := strategyHandler(chart.Price)
+			priceChange := service.priceStreams[chartId].Listen(priceChange)
+			strategyErr := strategyHandler(priceChange.Price)
 			if strategyErr != nil {
 				return strategyErr
 			}
@@ -94,9 +96,9 @@ func (service *ChartServiceImpl) Stream(chart *common.Chart,
 	}
 }
 
-func (service *ChartServiceImpl) StopStream(chart *common.Chart) {
+func (service *ChartServiceImpl) StopStream(chart common.Chart) {
 	service.ctx.Logger.Debugf("[ChartServiceImpl.StopStream]")
-	service.closeChans[chart.Id] <- true
+	service.closeChans[chart.GetId()] <- true
 }
 
 func (service *ChartServiceImpl) GetCharts() ([]common.Chart, error) {
@@ -115,7 +117,7 @@ func (service *ChartServiceImpl) GetCharts() ([]common.Chart, error) {
 		for _, trade := range chart.GetTrades() {
 			trades = append(trades, mapper.MapTradeEntityToDto(&trade))
 		}
-		charts = append(charts, common.Chart{
+		charts = append(charts, &dto.ChartDTO{
 			Id:         chart.Id,
 			Base:       chart.Base,
 			Quote:      chart.Quote,
@@ -127,7 +129,7 @@ func (service *ChartServiceImpl) GetCharts() ([]common.Chart, error) {
 	return charts, nil
 }
 
-func (service *ChartServiceImpl) GetTrades(chart *common.Chart) ([]common.Trade, error) {
+func (service *ChartServiceImpl) GetTrades(chart common.Chart) ([]common.Trade, error) {
 	var trades []common.Trade
 	entities, err := service.chartDAO.GetTrades(service.ctx.User)
 	if err != nil {
@@ -140,21 +142,21 @@ func (service *ChartServiceImpl) GetTrades(chart *common.Chart) ([]common.Trade,
 	return trades, nil
 }
 
-func (service *ChartServiceImpl) GetLastTrade(chart common.Chart) (*common.Trade, error) {
-	daoChart := &dao.Chart{Id: chart.Id}
+func (service *ChartServiceImpl) GetLastTrade(chart common.Chart) (common.Trade, error) {
+	daoChart := &dao.Chart{Id: chart.GetId()}
 	entity, err := service.chartDAO.GetLastTrade(daoChart)
 	if err != nil {
 		return nil, err
 	}
 	if entity == nil {
-		return &common.Trade{}, nil
+		return &dto.TradeDTO{}, nil
 	}
 	mapper := mapper.NewChartMapper(service.ctx)
 	tradeDTO := mapper.MapTradeEntityToDto(entity)
-	return &tradeDTO, nil
+	return tradeDTO, nil
 }
 
-func (service *ChartServiceImpl) GetChart(id uint) (*common.Chart, error) {
+func (service *ChartServiceImpl) GetChart(id uint) (common.Chart, error) {
 	var trades []common.Trade
 	var indicators []common.ChartIndicator
 	entity, err := service.chartDAO.Get(id)
@@ -168,7 +170,7 @@ func (service *ChartServiceImpl) GetChart(id uint) (*common.Chart, error) {
 	for _, indicator := range entity.GetIndicators() {
 		indicators = append(indicators, mapper.MapIndicatorEntityToDto(indicator))
 	}
-	return &common.Chart{
+	return &dto.ChartDTO{
 		Id:         entity.GetId(),
 		Exchange:   entity.GetExchangeName(),
 		Base:       entity.GetBase(),
@@ -178,7 +180,7 @@ func (service *ChartServiceImpl) GetChart(id uint) (*common.Chart, error) {
 		Trades:     trades}, nil
 }
 
-func (service *ChartServiceImpl) GetIndicator(chart *common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
+func (service *ChartServiceImpl) GetIndicator(chart common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
 	indicators, err := service.GetIndicators(chart, candles)
 	if err != nil {
 		return nil, err
@@ -191,9 +193,9 @@ func (service *ChartServiceImpl) GetIndicator(chart *common.Chart, name string, 
 	return nil, errors.New(fmt.Sprintf("Unable to locate indicator: %s", name))
 }
 
-func (service *ChartServiceImpl) GetIndicators(chart *common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error) {
-	indicators := make(map[string]common.FinancialIndicator, len(chart.Indicators))
-	entity := &dao.Chart{Id: chart.Id}
+func (service *ChartServiceImpl) GetIndicators(chart common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error) {
+	indicators := make(map[string]common.FinancialIndicator, len(chart.GetIndicators()))
+	entity := &dao.Chart{Id: chart.GetId()}
 	daoIndicators, err := service.chartDAO.GetIndicators(entity)
 	if err != nil {
 		return nil, err
@@ -211,7 +213,7 @@ func (service *ChartServiceImpl) GetIndicators(chart *common.Chart, candles []co
 	return indicators, nil
 }
 
-func (service *ChartServiceImpl) LoadCandlesticks(chart *common.Chart, exchange common.Exchange) []common.Candlestick {
+func (service *ChartServiceImpl) LoadCandlesticks(chart common.Chart, exchange common.Exchange) []common.Candlestick {
 	var candles []common.Candlestick
 	t := time.Now()
 	year, month, day := t.Date()
@@ -219,12 +221,12 @@ func (service *ChartServiceImpl) LoadCandlesticks(chart *common.Chart, exchange 
 	lastWeek := time.Date(year, month, day-7, 0, 0, 0, 0, t.Location())
 	now := time.Now()
 	currencyPair := &common.CurrencyPair{
-		Base:          chart.Base,
-		Quote:         chart.Quote,
+		Base:          chart.GetBase(),
+		Quote:         chart.GetQuote(),
 		LocalCurrency: service.ctx.User.LocalCurrency}
 	service.ctx.Logger.Debugf("[ChartServiceImpl.LoadCandlesticks] Getting %s %s trade history from %s - %s ",
 		exchange.GetName(), exchange.FormattedCurrencyPair(currencyPair), lastWeek, now)
-	candles = exchange.GetPriceHistory(currencyPair, lastWeek, now, chart.Period)
+	candles = exchange.GetPriceHistory(currencyPair, lastWeek, now, chart.GetPeriod())
 	if service.ctx.DebugMode {
 		for _, c := range candles {
 			service.ctx.Logger.Debug(c)

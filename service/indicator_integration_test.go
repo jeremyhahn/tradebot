@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetPlatformIndicator_Success(t *testing.T) {
+func TestGetIndicator_Success(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
 	indicatorDAO.Create(&dao.Indicator{
@@ -23,7 +23,7 @@ func TestGetPlatformIndicator_Success(t *testing.T) {
 	indicatorMapper := mapper.NewIndicatorMapper()
 	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
 
-	rsi, err := indicatorService.GetPlatformIndicator("RelativeStrengthIndex")
+	rsi, err := indicatorService.GetIndicator("RelativeStrengthIndex")
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "RelativeStrengthIndex", rsi.GetName())
 	assert.Equal(t, "rsi.so", rsi.GetFilename())
@@ -32,7 +32,7 @@ func TestGetPlatformIndicator_Success(t *testing.T) {
 	CleanupIntegrationTest()
 }
 
-func TestGetPlatformIndicator_SuccessfulLoadingTwice(t *testing.T) {
+func TestGetIndicator_SuccessfulLoadingTwice(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
 	assert.NotNil(t, indicatorDAO)
@@ -48,13 +48,13 @@ func TestGetPlatformIndicator_SuccessfulLoadingTwice(t *testing.T) {
 	indicatorMapper := mapper.NewIndicatorMapper()
 	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
 
-	rsi, err := indicatorService.GetPlatformIndicator("RelativeStrengthIndex")
+	rsi, err := indicatorService.GetIndicator("RelativeStrengthIndex")
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "RelativeStrengthIndex", rsi.GetName())
 	assert.Equal(t, "rsi.so", rsi.GetFilename())
 	assert.Equal(t, "0.0.1a", rsi.GetVersion())
 
-	rsi2, err2 := indicatorService.GetPlatformIndicator("RelativeStrengthIndex")
+	rsi2, err2 := indicatorService.GetIndicator("RelativeStrengthIndex")
 	assert.Equal(t, nil, err2)
 	assert.Equal(t, "RelativeStrengthIndex", rsi2.GetName())
 	assert.Equal(t, "rsi.so", rsi2.GetFilename())
@@ -63,7 +63,7 @@ func TestGetPlatformIndicator_SuccessfulLoadingTwice(t *testing.T) {
 	CleanupIntegrationTest()
 }
 
-func TestGetPlatformIndicator_IndicatorDoesntExistInDatabase(t *testing.T) {
+func TestGetIndicator_IndicatorDoesntExistInDatabase(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
 
@@ -72,7 +72,7 @@ func TestGetPlatformIndicator_IndicatorDoesntExistInDatabase(t *testing.T) {
 	indicatorMapper := mapper.NewIndicatorMapper()
 	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
 
-	doesntExistIndicator, err := indicatorService.GetPlatformIndicator("IndicatorDoesntExist")
+	doesntExistIndicator, err := indicatorService.GetIndicator("IndicatorDoesntExist")
 	assert.NotNil(t, err)
 	assert.Equal(t, nil, doesntExistIndicator)
 	assert.Equal(t, "Failed to get platform indicator: IndicatorDoesntExist", err.Error())
@@ -80,7 +80,7 @@ func TestGetPlatformIndicator_IndicatorDoesntExistInDatabase(t *testing.T) {
 	CleanupIntegrationTest()
 }
 
-func TestGetPlatformIndicator_IndicatorDoesntExist(t *testing.T) {
+func TestGetIndicator_IndicatorDoesntExist(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
 	indicator := &dao.Indicator{
@@ -94,7 +94,7 @@ func TestGetPlatformIndicator_IndicatorDoesntExist(t *testing.T) {
 	indicatorMapper := mapper.NewIndicatorMapper()
 	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
 
-	doesntExistIndicator, err := indicatorService.GetPlatformIndicator("IndicatorDoesntExist")
+	doesntExistIndicator, err := indicatorService.GetIndicator("IndicatorDoesntExist")
 	assert.Nil(t, err)
 	assert.NotNil(t, doesntExistIndicator)
 	assert.Equal(t, indicator.GetName(), doesntExistIndicator.GetName())
@@ -128,7 +128,7 @@ func TestGetChartIndicator_GetIndicator(t *testing.T) {
 	chartDTO := chartMapper.MapChartEntityToDto(chartEntity)
 
 	candles := createIntegrationTestCandles()
-	chartIndicator, err := indicatorService.GetChartIndicator(&chartDTO, "RelativeStrengthIndex", candles)
+	chartIndicator, err := indicatorService.GetChartIndicator(chartDTO, "RelativeStrengthIndex", candles)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, chartIndicator)
@@ -177,7 +177,7 @@ func TestGetChartIndicator_GetIndicators(t *testing.T) {
 	indicatorMapper := mapper.NewIndicatorMapper()
 	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
 
-	financialIndicators, err := indicatorService.GetChartIndicators(&chartDTO, candles)
+	financialIndicators, err := indicatorService.GetChartIndicators(chartDTO, candles)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 3, len(financialIndicators))
 	assert.Equal(t, "RelativeStrengthIndex", financialIndicators["RelativeStrengthIndex"].GetName())

@@ -32,7 +32,7 @@ func TestGetPlatformStrategy_GetPlatformStrategy(t *testing.T) {
 	strategyMapper := mapper.NewStrategyMapper()
 	strategyService := NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
 
-	defaultTradingStrategy, err := strategyService.GetPlatformStrategy("DefaultTradingStrategy")
+	defaultTradingStrategy, err := strategyService.GetStrategy("DefaultTradingStrategy")
 	assert.Equal(t, nil, err)
 	assert.Equal(t, strategyEntity.GetName(), defaultTradingStrategy.GetName())
 	assert.Equal(t, strategyEntity.GetFilename(), defaultTradingStrategy.GetFilename())
@@ -79,14 +79,14 @@ func TestGetChartStrategy_GetChartStrategy(t *testing.T) {
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
 	indicatorMapper := mapper.NewIndicatorMapper()
 	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
-	financialIndicators, err := indicatorService.GetChartIndicators(&chartDTO, candles)
+	financialIndicators, err := indicatorService.GetChartIndicators(chartDTO, candles)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 3, len(financialIndicators))
 
 	strategyMapper := mapper.NewStrategyMapper()
 	strategyService := NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
 
-	defaultTradingStrategy, err := strategyService.GetChartStrategy(&chartDTO, "DefaultTradingStrategy", candles)
+	defaultTradingStrategy, err := strategyService.GetChartStrategy(chartDTO, "DefaultTradingStrategy", candles)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, defaultTradingStrategy.GetRequiredIndicators(),
 		[]string{"RelativeStrengthIndex", "BollingerBands", "MovingAverageConvergenceDivergence"})
@@ -132,7 +132,7 @@ func TestGetChartStrategy_GetChartStrategies(t *testing.T) {
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
 	indicatorMapper := mapper.NewIndicatorMapper()
 	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
-	financialIndicators, err := indicatorService.GetChartIndicators(&chartDTO, candles)
+	financialIndicators, err := indicatorService.GetChartIndicators(chartDTO, candles)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 3, len(financialIndicators))
 
@@ -146,7 +146,7 @@ func TestGetChartStrategy_GetChartStrategies(t *testing.T) {
 			LocalCurrency: ctx.User.LocalCurrency},
 		Indicators: financialIndicators}
 
-	tradingStrategies, err := strategyService.GetChartStrategies(&chartDTO, params, candles)
+	tradingStrategies, err := strategyService.GetChartStrategies(chartDTO, params, candles)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(tradingStrategies))
 	assert.Equal(t, tradingStrategies[0].GetRequiredIndicators(),

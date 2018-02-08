@@ -12,6 +12,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/util"
 	"github.com/op/go-logging"
 )
@@ -60,7 +61,6 @@ func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
 	if err != nil {
 		if strings.Contains(err.Error(), "granularity too small for the requested time range") {
 			_gdax.logger.Debug("[GDAX.GetPriceHistory] Result set too big; chunking into smaller requests...")
-			var candles []common.Candlestick
 			diff := end.Sub(start)
 			days := int(diff.Hours() / 24)
 			var newEnd time.Time
@@ -70,14 +70,15 @@ func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
 				_gdax.logger.Debugf("[GDAX.GetPriceHistory] newStart=%s, newEnd=%s", util.FormatDate(newStart), util.FormatDate(newEnd))
 				sticks := _gdax.GetPriceHistory(currencyPair, newStart, newEnd, granularity)
 				sticks = _gdax.reverseCandlesticks(sticks)
-				candles = append(candles, sticks...)
-			} /*
-				finalStart := start.AddDate(0, 0, days)
-				finalEnd := start.AddDate(0, 0, days).Add(time.Hour*23 + time.Minute*59 + time.Second*59)
-				_gdax.logger.Debugf("[GDAX.GetPriceHistory] finalStart=%s, finalEnd=%s", util.FormatDate(finalStart), util.FormatDate(finalEnd))
-				sticks := _gdax.GetPriceHistory(currencyPair, finalStart, finalEnd, granularity)
-				candles = append(candles, sticks...)*/
-			return candles
+				candlesticks = append(candlesticks, sticks...)
+			}
+			finalStart := start.AddDate(0, 0, days)
+			finalEnd := end.AddDate(0, 0, 0).Add(time.Duration(granularity*-1) * time.Second)
+			_gdax.logger.Debugf("[GDAX.GetPriceHistory] finalStart=%s, end=%s", util.FormatDate(finalStart), util.FormatDate(finalEnd))
+			sticks := _gdax.GetPriceHistory(currencyPair, finalStart, finalEnd, granularity)
+			sticks = _gdax.reverseCandlesticks(sticks)
+			candlesticks = append(candlesticks, sticks...)
+			return candlesticks
 		} else {
 			_gdax.logger.Errorf("[GDAX.GetPriceHistory] GDAX API Error: %s", err.Error())
 			return candlesticks
@@ -127,7 +128,7 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.O
 						Quote:         _gdax.ctx.User.LocalCurrency,
 						LocalCurrency: _gdax.ctx.User.LocalCurrency}
 				}
-				orders = append(orders, common.Order{
+				orders = append(orders, &dto.OrderDTO{
 					Id:       strconv.FormatInt(int64(e.Id), 10),
 					Exchange: "gdax",
 					Date:     e.CreatedAt.Time(),

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -29,7 +30,7 @@ func TestDefaultTradingStrategy_DefaultConfig_Calculate(t *testing.T) {
 		"RelativeStrengthIndex":              new(MockRSI_StrategyCalculate),
 		"BollingerBands":                     new(MockBBands_StrategyCalculate),
 		"MovingAverageConvergenceDivergence": new(MockMACD_StrategyCalculate)}
-	lastTrade := &common.Trade{
+	lastTrade := &dto.TradeDTO{
 		Id:       1,
 		ChartId:  1,
 		Base:     "BTC",

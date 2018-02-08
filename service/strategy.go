@@ -3,14 +3,13 @@ package service
 import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
-	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/mapper"
 )
 
 type StrategyService interface {
-	GetPlatformStrategy(name string) (dto.PlatformStrategy, error)
-	GetChartStrategy(chart *common.Chart, name string, candles []common.Candlestick) (common.TradingStrategy, error)
-	GetChartStrategies(chart *common.Chart, params *common.TradingStrategyParams, candles []common.Candlestick) ([]common.TradingStrategy, error)
+	GetStrategy(name string) (common.Strategy, error)
+	GetChartStrategy(chart common.Chart, name string, candles []common.Candlestick) (common.TradingStrategy, error)
+	GetChartStrategies(chart common.Chart, params *common.TradingStrategyParams, candles []common.Candlestick) ([]common.TradingStrategy, error)
 }
 
 type StrategyServiceImpl struct {
@@ -38,7 +37,7 @@ func NewStrategyService(ctx *common.Context, strategyDAO dao.StrategyDAO,
 		strategyMapper:   strategyMapper}
 }
 
-func (service *StrategyServiceImpl) GetPlatformStrategy(name string) (dto.PlatformStrategy, error) {
+func (service *StrategyServiceImpl) GetStrategy(name string) (common.Strategy, error) {
 	entity, err := service.strategyDAO.Get(name)
 	if err != nil {
 		return nil, err
@@ -46,12 +45,12 @@ func (service *StrategyServiceImpl) GetPlatformStrategy(name string) (dto.Platfo
 	return service.strategyMapper.MapStrategyEntityToDto(entity), nil
 }
 
-func (service *StrategyServiceImpl) GetChartStrategy(chart *common.Chart, name string, candles []common.Candlestick) (common.TradingStrategy, error) {
+func (service *StrategyServiceImpl) GetChartStrategy(chart common.Chart, name string, candles []common.Candlestick) (common.TradingStrategy, error) {
 	financialIndicators, err := service.indicatorService.GetChartIndicators(chart, candles)
 	if err != nil {
 		return nil, err
 	}
-	strategy, err := service.GetPlatformStrategy(name)
+	strategy, err := service.GetStrategy(name)
 	if err != nil {
 		return nil, err
 	}
@@ -59,28 +58,29 @@ func (service *StrategyServiceImpl) GetChartStrategy(chart *common.Chart, name s
 	if err != nil {
 		return nil, err
 	}
-	tradeLen := len(chart.Trades)
-	lastTrade := chart.Trades[tradeLen-1]
+	trades := chart.GetTrades()
+	tradeLen := len(trades)
+	lastTrade := trades[tradeLen-1]
 	params := common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{
-			Base:          chart.Base,
-			Quote:         chart.Quote,
+			Base:          chart.GetBase(),
+			Quote:         chart.GetQuote(),
 			LocalCurrency: service.ctx.User.LocalCurrency},
-		LastTrade:  &lastTrade,
+		LastTrade:  lastTrade,
 		Indicators: financialIndicators}
 	return constructor(&params)
 }
 
-func (service *StrategyServiceImpl) GetChartStrategies(chart *common.Chart, params *common.TradingStrategyParams,
+func (service *StrategyServiceImpl) GetChartStrategies(chart common.Chart, params *common.TradingStrategyParams,
 	candles []common.Candlestick) ([]common.TradingStrategy, error) {
 	var strategies []common.TradingStrategy
-	daoChart := service.chartMapper.MapChartDtoToEntity(*chart)
+	daoChart := service.chartMapper.MapChartDtoToEntity(chart)
 	strategyEntities, err := service.chartStrategyDAO.Find(daoChart)
 	if err != nil {
 		return nil, err
 	}
 	for _, strategyEntity := range strategyEntities {
-		platformStrategy, err := service.GetPlatformStrategy(strategyEntity.GetName())
+		platformStrategy, err := service.GetStrategy(strategyEntity.GetName())
 		if err != nil {
 			return nil, err
 		}

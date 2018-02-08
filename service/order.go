@@ -32,7 +32,7 @@ func (os OrderServiceImpl) GetOrderHistory() []common.Order {
 		orders = append(orders, ex.GetOrderHistory(currencyPair)...)
 	}
 	sort.Slice(orders, func(i, j int) bool {
-		return orders[i].Date.Before(orders[j].Date)
+		return orders[i].GetDate().Before(orders[j].GetDate())
 	})
 	return orders
 }

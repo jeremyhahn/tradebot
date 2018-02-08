@@ -2,6 +2,7 @@ package test
 
 import (
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
 )
 
 type StrategyTestHelper struct{}
@@ -19,8 +20,8 @@ func (h *StrategyTestHelper) CreateBalances() []common.Coin {
 			Price:     1.00}}
 }
 
-func (h *StrategyTestHelper) CreateLastTrade() *common.Trade {
-	return &common.Trade{
+func (h *StrategyTestHelper) CreateLastTrade() common.Trade {
+	return &dto.TradeDTO{
 		Id:       1,
 		ChartId:  1,
 		Base:     "BTC",

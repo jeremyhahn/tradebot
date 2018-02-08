@@ -114,7 +114,7 @@ func (strategy *DefaultTradingStrategy) Analyze() (bool, bool, map[string]string
 
 func (strategy *DefaultTradingStrategy) CalculateFeeAndTax(price float64) (float64, float64) {
 	var tax float64
-	diff := price - strategy.params.LastTrade.Price
+	diff := price - strategy.params.LastTrade.GetPrice()
 	if strategy.config.Tax > 0 && diff > 0 {
 		tax = diff * strategy.config.Tax
 	}
@@ -151,11 +151,11 @@ func (strategy *DefaultTradingStrategy) GetTradeAmounts() (float64, float64) {
 func (strategy *DefaultTradingStrategy) minSellPrice() float64 {
 	var profitMargin float64
 	if strategy.config.ProfitMarginMinPercent > 0 {
-		profitMargin = strategy.params.LastTrade.Price * strategy.config.ProfitMarginMinPercent
+		profitMargin = strategy.params.LastTrade.GetPrice() * strategy.config.ProfitMarginMinPercent
 	} else {
 		profitMargin = strategy.config.ProfitMarginMin
 	}
-	price := strategy.params.LastTrade.Price + profitMargin
+	price := strategy.params.LastTrade.GetPrice() + profitMargin
 	fee, tax := strategy.CalculateFeeAndTax(price)
 	return price + fee + tax
 }
@@ -203,7 +203,7 @@ func (strategy *DefaultTradingStrategy) buy() error {
 }
 
 func (strategy *DefaultTradingStrategy) sell() error {
-	if strategy.params.LastTrade.Type == "sell" {
+	if strategy.params.LastTrade.GetType() == "sell" {
 		return errors.New("Aborting sale. Buy position required")
 	}
 	minPrice := strategy.minSellPrice()

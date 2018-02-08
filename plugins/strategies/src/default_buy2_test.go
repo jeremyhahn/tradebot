@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -36,7 +37,7 @@ func TestDefaultTradingStrategy_DefaultConfig_Buy2(t *testing.T) {
 		common.Coin{
 			Currency:  "USD",
 			Available: 0.0}}
-	lastTrade := &common.Trade{
+	lastTrade := &dto.TradeDTO{
 		Id:       1,
 		ChartId:  1,
 		Base:     "BTC",

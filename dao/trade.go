@@ -13,7 +13,6 @@ type TradeDAO interface {
 	Find(user *common.User) []Trade
 	FindByChart(chart ChartEntity) []Trade
 	GetLastTrade(chart ChartEntity) *Trade
-	TradeEntity
 }
 
 type TradeDAOImpl struct {
@@ -47,6 +46,7 @@ type Trade struct {
 	Price     float64
 	Amount    float64
 	ChartData string
+	TradeEntity
 }
 
 func NewTradeDAO(ctx *common.Context) TradeDAO {

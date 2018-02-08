@@ -12,6 +12,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/op/go-logging"
 )
 
@@ -191,7 +192,7 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Or
 		}
 		qty, _ := strconv.ParseFloat(o.Quantity, 64)
 		p, _ := strconv.ParseFloat(o.Price, 64)
-		_orders = append(_orders, common.Order{
+		_orders = append(_orders, &dto.OrderDTO{
 			Id:       strconv.FormatInt(int64(o.ID), 10),
 			Exchange: "binance",
 			Type:     orderType,
