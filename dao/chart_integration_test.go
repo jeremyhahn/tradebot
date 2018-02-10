@@ -1,10 +1,11 @@
-// +build integration
+//// +build integration
 
 package dao
 
 import (
 	"testing"
 
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,10 +13,10 @@ func TestChartDAO(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	chartDAO := NewChartDAO(ctx)
 
-	daoUser := User{
-		Id:            ctx.User.Id,
-		Username:      ctx.User.Username,
-		LocalCurrency: ctx.User.LocalCurrency}
+	daoUser := &entity.User{
+		Id:            ctx.User.GetId(),
+		Username:      ctx.User.GetUsername(),
+		LocalCurrency: ctx.User.GetLocalCurrency()}
 
 	chart := createIntegrationTestChart(ctx)
 	indicators := chart.GetIndicators()
@@ -85,15 +86,12 @@ func TestChartDAO_Find(t *testing.T) {
 	chartDAO := NewChartDAO(ctx)
 
 	chart := createIntegrationTestChart(ctx)
-	chartDAO.Create(chart)
-
-	chart2 := createIntegrationTestChart(ctx)
-	chart2.Base = "ETH"
-	chartDAO.Create(chart2)
+	err := chartDAO.Create(chart)
+	assert.Nil(t, err)
 
 	charts, err := chartDAO.Find(ctx.User)
 	assert.Equal(t, nil, err)
-	assert.Equal(t, 2, len(charts))
+	assert.Equal(t, 1, len(charts))
 
 	CleanupIntegrationTest()
 }

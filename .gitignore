@@ -11,3 +11,4 @@ webui/yarn-error.log
 webui/public/scripts
 **/*.so
 ssl/*
+test/ethereum/blockchain/*

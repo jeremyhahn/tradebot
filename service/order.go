@@ -24,8 +24,8 @@ func (os DefaultOrderService) GetOrderHistory() []common.Order {
 	// TODO: Look up currency pairs from DB
 	currencyPair := &common.CurrencyPair{
 		Base:          "BTC",
-		Quote:         os.ctx.User.LocalCurrency,
-		LocalCurrency: os.ctx.User.LocalCurrency}
+		Quote:         os.ctx.User.GetLocalCurrency(),
+		LocalCurrency: os.ctx.User.GetLocalCurrency()}
 
 	exchanges := os.exchangeService.GetExchanges(os.ctx.User)
 	for _, ex := range exchanges {

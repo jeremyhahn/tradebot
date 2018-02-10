@@ -9,6 +9,8 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	logging "github.com/op/go-logging"
@@ -36,13 +38,13 @@ func NewIntegrationTestContext() *common.Context {
 	TEST_CONTEXT = &common.Context{
 		DB:     db,
 		Logger: logger,
-		User: &common.User{
+		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,
 			LocalCurrency: "USD"}}
 
 	userDAO := dao.NewUserDAO(TEST_CONTEXT)
-	userDAO.Save(&dao.User{Username: TEST_USERNAME, LocalCurrency: "USD"})
+	userDAO.Save(&entity.User{Username: TEST_USERNAME, LocalCurrency: "USD"})
 
 	return TEST_CONTEXT
 }
@@ -55,27 +57,27 @@ func CleanupIntegrationTest() {
 	}
 }
 
-func createIntegrationTestChart(ctx *common.Context) *dao.Chart {
-	userIndicators := []dao.ChartIndicator{
-		dao.ChartIndicator{
+func createIntegrationTestChart(ctx *common.Context) entity.ChartEntity {
+	userIndicators := []entity.ChartIndicator{
+		entity.ChartIndicator{
 			Name:       "RelativeStrengthIndex",
 			Parameters: "14,70,30"},
-		dao.ChartIndicator{
+		entity.ChartIndicator{
 			Name:       "BollingerBands",
 			Parameters: "20,2"},
-		dao.ChartIndicator{
+		entity.ChartIndicator{
 			Name:       "MovingAverageConvergenceDivergence",
 			Parameters: "12,26,9"}}
 
-	userStrategies := []dao.ChartStrategy{
-		dao.ChartStrategy{
+	userStrategies := []entity.ChartStrategy{
+		entity.ChartStrategy{
 			ChartId:    1,
 			Name:       "DefaultTradingStrategy",
 			Parameters: "1,2,3"}}
 
-	trades := []dao.Trade{
-		dao.Trade{
-			UserId:    ctx.User.Id,
+	trades := []entity.Trade{
+		entity.Trade{
+			UserId:    ctx.User.GetId(),
 			Base:      "BTC",
 			Quote:     "USD",
 			Exchange:  "Test",
@@ -84,8 +86,8 @@ func createIntegrationTestChart(ctx *common.Context) *dao.Chart {
 			Amount:    2,
 			Price:     10000,
 			ChartData: "test-trade-1"},
-		dao.Trade{
-			UserId:    ctx.User.Id,
+		entity.Trade{
+			UserId:    ctx.User.GetId(),
 			Base:      "BTC",
 			Quote:     "USD",
 			Exchange:  "Test",
@@ -95,8 +97,8 @@ func createIntegrationTestChart(ctx *common.Context) *dao.Chart {
 			Price:     12000,
 			ChartData: "test-trade-2"}}
 
-	chart := &dao.Chart{
-		UserId:     ctx.User.Id,
+	chart := &entity.Chart{
+		UserId:     ctx.User.GetId(),
 		Base:       "BTC",
 		Quote:      "USD",
 		Exchange:   "gdax",

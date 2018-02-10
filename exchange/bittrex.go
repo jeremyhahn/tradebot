@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/entity"
 	logging "github.com/op/go-logging"
 	bittrex "github.com/toorop/go-bittrex"
 )
@@ -24,10 +24,10 @@ type Bittrex struct {
 	common.Exchange
 }
 
-func NewBittrex(ctx *common.Context, btx *dao.UserCryptoExchange) common.Exchange {
+func NewBittrex(ctx *common.Context, btx entity.UserExchangeEntity) common.Exchange {
 	return &Bittrex{
 		ctx:        ctx,
-		client:     bittrex.New(btx.Key, btx.Secret),
+		client:     bittrex.New(btx.GetKey(), btx.GetExtra()),
 		logger:     ctx.Logger,
 		name:       "bittrex",
 		tradingFee: .025}
@@ -106,8 +106,8 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 	}
 	btcCurrencyPair := &common.CurrencyPair{
 		Base:          "BTC",
-		Quote:         b.ctx.User.LocalCurrency,
-		LocalCurrency: b.ctx.User.LocalCurrency}
+		Quote:         b.ctx.User.GetLocalCurrency(),
+		LocalCurrency: b.ctx.User.GetLocalCurrency()}
 	localizedBtcCurrencyPair := b.localizedCurrencyPair(btcCurrencyPair)
 	for _, bal := range balances {
 		var currency string
@@ -151,7 +151,7 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 				b.logger.Errorf("[Binance.GetBalances] %s", err.Error())
 			}
 			sum += t
-			coins = append(coins, common.Coin{
+			coins = append(coins, &dto.CoinDTO{
 				Currency:  bal.Currency,
 				Available: balance,
 				Balance:   balance,
@@ -165,7 +165,7 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 				b.logger.Errorf("[Bittrex.GetBalances] %s", err.Error())
 			}
 			sum += t
-			coins = append(coins, common.Coin{
+			coins = append(coins, &dto.CoinDTO{
 				Address:   bal.CryptoAddress,
 				Available: avail,
 				Balance:   balance,
@@ -182,8 +182,8 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 func (b *Bittrex) getBitcoinPrice() float64 {
 	currencyPair := &common.CurrencyPair{
 		Base:          "BTC",
-		Quote:         b.ctx.User.LocalCurrency,
-		LocalCurrency: b.ctx.User.LocalCurrency}
+		Quote:         b.ctx.User.GetLocalCurrency(),
+		LocalCurrency: b.ctx.User.GetLocalCurrency()}
 	localizedCurrencyPair := b.localizedCurrencyPair(currencyPair)
 	symbol := fmt.Sprintf("%s-%s", localizedCurrencyPair.Base, localizedCurrencyPair.Quote)
 	summary, err := b.client.GetMarketSummary(symbol)
@@ -206,16 +206,16 @@ func (b *Bittrex) GetExchange() common.CryptoExchange {
 	satoshis := 0.0
 	balances, _ := b.GetBalances()
 	for _, c := range balances {
-		if c.Currency == "BTC" { // TODO
-			total += c.Total
+		if c.GetCurrency() == "BTC" { // TODO
+			total += c.GetTotal()
 		} else {
-			satoshis += c.Price * c.Balance
-			total += c.Total
+			satoshis += c.GetPrice() * c.GetBalance()
+			total += c.GetTotal()
 		}
 	}
 	f, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
 	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-	exchange := common.CryptoExchange{
+	exchange := &dto.CryptoExchangeDTO{
 		Name:     b.name,
 		URL:      "https://www.bittrex.com",
 		Total:    t,

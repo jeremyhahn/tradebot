@@ -19,7 +19,7 @@ func TestProfitDAO(t *testing.T) {
 	chartDAO.Create(chart)
 
 	profit := &Profit{
-		UserId:   ctx.User.Id,
+		UserId:   ctx.User.GetId(),
 		TradeId:  trades[0].GetId(),
 		Quantity: 1,
 		Bought:   trades[0].GetPrice(),
@@ -34,7 +34,7 @@ func TestProfitDAO(t *testing.T) {
 	persisted, exErr := profitDAO.GetByTrade(&trades[0])
 	assert.Equal(t, nil, exErr)
 	assert.Equal(t, uint(1), persisted.GetId())
-	assert.Equal(t, ctx.User.Id, persisted.GetUserId())
+	assert.Equal(t, ctx.User.GetId(), persisted.GetUserId())
 	assert.Equal(t, profit.TradeId, persisted.GetTradeId())
 	assert.Equal(t, profit.Quantity, persisted.GetQuantity())
 	assert.Equal(t, profit.Bought, persisted.GetBought())
@@ -47,7 +47,7 @@ func TestProfitDAO(t *testing.T) {
 	assert.Equal(t, nil, exErr2)
 	assert.Equal(t, 1, len(persisted2))
 	assert.Equal(t, uint(1), persisted2[0].GetId())
-	assert.Equal(t, ctx.User.Id, persisted2[0].GetUserId())
+	assert.Equal(t, ctx.User.GetId(), persisted2[0].GetUserId())
 	assert.Equal(t, profit.TradeId, persisted2[0].GetTradeId())
 	assert.Equal(t, profit.Quantity, persisted2[0].GetQuantity())
 	assert.Equal(t, profit.Bought, persisted2[0].GetBought())

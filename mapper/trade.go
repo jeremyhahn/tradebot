@@ -2,13 +2,13 @@ package mapper
 
 import (
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/entity"
 )
 
 type TradeMapper interface {
-	MapTradeEntityToDto(entity dao.TradeEntity) common.Trade
-	MapTradeDtoToEntity(dto common.Trade) dao.TradeEntity
+	MapTradeEntityToDto(entity entity.TradeEntity) common.Trade
+	MapTradeDtoToEntity(dto common.Trade) entity.TradeEntity
 }
 
 type DefaultTradeMapper struct {
@@ -18,7 +18,7 @@ func NewTradeMapper() TradeMapper {
 	return &DefaultTradeMapper{}
 }
 
-func (mapper *DefaultTradeMapper) MapTradeEntityToDto(entity dao.TradeEntity) common.Trade {
+func (mapper *DefaultTradeMapper) MapTradeEntityToDto(entity entity.TradeEntity) common.Trade {
 	return &dto.TradeDTO{
 		Id:        entity.GetId(),
 		ChartId:   entity.GetChartId(),
@@ -33,8 +33,8 @@ func (mapper *DefaultTradeMapper) MapTradeEntityToDto(entity dao.TradeEntity) co
 		ChartData: entity.GetChartData()}
 }
 
-func (mapper *DefaultTradeMapper) MapTradeDtoToEntity(dto common.Trade) dao.TradeEntity {
-	return &dao.Trade{
+func (mapper *DefaultTradeMapper) MapTradeDtoToEntity(dto common.Trade) entity.TradeEntity {
+	return &entity.Trade{
 		Id:        dto.GetId(),
 		ChartId:   dto.GetChartId(),
 		UserId:    dto.GetUserId(),

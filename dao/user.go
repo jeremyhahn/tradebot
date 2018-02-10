@@ -2,125 +2,114 @@ package dao
 
 import (
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/entity"
 )
 
-type IUser interface {
+type UserDAO interface {
 	GetUsername() string
+	GetById(userId uint) (entity.UserEntity, error)
+	GetByName(username string) (entity.UserEntity, error)
+	Create(user *entity.User) error
+	Save(user *entity.User) error
+	Update(user *entity.User) error
+	Find() ([]entity.User, error)
+	GetWallets(user *entity.User) []entity.UserWallet
+	GetWallet(user *entity.User, currency string) entity.UserWalletEntity
+	GetExchanges(user *entity.User) []entity.UserCryptoExchange
+	GetExchange(user *entity.User, name string) *entity.UserCryptoExchange
 }
 
-type UserDAO struct {
-	ctx   *common.Context
-	Users []User
-	IUser
+type UserDAOImpl struct {
+	ctx *common.Context
+	UserDAO
 }
 
-type User struct {
-	Id            uint   `gorm:"primary_key;AUTO_INCREMENT"`
-	Username      string `gorm:"type:varchar(100);unique_index"`
-	LocalCurrency string `gorm:"type:varchar(5)"`
-	Charts        []Chart
-	Wallets       []UserWallet
-	Exchanges     []UserCryptoExchange
+func NewUserDAO(ctx *common.Context) UserDAO {
+	ctx.DB.AutoMigrate(&entity.User{})
+	ctx.DB.AutoMigrate(&entity.UserWallet{})
+	ctx.DB.AutoMigrate(&entity.UserCryptoExchange{})
+	return &UserDAOImpl{ctx: ctx}
 }
 
-type UserWallet struct {
-	UserID   uint
-	Currency string `gorm:"primary_key"`
-	Address  string `gorm:"unique_index"`
+func CreateUserDAO(ctx *common.Context, user common.User) UserDAO {
+	ctx.DB.AutoMigrate(&entity.User{})
+	ctx.DB.AutoMigrate(&entity.UserWallet{})
+	ctx.DB.AutoMigrate(&entity.UserCryptoExchange{})
+	ctx.SetUser(user)
+	return &UserDAOImpl{ctx: ctx}
 }
 
-type UserCryptoExchange struct {
-	UserID uint
-	Name   string `gorm:"primary_key"`
-	URL    string `gorm:"not null" sql:"type:varchar(255)"`
-	Key    string `gorm:"not null" sql:"type:varchar(255)"`
-	Secret string `gorm:"not null" sql:"type:text"`
-	Extra  string `gorm:"not null" sql:"type:varchar(255)"`
-}
-
-func NewUserDAO(ctx *common.Context) *UserDAO {
-	ctx.DB.AutoMigrate(&User{})
-	ctx.DB.AutoMigrate(&UserWallet{})
-	ctx.DB.AutoMigrate(&UserCryptoExchange{})
-	return &UserDAO{
-		ctx:   ctx,
-		Users: make([]User, 0)}
-}
-
-func CreateUserDAO(ctx *common.Context, user *common.User) *UserDAO {
-	ctx.DB.AutoMigrate(&User{})
-	ctx.DB.AutoMigrate(&UserWallet{})
-	ctx.DB.AutoMigrate(&UserCryptoExchange{})
-	ctx.User = user
-	return &UserDAO{
-		ctx:   ctx,
-		Users: make([]User, 0)}
-}
-
-func (dao *UserDAO) GetById(userId uint) *common.User {
-	var user User
+func (dao *UserDAOImpl) GetById(userId uint) (entity.UserEntity, error) {
+	var user entity.User
 	user.Id = userId
 	if err := dao.ctx.DB.First(&user, userId).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.GetById] Error: %s", err.Error())
+		return nil, err
 	}
-	return &common.User{
-		Id:            user.Id,
-		Username:      user.Username,
-		LocalCurrency: user.LocalCurrency}
+	return &user, nil
 }
 
-func (dao *UserDAO) GetByName(username string) *common.User {
-	var user User
-	user.Username = username
+func (dao *UserDAOImpl) GetByName(username string) (entity.UserEntity, error) {
+	var user entity.User
 	if err := dao.ctx.DB.Where("username = ?", username).First(&user).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.GetByName] Error: %s", err.Error())
+		return nil, err
 	}
-	return &common.User{
-		Id:            user.Id,
-		Username:      user.Username,
-		LocalCurrency: user.LocalCurrency}
+	return &user, nil
 }
 
-func (dao *UserDAO) Create(user *User) bool {
-	return dao.ctx.DB.NewRecord(user)
+func (dao *UserDAOImpl) Create(user *entity.User) error {
+	if err := dao.ctx.DB.Create(user).Error; err != nil {
+		dao.ctx.Logger.Errorf("[UserDAO.Create] Error:%s", err.Error())
+		return err
+	}
+	return nil
 }
 
-func (dao *UserDAO) Save(user *User) {
+func (dao *UserDAOImpl) Save(user *entity.User) error {
 	if err := dao.ctx.DB.Save(user).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.Save] Error:%s", err.Error())
+		return err
 	}
+	return nil
 }
 
-func (dao *UserDAO) GetWallets(user *common.User) []UserWallet {
-	var wallets []UserWallet
-	daoUser := &User{Id: user.Id, Username: user.Username}
-	if err := dao.ctx.DB.Model(daoUser).Related(&wallets).Error; err != nil {
+func (dao *UserDAOImpl) Find() ([]entity.User, error) {
+	var users []entity.User
+	if err := dao.ctx.DB.Find(&users).Error; err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
+func (dao *UserDAOImpl) GetWallets(user *entity.User) []entity.UserWallet {
+	var wallets []entity.UserWallet
+	if err := dao.ctx.DB.Model(user).Related(&wallets).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.GetWallets] Error: %s", err.Error())
 	}
 	return wallets
 }
 
-func (dao *UserDAO) GetWallet(user *common.User, currency string) *UserWallet {
+func (dao *UserDAOImpl) GetWallet(user *entity.User, currency string) entity.UserWalletEntity {
 	wallets := dao.GetWallets(user)
 	for _, w := range wallets {
 		if w.Currency == currency {
 			return &w
 		}
 	}
-	return &UserWallet{}
+	return &entity.UserWallet{}
 }
 
-func (dao *UserDAO) GetExchanges(user *common.User) []UserCryptoExchange {
-	var exchanges []UserCryptoExchange
-	daoUser := &User{Id: user.Id}
-	if err := dao.ctx.DB.Model(daoUser).Related(&exchanges).Error; err != nil {
+func (dao *UserDAOImpl) GetExchanges(user *entity.User) []entity.UserCryptoExchange {
+	var exchanges []entity.UserCryptoExchange
+	if err := dao.ctx.DB.Model(user).Related(&exchanges).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.GetExchanges] Error: %s", err.Error())
 	}
 	return exchanges
 }
 
-func (dao *UserDAO) GetExchange(user *common.User, name string) *UserCryptoExchange {
-	var exchange UserCryptoExchange
+func (dao *UserDAOImpl) GetExchange(user *entity.User, name string) *entity.UserCryptoExchange {
+	var exchange entity.UserCryptoExchange
 	exchanges := dao.GetExchanges(user)
 	for _, ex := range exchanges {
 		if ex.Name == name {

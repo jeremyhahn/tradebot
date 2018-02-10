@@ -31,10 +31,10 @@ func TestDefaultTradingStrategy_DefaultConfig_Buy2(t *testing.T) {
 		"BollingerBands":                     new(MockBBands_StrategyBuy2),
 		"MovingAverageConvergenceDivergence": new(MockMACD_StrategyBuy2)}
 	balances := []common.Coin{
-		common.Coin{
+		&dto.CoinDTO{
 			Currency:  "BTC",
 			Available: 1.5},
-		common.Coin{
+		&dto.CoinDTO{
 			Currency:  "USD",
 			Available: 0.0}}
 	lastTrade := &dto.TradeDTO{

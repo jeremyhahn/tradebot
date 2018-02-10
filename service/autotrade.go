@@ -44,7 +44,7 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 		currencyPair := &common.CurrencyPair{
 			Base:          autoTradeChart.GetBase(),
 			Quote:         autoTradeChart.GetQuote(),
-			LocalCurrency: ats.ctx.User.LocalCurrency}
+			LocalCurrency: ats.ctx.User.GetLocalCurrency()}
 
 		indicators, err := ats.chartService.GetIndicators(autoTradeChart, candlesticks)
 		if err != nil {
@@ -97,7 +97,7 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 							return err
 						}
 						thisTrade := &dto.TradeDTO{
-							UserId:    ats.ctx.User.Id,
+							UserId:    ats.ctx.User.GetId(),
 							Exchange:  exchange.GetName(),
 							Base:      chart.GetBase(),
 							Quote:     chart.GetQuote(),
@@ -107,7 +107,7 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 							Amount:    quoteAmount,
 							ChartData: chartJSON}
 						thisProfit := &dao.Profit{
-							UserId:   ats.ctx.User.Id,
+							UserId:   ats.ctx.User.GetId(),
 							TradeId:  thisTrade.GetId(),
 							Quantity: quoteAmount,
 							Bought:   lastTrade.GetPrice(),

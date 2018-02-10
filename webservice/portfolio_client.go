@@ -16,6 +16,7 @@ type PortfolioClient struct {
 	conn             *websocket.Conn
 	send             chan *common.Portfolio
 	marketcapService *service.MarketCapService
+	userService      service.UserService
 }
 
 func (c *PortfolioClient) disconnect() {
@@ -42,7 +43,7 @@ func (c *PortfolioClient) readPump() {
 }
 
 func (c *PortfolioClient) writePump() {
-	c.service = service.NewPortfolioService(c.ctx, c.marketcapService)
+	c.service = service.NewPortfolioService(c.ctx, c.marketcapService, c.userService)
 	defer func() {
 		c.service.Stop()
 		c.conn.Close()
