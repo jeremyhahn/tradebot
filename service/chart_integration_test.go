@@ -8,6 +8,8 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/exchange"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/stretchr/testify/assert"
@@ -72,8 +74,8 @@ func TestChartDAO_GetIndicators(t *testing.T) {
 	chartDAO := dao.NewChartDAO(ctx)
 
 	chart := createChart(ctx)
-	chart.Trades = nil
-	chart.Indicators = nil
+	chart.SetTrades(nil)
+	chart.SetIndicators(nil)
 	chartDAO.Create(chart)
 
 	charts, err := chartDAO.Find(ctx.User)
@@ -101,8 +103,8 @@ func TestChartDAO_GetTrades(t *testing.T) {
 	chartDAO := dao.NewChartDAO(ctx)
 
 	chart := createChart(ctx)
-	chart.Trades = nil
-	chart.Indicators = nil
+	chart.SetTrades(nil)
+	chart.SetIndicators(nil)
 	chartDAO.Create(chart)
 
 	charts, err := chartDAO.Find(ctx.User)
@@ -132,12 +134,12 @@ func TestChartDAO_GetTrades(t *testing.T) {
 
 	lastTrade, err := chartDAO.GetLastTrade(chart)
 	assert.Equal(t, nil, err)
-	assert.Equal(t, "sell", lastTrade.Type)
-	assert.Equal(t, "BTC", lastTrade.Base)
-	assert.Equal(t, "USD", lastTrade.Quote)
-	assert.Equal(t, "gdax", lastTrade.Exchange)
-	assert.Equal(t, 1.0, lastTrade.Amount)
-	assert.Equal(t, 12000.0, lastTrade.Price)
+	assert.Equal(t, "sell", lastTrade.GetType())
+	assert.Equal(t, "BTC", lastTrade.GetBase())
+	assert.Equal(t, "USD", lastTrade.GetQuote())
+	assert.Equal(t, "gdax", lastTrade.GetExchangeName())
+	assert.Equal(t, 1.0, lastTrade.GetAmount())
+	assert.Equal(t, 12000.0, lastTrade.GetPrice())
 
 	CleanupIntegrationTest()
 }
@@ -209,23 +211,23 @@ func TestChartService_Stream(t *testing.T) {
 	CleanupMockContext()
 }*/
 
-func createChartIndicators() []dao.ChartIndicator {
-	var indicators []dao.ChartIndicator
-	indicators = append(indicators, dao.ChartIndicator{
+func createChartIndicators() []entity.ChartIndicator {
+	var indicators []entity.ChartIndicator
+	indicators = append(indicators, entity.ChartIndicator{
 		Name:       "RelativeStrengthIndex",
 		Parameters: "14,70,30"})
-	indicators = append(indicators, dao.ChartIndicator{
+	indicators = append(indicators, entity.ChartIndicator{
 		Name:       "BollingerBands",
 		Parameters: "20,2"})
-	indicators = append(indicators, dao.ChartIndicator{
+	indicators = append(indicators, entity.ChartIndicator{
 		Name:       "MovingAverageConvergenceDivergence",
 		Parameters: "12,26,9"})
 	return indicators
 }
 
-func createChartTrades() []dao.Trade {
-	var trades []dao.Trade
-	trades = append(trades, dao.Trade{
+func createChartTrades() []entity.Trade {
+	var trades []entity.Trade
+	trades = append(trades, entity.Trade{
 		Date:     time.Now().AddDate(0, 0, -20),
 		Type:     "buy",
 		Base:     "BTC",
@@ -234,7 +236,7 @@ func createChartTrades() []dao.Trade {
 		Amount:   1,
 		Price:    10000,
 		UserId:   1})
-	trades = append(trades, dao.Trade{
+	trades = append(trades, entity.Trade{
 		Date:     time.Now().AddDate(0, 0, -10),
 		Type:     "sell",
 		Base:     "BTC",
@@ -246,9 +248,9 @@ func createChartTrades() []dao.Trade {
 	return trades
 }
 
-func createChart(ctx *common.Context) *dao.Chart {
-	return &dao.Chart{
-		UserId:     ctx.User.Id,
+func createChart(ctx *common.Context) entity.ChartEntity {
+	return &entity.Chart{
+		UserId:     ctx.User.GetId(),
 		Base:       "BTC",
 		Quote:      "USD",
 		Exchange:   "gdax",
@@ -283,21 +285,21 @@ func (mcs *MockExchange_Chart) SubscribeToLiveFeed(currencyPair *common.Currency
 		Satoshis: 0.12345678}
 }
 
-func (mes *MockExchangeService_Chart) CreateExchange(user *common.User, exchangeName string) common.Exchange {
+func (mes *MockExchangeService_Chart) CreateExchange(user common.User, exchangeName string) common.Exchange {
 	return new(MockExchange_Chart)
 }
 
-func (mes *MockExchangeService_Chart) GetExchange(user *common.User, exchangeName string) common.Exchange {
+func (mes *MockExchangeService_Chart) GetExchange(user common.User, exchangeName string) common.Exchange {
 	return new(MockExchange_Chart)
 }
 
-func (mes *MockExchangeService_Chart) GetExchanges(user *common.User) []common.Exchange {
+func (mes *MockExchangeService_Chart) GetExchanges(user common.User) []common.Exchange {
 	ctx := &common.Context{
-		User: &common.User{
+		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,
 			LocalCurrency: "USD"}}
-	testExchange := &dao.UserCryptoExchange{
+	testExchange := &entity.UserCryptoExchange{
 		Name:   "Test Exchange",
 		URL:    "https://www.example.com",
 		Key:    "ABC123",

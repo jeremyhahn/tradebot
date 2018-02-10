@@ -25,6 +25,9 @@ import Exchanges from 'app/ui/pages/Exchanges';
 import Settings from 'app/ui/pages/Settings';
 import Chart from 'app/ui/pages/Chart';
 import OrderHistory from 'app/ui/pages/OrderHistory';
+//import Login from 'app/ui/pages/Login';
+import Register from 'app/ui/pages/Register';
+
 import { install } from 'offline-plugin/runtime';
 
 const muiTheme = createMuiTheme({
@@ -50,13 +53,15 @@ render(
 	<MuiThemeProvider theme={muiTheme}>
 
 		<DefaultLayout>
-			<Route exact path="/" component={ Portfolio } />
+			<Route exact path="/" component={ Register } />
 			<Switch>
 				<Route exact path="/portfolio" component={ Portfolio } />
 				<Route exact path="/orders" component={ OrderHistory } />
 				<Route exact path="/exchanges" component={ Exchanges } />
 				<Route exact path="/chart" component={ Chart } />
 				<Route exact path="/settings" component={ Settings } />
+
+        <Route exact path="/register" component={ Register } />
 			</Switch>
 		</DefaultLayout>
 

@@ -5,6 +5,7 @@ package dao
 import (
 	"testing"
 
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,14 +15,14 @@ func TestChartStrategyDAO(t *testing.T) {
 	chartDAO := NewChartDAO(ctx)
 	chartStrategyDAO := NewChartStrategyDAO(ctx)
 
-	chartStrategies := []ChartStrategy{
-		ChartStrategy{
+	chartStrategies := []entity.ChartStrategy{
+		entity.ChartStrategy{
 			ChartId:    1,
 			Name:       "DefaultTradingStrategy",
 			Parameters: "1,2,3"}}
 
-	chart := &Chart{
-		UserId:    ctx.User.Id,
+	chart := &entity.Chart{
+		UserId:    ctx.User.GetId(),
 		Base:      "BTC",
 		Quote:     "USD",
 		Exchange:  "gdax",

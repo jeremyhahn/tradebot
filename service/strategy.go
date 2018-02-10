@@ -65,7 +65,7 @@ func (service *DefaultStrategyService) GetChartStrategy(chart common.Chart, name
 		CurrencyPair: &common.CurrencyPair{
 			Base:          chart.GetBase(),
 			Quote:         chart.GetQuote(),
-			LocalCurrency: service.ctx.User.LocalCurrency},
+			LocalCurrency: service.ctx.User.GetLocalCurrency()},
 		LastTrade:  lastTrade,
 		Indicators: financialIndicators}
 	return constructor(&params)

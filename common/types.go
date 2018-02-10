@@ -17,24 +17,6 @@ const (
 	CANDLESTICK_MIN_LOAD  = 250
 )
 
-type Context struct {
-	Logger *logging.Logger
-	DB     *gorm.DB
-	User   *User
-	Debug  bool
-	SSL    bool
-}
-
-type TradingStrategyParams struct {
-	CurrencyPair *CurrencyPair
-	Balances     []Coin
-	Indicators   map[string]FinancialIndicator
-	NewPrice     float64
-	LastTrade    Trade
-	TradeFee     float64
-	Config       []string
-}
-
 type Indicator interface {
 	GetName() string
 	GetFilename() string
@@ -138,6 +120,128 @@ type ChartTradingStrategy interface {
 	GetRequiredIndicators() string
 }
 
+type Wallet interface {
+	GetBalance() CryptoWallet
+}
+
+type PriceListener interface {
+	OnPriceChange(priceChange *PriceChange)
+}
+
+type PeriodListener interface {
+	OnPeriodChange(candlestick *Candlestick)
+}
+
+type Exchange interface {
+	GetName() string
+	GetBalances() ([]Coin, float64)
+	GetExchange() CryptoExchange
+	GetNetWorth() float64
+	GetTradingFee() float64
+	SubscribeToLiveFeed(currencyPair *CurrencyPair, price chan PriceChange)
+	GetPrice(currencyPair *CurrencyPair) float64
+	GetPriceHistory(currencyPair *CurrencyPair, start, end time.Time, granularity int) []Candlestick
+	GetOrderHistory(currencyPair *CurrencyPair) []Order
+	FormattedCurrencyPair(currencyPair *CurrencyPair) string
+}
+
+type User interface {
+	GetId() uint
+	GetUsername() string
+	GetLocalCurrency() string
+	GetEtherbase() string
+	GetKeystore() string
+	SetEtherbase(etherbase string)
+	SetKeystore(keystore string)
+}
+
+type CryptoExchange interface {
+	GetName() string
+	GetURL() string
+	GetTotal() float64
+	GetSatoshis() float64
+	GetCoins() []Coin
+}
+
+type Coin interface {
+	GetCurrency() string
+	GetBalance() float64
+	GetAvailable() float64
+	GetPending() float64
+	GetPrice() float64
+	GetAddress() string
+	GetTotal() float64
+	GetBTC() float64
+	IsBitcoin() bool
+}
+
+type CryptoExchangeList interface {
+	GetExchanges() []CryptoExchange
+	GetNetWorth() float64
+}
+
+type CryptoWallet interface {
+	GetAddress() string
+	GetBalance() float64
+	GetCurrency() string
+	GetNetWorth() float64
+}
+
+type Portfolio interface {
+	GetUser() User
+	GetNetWorth() float64
+	GetExchanges() []CryptoExchange
+	GetWallets() []CryptoWallet
+}
+
+type Context struct {
+	Logger *logging.Logger
+	DB     *gorm.DB
+	User   User
+	Debug  bool
+	SSL    bool
+}
+
+type TradingStrategyParams struct {
+	CurrencyPair *CurrencyPair
+	Balances     []Coin
+	Indicators   map[string]FinancialIndicator
+	NewPrice     float64
+	LastTrade    Trade
+	TradeFee     float64
+	Config       []string
+}
+
+type CurrencyPair struct {
+	Base          string `json:"base"`
+	Quote         string `json:"quote"`
+	LocalCurrency string `json:"local_currency"`
+}
+
+type PriceChange struct {
+	Exchange     string        `json:"exchange"`
+	CurrencyPair *CurrencyPair `json:"currencyPair"`
+	Satoshis     float64       `json:"satoshis"`
+	Price        float64       `json:"price"`
+}
+
+type ChartData struct {
+	CurrencyPair CurrencyPair      `json:"currency"`
+	Exchange     string            `json:"exchange"`
+	Price        float64           `json:"price"`
+	Satoshis     float64           `json:"satoshis"`
+	Indicators   map[string]string `json:"indicators"`
+}
+
+type GlobalMarketCap struct {
+	TotalMarketCapUSD float64 `json:"total_market_cap_usd"`
+	Total24HVolumeUSD float64 `json:"total_24h_volume_usd"`
+	BitcoinDominance  float64 `json:"bitcoin_percentage_of_market_cap"`
+	ActiveCurrencies  float64 `json:"active_currencies"`
+	ActiveMarkets     float64 `json:"active_markets"`
+	LastUpdated       int64   `json:"last_updated"`
+}
+
 type MarketCap struct {
 	Id               string `json:"id"`
 	Name             string `json:"name"`
@@ -154,92 +258,4 @@ type MarketCap struct {
 	PercentChange24h string `json:"percent_change_24h"`
 	PercentChange7d  string `json:"percent_change_7d"`
 	LastUpdated      string `json:"last_updated"`
-}
-
-type GlobalMarketCap struct {
-	TotalMarketCapUSD float64 `json:"total_market_cap_usd"`
-	Total24HVolumeUSD float64 `json:"total_24h_volume_usd"`
-	BitcoinDominance  float64 `json:"bitcoin_percentage_of_market_cap"`
-	ActiveCurrencies  float64 `json:"active_currencies"`
-	ActiveMarkets     float64 `json:"active_markets"`
-	LastUpdated       int64   `json:"last_updated"`
-}
-
-type Wallet interface {
-	GetBalance() CryptoWallet
-}
-
-type CryptoWallet struct {
-	Address  string  `json:"address"`
-	Balance  float64 `json:"balance"`
-	Currency string  `json:"currency"`
-	NetWorth float64 `json:"net_worth"`
-}
-
-type User struct {
-	Id            uint   `json:"id"`
-	Username      string `json:"username"`
-	LocalCurrency string `json:"local_currency"`
-}
-
-type CurrencyPair struct {
-	Base          string `json:"base"`
-	Quote         string `json:"quote"`
-	LocalCurrency string `json:"local_currency"`
-}
-
-type Portfolio struct {
-	User      *User            `json:"user"`
-	NetWorth  float64          `json:"net_worth"`
-	Exchanges []CryptoExchange `json:"exchanges"`
-	Wallets   []CryptoWallet   `json:"wallets"`
-}
-
-type PriceChange struct {
-	Exchange     string        `json:"exchange"`
-	CurrencyPair *CurrencyPair `json:"currencyPair"`
-	Satoshis     float64       `json:"satoshis"`
-	Price        float64       `json:"price"`
-}
-
-type CryptoExchange struct {
-	Name     string  `json:"name"`
-	URL      string  `json:"url"`
-	Total    float64 `json:"total"`
-	Satoshis float64 `json:"satoshis"`
-	Coins    []Coin  `json:"coins"`
-}
-
-type CryptoExchangeList struct {
-	Exchanges []CryptoExchange `json:"exchange"`
-	NetWorth  float64          `json:"net_worth"`
-}
-
-type Exchange interface {
-	GetName() string
-	GetBalances() ([]Coin, float64)
-	GetExchange() CryptoExchange
-	GetNetWorth() float64
-	GetTradingFee() float64
-	SubscribeToLiveFeed(currencyPair *CurrencyPair, price chan PriceChange)
-	GetPrice(currencyPair *CurrencyPair) float64
-	GetPriceHistory(currencyPair *CurrencyPair, start, end time.Time, granularity int) []Candlestick
-	GetOrderHistory(currencyPair *CurrencyPair) []Order
-	FormattedCurrencyPair(currencyPair *CurrencyPair) string
-}
-
-type ChartData struct {
-	CurrencyPair CurrencyPair      `json:"currency"`
-	Exchange     string            `json:"exchange"`
-	Price        float64           `json:"price"`
-	Satoshis     float64           `json:"satoshis"`
-	Indicators   map[string]string `json:"indicators"`
-}
-
-type PriceListener interface {
-	OnPriceChange(priceChange *PriceChange)
-}
-
-type PeriodListener interface {
-	OnPeriodChange(candlestick *Candlestick)
 }

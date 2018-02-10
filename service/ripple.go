@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
 )
 
 type Ripple struct {
@@ -38,7 +39,7 @@ func NewRipple(ctx *common.Context, marketcapService *MarketCapService) *Ripple 
 		marketcapService: marketcapService}
 }
 
-func (r *Ripple) GetBalance(address string) *common.CryptoWallet {
+func (r *Ripple) GetBalance(address string) common.CryptoWallet {
 
 	r.ctx.Logger.Debugf("[Ripple.GetBalance] Address: %s", address)
 
@@ -76,7 +77,7 @@ func (r *Ripple) GetBalance(address string) *common.CryptoWallet {
 	marketcap := r.marketcapService.GetMarket("XRP")
 	f2, _ := strconv.ParseFloat(marketcap.PriceUSD, 64)
 
-	return &common.CryptoWallet{
+	return &dto.CryptoWalletDTO{
 		Address:  address,
 		Balance:  balance,
 		Currency: "XRP",

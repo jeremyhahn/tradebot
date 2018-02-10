@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/util"
 	logging "github.com/op/go-logging"
 )
@@ -63,7 +64,7 @@ func (b *BlockchainInfo) GetPrice() float64 {
 	return b.lastPrice
 }
 
-func (b *BlockchainInfo) GetBalance(address string) *common.CryptoWallet {
+func (b *BlockchainInfo) GetBalance(address string) common.CryptoWallet {
 
 	url := fmt.Sprintf("https://blockchain.info/address/%s?format=json", address)
 
@@ -89,7 +90,7 @@ func (b *BlockchainInfo) GetBalance(address string) *common.CryptoWallet {
 	if jsonErr != nil {
 		b.logger.Errorf("[BlockchainInfo.GetBalance] %s", jsonErr.Error())
 	}
-	return &common.CryptoWallet{
+	return &dto.CryptoWalletDTO{
 		Address:  address,
 		Balance:  wallet.Balance / 100000000,
 		Currency: "BTC"}

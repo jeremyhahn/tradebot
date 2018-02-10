@@ -1,12 +1,15 @@
 package dao
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/entity"
+)
 
 type ProfitDAO interface {
 	Create(profit ProfitEntity) error
 	Save(profit ProfitEntity) error
 	Find() ([]Profit, error)
-	GetByTrade(trade TradeEntity) (ProfitEntity, error)
+	GetByTrade(trade entity.TradeEntity) (ProfitEntity, error)
 }
 
 type ProfitDAOImpl struct {
@@ -55,14 +58,14 @@ func (dao *ProfitDAOImpl) Save(profit ProfitEntity) error {
 
 func (dao *ProfitDAOImpl) Find() ([]Profit, error) {
 	var profits []Profit
-	daoUser := &User{Id: dao.ctx.User.Id}
+	daoUser := &entity.User{Id: dao.ctx.User.GetId()}
 	if err := dao.ctx.DB.Model(daoUser).Related(&profits).Error; err != nil {
 		return nil, err
 	}
 	return profits, nil
 }
 
-func (dao *ProfitDAOImpl) GetByTrade(trade TradeEntity) (ProfitEntity, error) {
+func (dao *ProfitDAOImpl) GetByTrade(trade entity.TradeEntity) (ProfitEntity, error) {
 	var profit Profit
 	if err := dao.ctx.DB.Model(trade).Related(&profit).Error; err != nil {
 		return nil, err

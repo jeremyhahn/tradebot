@@ -5,6 +5,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 )
 
@@ -42,7 +43,7 @@ func (service *DefaultIndicatorService) GetIndicator(name string) (common.Indica
 }
 
 func (service *DefaultIndicatorService) GetChartIndicator(chart common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
-	daoChart := &dao.Chart{Id: chart.GetId()}
+	daoChart := &entity.Chart{Id: chart.GetId()}
 	chartIndicator, err := service.chartIndicatorDAO.Get(daoChart, name)
 	if err != nil {
 		return nil, err
@@ -61,7 +62,7 @@ func (service *DefaultIndicatorService) GetChartIndicator(chart common.Chart, na
 
 func (service *DefaultIndicatorService) GetChartIndicators(chart common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error) {
 	chartFinancialIndicators := make(map[string]common.FinancialIndicator, len(chart.GetIndicators()))
-	daoChart := &dao.Chart{Id: chart.GetId()}
+	daoChart := &entity.Chart{Id: chart.GetId()}
 	chartIndicators, err := service.chartIndicatorDAO.Find(daoChart)
 	if err != nil {
 		return nil, err

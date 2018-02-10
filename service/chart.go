@@ -8,6 +8,7 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 )
 
@@ -39,7 +40,7 @@ func (service *DefaultChartService) GetCurrencyPair(chart common.Chart) *common.
 	return &common.CurrencyPair{
 		Base:          chart.GetBase(),
 		Quote:         chart.GetQuote(),
-		LocalCurrency: service.ctx.User.LocalCurrency}
+		LocalCurrency: service.ctx.User.GetLocalCurrency()}
 }
 
 func (service *DefaultChartService) GetExchange(chart common.Chart) common.Exchange {
@@ -141,7 +142,7 @@ func (service *DefaultChartService) GetTrades(chart common.Chart) ([]common.Trad
 }
 
 func (service *DefaultChartService) GetLastTrade(chart common.Chart) (common.Trade, error) {
-	daoChart := &dao.Chart{Id: chart.GetId()}
+	daoChart := &entity.Chart{Id: chart.GetId()}
 	entity, err := service.chartDAO.GetLastTrade(daoChart)
 	if err != nil {
 		return nil, err
@@ -193,7 +194,7 @@ func (service *DefaultChartService) GetIndicator(chart common.Chart, name string
 
 func (service *DefaultChartService) GetIndicators(chart common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error) {
 	indicators := make(map[string]common.FinancialIndicator, len(chart.GetIndicators()))
-	entity := &dao.Chart{Id: chart.GetId()}
+	entity := &entity.Chart{Id: chart.GetId()}
 	daoIndicators, err := service.chartDAO.GetIndicators(entity)
 	if err != nil {
 		return nil, err
@@ -221,7 +222,7 @@ func (service *DefaultChartService) LoadCandlesticks(chart common.Chart, exchang
 	currencyPair := &common.CurrencyPair{
 		Base:          chart.GetBase(),
 		Quote:         chart.GetQuote(),
-		LocalCurrency: service.ctx.User.LocalCurrency}
+		LocalCurrency: service.ctx.User.GetLocalCurrency()}
 	service.ctx.Logger.Debugf("[DefaultChartService.LoadCandlesticks] Getting %s %s trade history from %s - %s ",
 		exchange.GetName(), exchange.FormattedCurrencyPair(currencyPair), lastWeek, now)
 	candles = exchange.GetPriceHistory(currencyPair, lastWeek, now, chart.GetPeriod())

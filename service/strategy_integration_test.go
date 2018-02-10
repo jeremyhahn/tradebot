@@ -143,7 +143,7 @@ func TestGetChartStrategy_GetChartStrategies(t *testing.T) {
 		CurrencyPair: &common.CurrencyPair{
 			Base:          chartEntity.GetBase(),
 			Quote:         chartEntity.GetQuote(),
-			LocalCurrency: ctx.User.LocalCurrency},
+			LocalCurrency: ctx.User.GetLocalCurrency()},
 		Indicators: financialIndicators}
 
 	tradingStrategies, err := strategyService.GetChartStrategies(chartDTO, params, candles)

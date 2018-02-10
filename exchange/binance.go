@@ -11,8 +11,8 @@ import (
 	ws "github.com/gorilla/websocket"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/op/go-logging"
 )
 
@@ -64,10 +64,10 @@ type Binance struct {
 	common.Exchange
 }
 
-func NewBinance(ctx *common.Context, exchange *dao.UserCryptoExchange) common.Exchange {
+func NewBinance(ctx *common.Context, exchange entity.UserExchangeEntity) common.Exchange {
 	return &Binance{
 		ctx:        ctx,
-		client:     binance.NewClient(exchange.Key, exchange.Secret),
+		client:     binance.NewClient(exchange.GetKey(), exchange.GetSecret()),
 		logger:     ctx.Logger,
 		name:       "binance",
 		tradingFee: .01}
@@ -105,7 +105,7 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 					b.logger.Errorf("[Binance.GetBalances] %s", err.Error())
 				}
 				sum += t
-				coins = append(coins, common.Coin{
+				coins = append(coins, &dto.CoinDTO{
 					Currency:  balance.Asset,
 					Available: bal,
 					Balance:   bal,
@@ -116,8 +116,8 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 
 			currencyPair := &common.CurrencyPair{
 				Base:          balance.Asset,
-				Quote:         b.ctx.User.LocalCurrency,
-				LocalCurrency: b.ctx.User.LocalCurrency}
+				Quote:         b.ctx.User.GetLocalCurrency(),
+				LocalCurrency: b.ctx.User.GetLocalCurrency()}
 			localizedCurrencyPair := b.localizedCurrencyPair(currencyPair)
 			symbol := fmt.Sprintf("%s%s", localizedCurrencyPair.Base, "BTC")
 
@@ -143,7 +143,7 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 			}
 
 			sum += t
-			coins = append(coins, common.Coin{
+			coins = append(coins, &dto.CoinDTO{
 				Currency:  balance.Asset,
 				Available: bal,
 				Balance:   bal,
@@ -260,8 +260,8 @@ func (b *Binance) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceCh
 func (b *Binance) getBitcoin() *binance.PriceChangeStats {
 	currencyPair := &common.CurrencyPair{
 		Base:          "BTC",
-		Quote:         b.ctx.User.LocalCurrency,
-		LocalCurrency: b.ctx.User.LocalCurrency}
+		Quote:         b.ctx.User.GetLocalCurrency(),
+		LocalCurrency: b.ctx.User.GetLocalCurrency()}
 	localizedCurrencyPair := b.localizedCurrencyPair(currencyPair)
 	symbol := fmt.Sprintf("%s%s", localizedCurrencyPair.Base, localizedCurrencyPair.Quote)
 	stats, err := b.client.NewPriceChangeStatsService().Symbol(symbol).Do(context.Background())
@@ -301,16 +301,16 @@ func (b *Binance) GetExchange() common.CryptoExchange {
 	satoshis := 0.0
 	balances, _ := b.GetBalances()
 	for _, c := range balances {
-		if c.Currency == "BTC" { // TODO
-			total += c.Total
+		if c.GetCurrency() == "BTC" { // TODO
+			total += c.GetTotal()
 		} else {
-			satoshis += c.Price * c.Balance
-			total += c.Total
+			satoshis += c.GetPrice() * c.GetBalance()
+			total += c.GetTotal()
 		}
 	}
 	f, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
 	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-	exchange := common.CryptoExchange{
+	exchange := &dto.CryptoExchangeDTO{
 		Name:     b.name,
 		URL:      "https://www.binance.com",
 		Total:    t,

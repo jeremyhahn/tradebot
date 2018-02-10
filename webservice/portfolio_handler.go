@@ -12,9 +12,11 @@ type PortfolioHandler struct {
 	ctx              *common.Context
 	hub              *PortfolioHub
 	marketcapService *service.MarketCapService
+	userService      service.UserService
 }
 
-func NewPortfolioHandler(ctx *common.Context, hub *PortfolioHub, marketcapService *service.MarketCapService) *PortfolioHandler {
+func NewPortfolioHandler(ctx *common.Context, hub *PortfolioHub,
+	marketcapService *service.MarketCapService, userService service.UserService) *PortfolioHandler {
 	return &PortfolioHandler{
 		ctx:              ctx,
 		hub:              hub,
@@ -46,13 +48,14 @@ func (ph *PortfolioHandler) onConnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ph.ctx.Logger.Debug("[PortfolioHandler.onConnect] Accepting connection from ", conn.RemoteAddr())
-	ph.ctx.User = portfolio.User
+	ph.ctx.SetUser(portfolio.GetUser())
 	client := &PortfolioClient{
 		hub:              ph.hub,
 		conn:             conn,
 		send:             make(chan *common.Portfolio, common.BUFFERED_CHANNEL_SIZE),
 		ctx:              ph.ctx,
-		marketcapService: ph.marketcapService}
+		marketcapService: ph.marketcapService,
+		userService:      ph.userService}
 
 	client.hub.register <- client
 	go client.writePump()

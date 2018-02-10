@@ -6,6 +6,8 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	logging "github.com/op/go-logging"
@@ -20,7 +22,7 @@ func NewUnitTestContext() *common.Context {
 	logger := logging.MustGetLogger(common.APPNAME)
 	return &common.Context{
 		Logger: logger,
-		User: &common.User{
+		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,
 			LocalCurrency: "USD"}}
@@ -43,42 +45,42 @@ func NewIntegrationTestContext() *common.Context {
 	TEST_CONTEXT = &common.Context{
 		DB:     db,
 		Logger: logger,
-		User: &common.User{
+		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,
 			LocalCurrency: "USD"}}
 
-	var wallets []dao.UserWallet
-	wallets = append(wallets, dao.UserWallet{
+	var wallets []entity.UserWallet
+	wallets = append(wallets, entity.UserWallet{
 		Currency: "BTC",
 		Address:  BTC_ADDRESS})
-	wallets = append(wallets, dao.UserWallet{
+	wallets = append(wallets, entity.UserWallet{
 		Currency: "XRP",
 		Address:  XRP_ADDRESS})
 
-	var exchanges []dao.UserCryptoExchange
-	exchanges = append(exchanges, dao.UserCryptoExchange{
+	var exchanges []entity.UserCryptoExchange
+	exchanges = append(exchanges, entity.UserCryptoExchange{
 		Name:   "gdax",
 		Key:    GDAX_APIKEY,
 		Secret: GDAX_SECRET,
 		Extra:  GDAX_PASSPHRASE})
-	exchanges = append(exchanges, dao.UserCryptoExchange{
+	exchanges = append(exchanges, entity.UserCryptoExchange{
 		Name:   "bittrex",
 		Key:    BITTREX_APIKEY,
 		Secret: BITTREX_SECRET,
 		Extra:  BITTREX_EXTRA})
-	exchanges = append(exchanges, dao.UserCryptoExchange{
+	exchanges = append(exchanges, entity.UserCryptoExchange{
 		Name:   "binance",
 		Key:    BINANCE_APIKEY,
 		Secret: BINANCE_SECRET,
 		Extra:  BINANCE_EXTRA})
-	/*exchanges = append(exchanges, dao.UserCryptoExchange{
+	/*exchanges = append(exchanges, entity.UserCryptoExchange{
 	Name:   "bithumb",
 	Key:    BITHUMB_APIKEY,
 	Secret: BITHUMB_SECRET})*/
 
 	userDAO := dao.NewUserDAO(TEST_CONTEXT)
-	userDAO.Save(&dao.User{Username: TEST_USERNAME, LocalCurrency: "USD", Exchanges: exchanges, Wallets: wallets})
+	userDAO.Save(&entity.User{Username: TEST_USERNAME, LocalCurrency: "USD", Exchanges: exchanges, Wallets: wallets})
 
 	/*exchangeDAO := exchange.NewExchangeDAO(TEST_CONTEXT)
 	exchangeDAO.Create(&exchange.CryptoExchange{
@@ -99,7 +101,7 @@ func NewIntegrationTestContext() *common.Context {
 		Key:    BITHUMB_APIKEY,
 		Secret: BITHUMB_SECRET})
 
-	userDAO.Create(&dao.User{
+	userDAO.Create(&entity.User{
 		Id: TEST_CONTEXT.User
 		Exchanges: . exchange.CryptoExchange{
 		Name:       "gdax",

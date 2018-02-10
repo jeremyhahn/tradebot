@@ -4,6 +4,7 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 )
 
@@ -34,20 +35,20 @@ func (ts *DefaultTradeService) Save(dto common.Trade) {
 }
 
 func (ts *DefaultTradeService) GetLastTrade(chart common.Chart) common.Trade {
-	daoChart := &dao.Chart{Id: chart.GetId()}
+	daoChart := &entity.Chart{Id: chart.GetId()}
 	entity := ts.tradeDAO.GetLastTrade(daoChart)
 	return &dto.TradeDTO{
-		Id:        entity.Id,
-		UserId:    ts.ctx.User.Id,
-		ChartId:   entity.ChartId,
-		Date:      entity.Date,
-		Exchange:  entity.Exchange,
-		Type:      entity.Type,
-		Base:      entity.Base,
-		Quote:     entity.Quote,
-		Amount:    entity.Amount,
-		Price:     entity.Price,
-		ChartData: entity.ChartData}
+		Id:        entity.GetId(),
+		UserId:    ts.ctx.User.GetId(),
+		ChartId:   entity.GetChartId(),
+		Date:      entity.GetDate(),
+		Exchange:  entity.GetExchangeName(),
+		Type:      entity.GetType(),
+		Base:      entity.GetBase(),
+		Quote:     entity.GetQuote(),
+		Amount:    entity.GetAmount(),
+		Price:     entity.GetPrice(),
+		ChartData: entity.GetChartData()}
 }
 
 /*

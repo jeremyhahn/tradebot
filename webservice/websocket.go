@@ -21,15 +21,19 @@ type WebServer struct {
 	portfolioHandler *PortfolioHandler
 	marketcapService *service.MarketCapService
 	exchangeService  service.ExchangeService
+	authService      service.AuthService
+	userService      service.UserService
 }
 
 func NewWebServer(ctx *common.Context, port int, marketcapService *service.MarketCapService,
-	exchangeService service.ExchangeService) *WebServer {
+	exchangeService service.ExchangeService, authService service.AuthService, userService service.UserService) *WebServer {
 	return &WebServer{
 		ctx:              ctx,
 		port:             port,
 		marketcapService: marketcapService,
-		exchangeService:  exchangeService}
+		exchangeService:  exchangeService,
+		authService:      authService,
+		userService:      userService}
 }
 
 func (ws *WebServer) Start() {
@@ -41,13 +45,17 @@ func (ws *WebServer) Start() {
 
 	// RestAPI Handlers
 	ohrs := restapi.NewOrderHistoryRestService(ws.ctx, ws.exchangeService)
+	as := restapi.NewLoginRestService(ws.ctx, ws.authService)
+	reg := restapi.NewRegisterRestService(ws.ctx, ws.authService)
 	http.HandleFunc("/orderhistory", ohrs.GetOrderHistory)
+	http.HandleFunc("/login", as.Login)
+	http.HandleFunc("/register", reg.Register)
 
 	// Websocket Handlers
 	http.HandleFunc("/portfolio", func(w http.ResponseWriter, r *http.Request) {
 		portfolioHub := NewPortfolioHub(ws.ctx.Logger)
 		go portfolioHub.Run()
-		ph := NewPortfolioHandler(ws.ctx, portfolioHub, ws.marketcapService)
+		ph := NewPortfolioHandler(ws.ctx, portfolioHub, ws.marketcapService, ws.userService)
 		ph.onConnect(w, r)
 	})
 

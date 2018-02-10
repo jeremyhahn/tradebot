@@ -9,12 +9,12 @@ type StrategyTestHelper struct{}
 
 func (h *StrategyTestHelper) CreateBalances() []common.Coin {
 	return []common.Coin{
-		common.Coin{
+		&dto.CoinDTO{
 			Address:   "abc123",
 			Currency:  "BTC",
 			Available: 2,
 			Price:     10000},
-		common.Coin{
+		&dto.CoinDTO{
 			Currency:  "USD",
 			Available: 20000,
 			Price:     1.00}}

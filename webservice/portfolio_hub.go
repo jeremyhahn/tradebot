@@ -29,12 +29,12 @@ func (h *PortfolioHub) Run() {
 
 		select {
 		case client := <-h.register:
-			client.ctx.Logger.Debugf("[PortfolioHub.run] Registering new client: %s", client.ctx.User.Username)
+			client.ctx.Logger.Debugf("[PortfolioHub.run] Registering new client: %s", client.ctx.GetUser().GetUsername())
 			h.clients[client] = true
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
-				h.logger.Debugf("[PortfolioHub.run] Unregistering client: %s", client.ctx.User.Username)
+				h.logger.Debugf("[PortfolioHub.run] Unregistering client: %s", client.ctx.GetUser().GetUsername())
 				client.disconnect()
 				delete(h.clients, client)
 				close(client.send)

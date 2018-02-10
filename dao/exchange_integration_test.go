@@ -13,7 +13,7 @@ func TestExchangeDAO(t *testing.T) {
 	exchangeDAO := NewExchangeDAO(ctx)
 
 	exchange := &CryptoExchange{
-		UserID: ctx.User.Id,
+		UserID: ctx.User.GetId(),
 		Name:   "Test Exchange",
 		Key:    "ABC123",
 		Secret: "$ecret!",

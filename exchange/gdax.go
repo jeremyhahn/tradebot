@@ -11,8 +11,8 @@ import (
 	gdax "github.com/preichenberger/go-gdax"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/util"
 	"github.com/op/go-logging"
 )
@@ -34,10 +34,10 @@ type GDAX struct {
 	common.Exchange
 }
 
-func NewGDAX(ctx *common.Context, _gdax *dao.UserCryptoExchange) common.Exchange {
+func NewGDAX(ctx *common.Context, _gdax entity.UserExchangeEntity) common.Exchange {
 	return &GDAX{
 		ctx:          ctx,
-		gdax:         gdax.NewClient(_gdax.Secret, _gdax.Key, _gdax.Extra),
+		gdax:         gdax.NewClient(_gdax.GetSecret(), _gdax.GetKey(), _gdax.GetExtra()),
 		logger:       ctx.Logger,
 		name:         "gdax",
 		apiCallCount: 0,
@@ -122,9 +122,9 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.O
 						Quote: quote}
 				} else {
 					cp = &common.CurrencyPair{
-						Base:          _gdax.ctx.User.LocalCurrency,
-						Quote:         _gdax.ctx.User.LocalCurrency,
-						LocalCurrency: _gdax.ctx.User.LocalCurrency}
+						Base:          _gdax.ctx.User.GetLocalCurrency(),
+						Quote:         _gdax.ctx.User.GetLocalCurrency(),
+						LocalCurrency: _gdax.ctx.User.GetLocalCurrency()}
 				}
 				orders = append(orders, &dto.OrderDTO{
 					Id:       strconv.FormatInt(int64(e.Id), 10),
@@ -158,8 +158,8 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
 	}
 	for _, a := range accounts {
 		price := 1.0
-		if a.Currency != _gdax.ctx.User.LocalCurrency {
-			currency := fmt.Sprintf("%s-%s", a.Currency, _gdax.ctx.User.LocalCurrency)
+		if a.Currency != _gdax.ctx.User.GetLocalCurrency() {
+			currency := fmt.Sprintf("%s-%s", a.Currency, _gdax.ctx.User.GetLocalCurrency())
 			_gdax.logger.Debugf("[GDAX.GetBalances] Getting balances for %s", currency)
 			ticker, err := _gdax.gdax.GetTicker(currency)
 			if err != nil {
@@ -178,7 +178,7 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
 			continue
 		}
 		sum += total
-		coins = append(coins, common.Coin{
+		coins = append(coins, &dto.CoinDTO{
 			Currency:  a.Currency,
 			Balance:   a.Balance,
 			Available: a.Available,
@@ -239,13 +239,13 @@ func (_gdax *GDAX) GetExchange() common.CryptoExchange {
 	satoshis := 0.0
 	balances, _ := _gdax.GetBalances()
 	for _, c := range balances {
-		if c.Currency == _gdax.ctx.User.LocalCurrency {
-			total += c.Total
+		if c.GetCurrency() == _gdax.ctx.User.GetLocalCurrency() {
+			total += c.GetTotal()
 		} else if c.IsBitcoin() {
-			satoshis += c.Balance
-			total += c.Total
+			satoshis += c.GetBalance()
+			total += c.GetTotal()
 		} else {
-			currency := fmt.Sprintf("%s-BTC", c.Currency)
+			currency := fmt.Sprintf("%s-BTC", c.GetCurrency())
 			_gdax.respectRateLimit()
 			ticker, err := _gdax.gdax.GetTicker(currency)
 			if err != nil {
@@ -253,12 +253,12 @@ func (_gdax *GDAX) GetExchange() common.CryptoExchange {
 				continue
 			}
 			satoshis += ticker.Price
-			total += c.Total
+			total += c.GetTotal()
 		}
 	}
 	s, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
 	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-	exchange := common.CryptoExchange{
+	exchange := &dto.CryptoExchangeDTO{
 		Name:     _gdax.name,
 		URL:      "https://www.gdax.com",
 		Total:    t,

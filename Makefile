@@ -20,6 +20,7 @@ deps:
 	go get "github.com/preichenberger/go-gdax"
 	go get "github.com/toorop/go-bittrex"
 	go get "github.com/adshao/go-binance"
+	go get "github.com/ethereum/go-ethereum"
 
 cert:
 	mkdir -p ssl

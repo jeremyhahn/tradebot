@@ -131,14 +131,14 @@ func (strategy *DefaultTradingStrategy) GetTradeAmounts() (float64, float64) {
 		strategy.config.TradeSize = 0
 	}
 	for _, coin := range strategy.params.Balances {
-		if coin.Currency == strategy.params.CurrencyPair.Base {
+		if coin.GetCurrency() == strategy.params.CurrencyPair.Base {
 			if strategy.config.TradeSize > 0 {
-				baseAmount = coin.Available * strategy.config.TradeSize
+				baseAmount = coin.GetAvailable() * strategy.config.TradeSize
 			}
 		}
-		if coin.Currency == strategy.params.CurrencyPair.Quote {
+		if coin.GetCurrency() == strategy.params.CurrencyPair.Quote {
 			if strategy.config.TradeSize > 0 {
-				quoteAmount = coin.Available * strategy.config.TradeSize
+				quoteAmount = coin.GetAvailable() * strategy.config.TradeSize
 			}
 		}
 		if baseAmount > 0 && quoteAmount > 0 {
