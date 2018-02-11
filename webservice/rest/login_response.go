@@ -1,6 +1,6 @@
-package restapi
+package rest
 
-type RegisterResponse struct {
+type LoginResponse struct {
 	Error   string `json:"error"`
 	Success bool   `json:"success"`
 }

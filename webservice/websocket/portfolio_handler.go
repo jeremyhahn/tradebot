@@ -1,4 +1,4 @@
-package webservice
+package websocket
 
 import (
 	"net/http"
@@ -27,7 +27,7 @@ func NewPortfolioHandler(ctx *common.Context, hub *PortfolioHub,
 		portfolioService: portfolioService}
 }
 
-func (ph *PortfolioHandler) onConnect(w http.ResponseWriter, r *http.Request) {
+func (ph *PortfolioHandler) OnConnect(w http.ResponseWriter, r *http.Request) {
 	var user dto.UserDTO
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
