@@ -1,16 +1,12 @@
 package dto
 
-type UserWallet interface {
-	GetUserId() uint
-	GetCurrency() string
-	GetAddress() string
-}
+import "github.com/jeremyhahn/tradebot/common"
 
 type UserWalletDTO struct {
 	UserId   uint   `json:"user_id"`
 	Currency string `json:"currency"`
 	Address  string `json:"address"`
-	UserWallet
+	common.UserWallet
 }
 
 func (dto *UserWalletDTO) GetUserId() uint {

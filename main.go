@@ -80,6 +80,7 @@ func main() {
 	tradeService := service.NewTradeService(ctx, tradeDAO, tradeMapper)
 	strategyService := service.NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
 	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService, profitService, tradeService, strategyService)
+	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService)
 
 	err = autoTradeService.EndWorldHunger()
 	if err != nil {
@@ -91,7 +92,7 @@ func main() {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
-	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService, exchangeService, ethereumService, userService)
+	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService, exchangeService, ethereumService, userService, portfolioService)
 	go ws.Start()
 	ws.Run()
 }

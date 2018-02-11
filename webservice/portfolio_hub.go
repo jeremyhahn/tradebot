@@ -8,14 +8,14 @@ import (
 type PortfolioHub struct {
 	logger     *logging.Logger
 	clients    map[*PortfolioClient]bool
-	broadcast  chan *common.Portfolio
+	broadcast  chan common.Portfolio
 	register   chan *PortfolioClient
 	unregister chan *PortfolioClient
 }
 
 func NewPortfolioHub(logger *logging.Logger) *PortfolioHub {
 	return &PortfolioHub{
-		broadcast:  make(chan *common.Portfolio),
+		broadcast:  make(chan common.Portfolio),
 		register:   make(chan *PortfolioClient),
 		unregister: make(chan *PortfolioClient),
 		clients:    make(map[*PortfolioClient]bool),
