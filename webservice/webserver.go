@@ -47,7 +47,7 @@ func (ws *WebServer) Start() {
 	// Static content
 	http.Handle("/", http.FileServer(http.Dir("webui/public")))
 
-	// RestAPI Handlers
+	// REST Handlers
 	ohrs := rest.NewOrderHistoryRestService(ws.ctx, ws.exchangeService)
 	as := rest.NewLoginRestService(ws.ctx, ws.authService)
 	reg := rest.NewRegisterRestService(ws.ctx, ws.authService)
@@ -71,14 +71,14 @@ func (ws *WebServer) Start() {
 			http.Redirect(w, r, "https://"+r.Host+r.URL.String(), http.StatusMovedPermanently)
 		}))
 
-		// HTTPS Requests
+		// Serve HTTPS Requests
 		err := http.ListenAndServeTLS(fmt.Sprintf(":%d", ws.port), "ssl/cert.pem", "ssl/key.pem", nil)
 		if err != nil {
 			ws.ctx.Logger.Fatalf("[WebServer] Unable to start TLS web server: %s", err.Error())
 		}
 	} else {
 
-		// HTTP Requests
+		// Serve HTTP Requests
 		err := http.ListenAndServe(sPort, nil)
 		if err != nil {
 			ws.ctx.Logger.Fatalf("[WebServer] Unable to start web server: %s", err.Error())
