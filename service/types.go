@@ -6,6 +6,14 @@ import (
 	"github.com/jeremyhahn/tradebot/mapper"
 )
 
+type PortfolioService interface {
+	Build(user common.User, currencyPair *common.CurrencyPair) common.Portfolio
+	Queue(user common.User) <-chan common.Portfolio
+	Stream(user common.User, currencyPair *common.CurrencyPair) <-chan common.Portfolio
+	Stop(user common.User)
+	IsStreaming(user common.User) bool
+}
+
 type UserService interface {
 	CreateUser(user common.User)
 	GetCurrentUser() (common.User, error)

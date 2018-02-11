@@ -25,7 +25,7 @@ deps:
 cert:
 	mkdir -p ssl
 	openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -keyout ssl/key.pem -out ssl/cert.pem \
-    -subj "/C=US/ST=Massachusetts/L=Boston/O=Automate The Things, LLC/CN=localhost"
+    -subj "/C=US/ST=Blockchain/L=Tradebot/O=Cryptoconomy/CN=localhost"
 
 unittest:
 	cd dao && go test -v

@@ -3,13 +3,11 @@ package dto
 import "github.com/jeremyhahn/tradebot/common"
 
 type UserDTO struct {
-	Id            uint              `json:"id"`
-	Username      string            `json:"username"`
-	LocalCurrency string            `json:"local_currency"`
-	Etherbase     string            `json:"etherbase"`
-	Keystore      string            `json:"keystore"`
-	Wallets       []common.Wallet   `json:"wallets"`
-	Exchanges     []common.Exchange `json:"exchanges"`
+	Id            uint   `json:"id"`
+	Username      string `json:"username"`
+	LocalCurrency string `json:"local_currency"`
+	Etherbase     string `json:"etherbase"`
+	Keystore      string `json:"keystore"`
 	common.User
 }
 
@@ -35,14 +33,6 @@ func (dto *UserDTO) GetEtherbase() string {
 
 func (dto *UserDTO) GetKeystore() string {
 	return dto.Keystore
-}
-
-func (dto *UserDTO) GetWallets() []common.Wallet {
-	return dto.Wallets
-}
-
-func (dto *UserDTO) GetExchanges() []common.Exchange {
-	return dto.Exchanges
 }
 
 func (dto *UserDTO) SetEtherbase(etherbase string) {

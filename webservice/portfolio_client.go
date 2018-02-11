@@ -11,16 +11,17 @@ import (
 
 type PortfolioClient struct {
 	ctx              *common.Context
-	service          *service.PortfolioService
+	service          service.PortfolioService
 	hub              *PortfolioHub
 	conn             *websocket.Conn
-	send             chan *common.Portfolio
+	send             chan common.Portfolio
 	marketcapService *service.MarketCapService
 	userService      service.UserService
+	portfolioService service.PortfolioService
 }
 
 func (c *PortfolioClient) disconnect() {
-	c.service.Stop()
+	c.portfolioService.Stop(c.ctx.GetUser())
 	c.conn.Close()
 }
 
@@ -38,14 +39,13 @@ func (c *PortfolioClient) readPump() {
 			}
 			break
 		}
-		c.hub.broadcast <- &portfolio
+		c.hub.broadcast <- portfolio
 	}
 }
 
 func (c *PortfolioClient) writePump() {
-	c.service = service.NewPortfolioService(c.ctx, c.marketcapService, c.userService)
 	defer func() {
-		c.service.Stop()
+		c.portfolioService.Stop(c.ctx.GetUser())
 		c.conn.Close()
 	}()
 	for {
@@ -61,17 +61,17 @@ func (c *PortfolioClient) writePump() {
 			for i := 0; i < n; i++ {
 				c.conn.WriteJSON(<-c.send)
 			}
-		case portfolio := <-c.service.Queue(c.ctx.User):
+		case portfolio := <-c.portfolioService.Queue(c.ctx.GetUser()):
 			if err := c.conn.WriteJSON(portfolio); err != nil {
 				c.ctx.Logger.Errorf("[PortfolioClient.writePump] Error: %s", err.Error())
 				return
 			}
-
 			time.Sleep(3 * time.Second)
 		}
 	}
 }
 
+/*
 func (c *PortfolioClient) keepAlive() {
 	lastResponse := time.Now()
 	c.conn.SetPongHandler(func(msg string) error {
@@ -83,6 +83,7 @@ func (c *PortfolioClient) keepAlive() {
 			c.ctx.Logger.Debug("[PortfolioClient.keepAlive] Sending keepalive")
 			err := c.conn.WriteMessage(websocket.PingMessage, []byte("keepalive"))
 			if err != nil {
+				c.ctx.Logger.Debugf("[PortfolioClient.keepAlive] Error: %s", err.Error())
 				return
 			}
 			time.Sleep(common.WEBSOCKET_KEEPALIVE / 2)
@@ -94,3 +95,4 @@ func (c *PortfolioClient) keepAlive() {
 		}
 	}()
 }
+*/

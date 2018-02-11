@@ -12,28 +12,28 @@ import (
 
 type DefaultUserService struct {
 	ctx              *common.Context
-	dao              dao.UserDAO
+	userDAO          dao.UserDAO
 	marketcapService *MarketCapService
 	userMapper       mapper.UserMapper
 	UserService
 }
 
-func NewUserService(ctx *common.Context, dao dao.UserDAO,
+func NewUserService(ctx *common.Context, userDAO dao.UserDAO,
 	marketcapService *MarketCapService, userMapper mapper.UserMapper) *DefaultUserService {
 	return &DefaultUserService{
 		ctx:              ctx,
-		dao:              dao,
+		userDAO:          userDAO,
 		marketcapService: marketcapService,
 		userMapper:       userMapper}
 }
 
 func (service *DefaultUserService) CreateUser(user common.User) {
-	service.dao.Create(&entity.User{
+	service.userDAO.Create(&entity.User{
 		Username: user.GetUsername()})
 }
 
 func (service *DefaultUserService) GetCurrentUser() (common.User, error) {
-	entity, err := service.dao.GetById(service.ctx.GetUser().GetId())
+	entity, err := service.userDAO.GetById(service.ctx.GetUser().GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (service *DefaultUserService) GetCurrentUser() (common.User, error) {
 }
 
 func (service *DefaultUserService) GetUserById(userId uint) (common.User, error) {
-	entity, err := service.dao.GetById(userId)
+	entity, err := service.userDAO.GetById(userId)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (service *DefaultUserService) GetUserById(userId uint) (common.User, error)
 }
 
 func (service *DefaultUserService) GetUserByName(username string) (common.User, error) {
-	entity, err := service.dao.GetByName(username)
+	entity, err := service.userDAO.GetByName(username)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (service *DefaultUserService) GetUserByName(username string) (common.User, 
 
 func (service *DefaultUserService) GetExchange(user common.User, name string, currencyPair *common.CurrencyPair) common.Exchange {
 	daoUser := &entity.User{Id: user.GetId()}
-	exchanges := service.dao.GetExchanges(daoUser)
+	exchanges := service.userDAO.GetExchanges(daoUser)
 	for _, ex := range exchanges {
 		if ex.Name == name {
 			return NewExchangeService(service.ctx, dao.NewExchangeDAO(service.ctx)).CreateExchange(user, ex.Name)
@@ -68,10 +68,13 @@ func (service *DefaultUserService) GetExchange(user common.User, name string, cu
 }
 
 func (service *DefaultUserService) GetExchanges(user common.User, currencyPair *common.CurrencyPair) []common.CryptoExchange {
+	service.ctx.Logger.Debugf("[UserService.GetExchanges] %+v, %+v", user, currencyPair)
+
 	var exchangeList []common.CryptoExchange
 	var chans []chan common.CryptoExchange
 	daoUser := &entity.User{Id: user.GetId()}
-	exchanges := service.dao.GetExchanges(daoUser)
+	exchanges := service.userDAO.GetExchanges(daoUser)
+
 	for _, ex := range exchanges {
 		c := make(chan common.CryptoExchange, 1)
 		chans = append(chans, c)
@@ -83,13 +86,14 @@ func (service *DefaultUserService) GetExchanges(user common.User, currencyPair *
 	for i := 0; i < len(exchanges); i++ {
 		exchangeList = append(exchangeList, <-chans[i])
 	}
+	service.ctx.Logger.Debugf("[UserService.GetExchanges] %+v", exchangeList)
 	return exchangeList
 }
 
 func (service *DefaultUserService) GetWallets(user common.User) []common.CryptoWallet {
 	var walletList []common.CryptoWallet
 	daoUser := &entity.User{Id: user.GetId()}
-	wallets := service.dao.GetWallets(daoUser)
+	wallets := service.userDAO.GetWallets(daoUser)
 	var chans []chan common.CryptoWallet
 	for _, _wallet := range wallets {
 		wallet := _wallet
@@ -112,7 +116,7 @@ func (service *DefaultUserService) GetWallets(user common.User) []common.CryptoW
 
 func (service *DefaultUserService) GetWallet(user common.User, currency string) common.CryptoWallet {
 	daoUser := &entity.User{Id: user.GetId()}
-	wallet := service.dao.GetWallet(daoUser, currency)
+	wallet := service.userDAO.GetWallet(daoUser, currency)
 	balance := service.getBalance(wallet.GetCurrency(), wallet.GetAddress())
 	return &dto.CryptoWalletDTO{
 		Address:  wallet.GetAddress(),

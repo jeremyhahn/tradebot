@@ -120,10 +120,6 @@ type ChartTradingStrategy interface {
 	GetRequiredIndicators() string
 }
 
-type Wallet interface {
-	GetBalance() CryptoWallet
-}
-
 type PriceListener interface {
 	OnPriceChange(priceChange *PriceChange)
 }
@@ -155,12 +151,14 @@ type User interface {
 	SetKeystore(keystore string)
 }
 
-type CryptoExchange interface {
-	GetName() string
-	GetURL() string
-	GetTotal() float64
-	GetSatoshis() float64
-	GetCoins() []Coin
+type Wallet interface {
+	GetBalance() CryptoWallet
+}
+
+type UserWallet interface {
+	GetUserId() uint
+	GetCurrency() string
+	GetAddress() string
 }
 
 type Coin interface {
@@ -173,6 +171,14 @@ type Coin interface {
 	GetTotal() float64
 	GetBTC() float64
 	IsBitcoin() bool
+}
+
+type CryptoExchange interface {
+	GetName() string
+	GetURL() string
+	GetTotal() float64
+	GetSatoshis() float64
+	GetCoins() []Coin
 }
 
 type CryptoExchangeList interface {

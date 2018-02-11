@@ -1,29 +1,30 @@
 package service
 
 import (
-	"time"
-
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dto"
 )
 
-type PortfolioService struct {
+type PortfolioServiceImpl struct {
 	ctx              *common.Context
-	stopChan         chan bool
+	stopChans        map[uint]chan bool
+	portfolios       map[uint]common.Portfolio
 	marketcapService *MarketCapService
 	userService      UserService
+	PortfolioService
 }
 
 func NewPortfolioService(ctx *common.Context, marketcapService *MarketCapService,
-	userService UserService) *PortfolioService {
-	return &PortfolioService{
+	userService UserService) PortfolioService {
+	return &PortfolioServiceImpl{
 		ctx:              ctx,
-		stopChan:         make(chan bool),
+		stopChans:        make(map[uint]chan bool),
+		portfolios:       make(map[uint]common.Portfolio),
 		marketcapService: marketcapService,
 		userService:      userService}
 }
 
-func (ps *PortfolioService) Build(user common.User, currencyPair *common.CurrencyPair) common.Portfolio {
+func (ps *PortfolioServiceImpl) Build(user common.User, currencyPair *common.CurrencyPair) common.Portfolio {
 	ps.ctx.Logger.Debugf("[PortfolioService.Build] Building portfolio for %s", user.GetUsername())
 	var netWorth float64
 	exchangeList := ps.userService.GetExchanges(ps.ctx.GetUser(), currencyPair)
@@ -34,14 +35,21 @@ func (ps *PortfolioService) Build(user common.User, currencyPair *common.Currenc
 	for _, w := range walletList {
 		netWorth += w.GetNetWorth()
 	}
-	return &dto.PortfolioDTO{
-		User:      ps.ctx.GetUser(),
+	currentUser, err := ps.userService.GetCurrentUser()
+	if err != nil {
+		ps.ctx.Logger.Errorf("[PortfolioService.Build] Error getting current user: %s", err.Error())
+	}
+	portfolio := &dto.PortfolioDTO{
+		User:      currentUser,
 		NetWorth:  netWorth,
 		Exchanges: exchangeList,
 		Wallets:   walletList}
+	ps.portfolios[user.GetId()] = portfolio
+	ps.stopChans[user.GetId()] = make(chan bool)
+	return portfolio
 }
 
-func (ps *PortfolioService) Queue(user common.User) <-chan common.Portfolio {
+func (ps *PortfolioServiceImpl) Queue(user common.User) <-chan common.Portfolio {
 	ps.ctx.Logger.Debugf("[PortfolioService.Queue] Adding portfolio to queue on behalf of %s", user.GetUsername())
 	currencyPair := &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"}
 	portfolio := ps.Build(user, currencyPair)
@@ -51,28 +59,33 @@ func (ps *PortfolioService) Queue(user common.User) <-chan common.Portfolio {
 	return portChan
 }
 
-func (ps *PortfolioService) Stream(user common.User, currencyPair *common.CurrencyPair) <-chan common.Portfolio {
+func (ps *PortfolioServiceImpl) Stream(user common.User, currencyPair *common.CurrencyPair) <-chan common.Portfolio {
 	portfolio := ps.Build(user, currencyPair)
 	ps.ctx.Logger.Debugf("[PortfolioService.Stream] Starting stream for %s", portfolio.GetUser().GetUsername())
-	portChan := make(chan common.Portfolio)
+	portChan := make(chan common.Portfolio, 10)
 	go func() {
 		for {
 			select {
-			case stop := <-ps.stopChan:
+			case <-ps.stopChans[user.GetId()]:
 				ps.ctx.Logger.Debug("[PortfolioService.Stream] Stopping stream")
-				if stop {
-					return
-				}
+				delete(ps.stopChans, user.GetId())
 			default:
 				ps.ctx.Logger.Debugf("[PortfolioService.Stream] Broadcasting portfolio: %+v\n", portfolio)
 				portChan <- portfolio
 			}
-			time.Sleep(10 * time.Second)
 		}
 	}()
 	return portChan
 }
 
-func (ps *PortfolioService) Stop() {
-	ps.stopChan <- true
+func (ps *PortfolioServiceImpl) Stop(user common.User) {
+	ps.ctx.Logger.Debugf("[PortfolioService.Stop] Stopping stream for %s\n", user.GetUsername())
+	if ps.IsStreaming(user) {
+		ps.stopChans[user.GetId()] <- true
+	}
+}
+
+func (ps *PortfolioServiceImpl) IsStreaming(user common.User) bool {
+	_, ok := ps.portfolios[user.GetId()]
+	return ok
 }

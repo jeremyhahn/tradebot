@@ -7,9 +7,10 @@ type PortfolioDTO struct {
 	NetWorth  float64                 `json:"net_worth"`
 	Exchanges []common.CryptoExchange `json:"exchanges"`
 	Wallets   []common.CryptoWallet   `json:"wallets"`
+	common.Portfolio
 }
 
-func NewPortfolioDTO() common.Portfolio {
+func NewPortfolioDTO() *PortfolioDTO {
 	return &PortfolioDTO{}
 }
 

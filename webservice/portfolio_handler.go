@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/service"
 )
 
@@ -13,17 +14,21 @@ type PortfolioHandler struct {
 	hub              *PortfolioHub
 	marketcapService *service.MarketCapService
 	userService      service.UserService
+	portfolioService service.PortfolioService
 }
 
 func NewPortfolioHandler(ctx *common.Context, hub *PortfolioHub,
-	marketcapService *service.MarketCapService, userService service.UserService) *PortfolioHandler {
+	marketcapService *service.MarketCapService, userService service.UserService,
+	portfolioService service.PortfolioService) *PortfolioHandler {
 	return &PortfolioHandler{
 		ctx:              ctx,
 		hub:              hub,
-		marketcapService: marketcapService}
+		marketcapService: marketcapService,
+		portfolioService: portfolioService}
 }
 
 func (ph *PortfolioHandler) onConnect(w http.ResponseWriter, r *http.Request) {
+	var user dto.UserDTO
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -38,39 +43,28 @@ func (ph *PortfolioHandler) onConnect(w http.ResponseWriter, r *http.Request) {
 		ph.ctx.Logger.Error("[PortfolioHandler.onConnect] Unable to establish webservice connection")
 		return
 	}
-
-	var portfolio common.Portfolio
-	err = conn.ReadJSON(&portfolio)
+	err = conn.ReadJSON(&user)
 	if err != nil {
 		ph.ctx.Logger.Errorf("[PortfolioHandler.onConnect] webservice Read Error: %v", err)
 		conn.Close()
 		return
 	}
-
 	ph.ctx.Logger.Debug("[PortfolioHandler.onConnect] Accepting connection from ", conn.RemoteAddr())
-	ph.ctx.SetUser(portfolio.GetUser())
+	ph.stream(conn, &user)
+}
+
+func (ph *PortfolioHandler) stream(conn *websocket.Conn, user common.User) {
+	ph.ctx.SetUser(user) // TODO: REPLACE THIS WITH "ETHEREUM SESSION USER"
 	client := &PortfolioClient{
 		hub:              ph.hub,
 		conn:             conn,
-		send:             make(chan *common.Portfolio, common.BUFFERED_CHANNEL_SIZE),
+		send:             make(chan common.Portfolio, common.BUFFERED_CHANNEL_SIZE),
 		ctx:              ph.ctx,
 		marketcapService: ph.marketcapService,
-		userService:      ph.userService}
-
+		userService:      ph.userService,
+		portfolioService: ph.portfolioService}
 	client.hub.register <- client
 	go client.writePump()
 	go client.readPump()
-	go client.keepAlive()
+	//go client.keepAlive()
 }
-
-/*
-func (ph *PortfolioHandler) Broadcast(portfolio *common.Portfolio) {
-	ph.ctx.Logger.Debugf("[PortfolioHandler.Broadcast] Portfolio: %+v\n", portfolio)
-	for client := range ph.clients {
-		err := client.WriteJSON(portfolio)
-		if err != nil {
-			ph.ctx.Logger.Error(err)
-		}
-	}
-}
-*/

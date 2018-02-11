@@ -23,17 +23,20 @@ type WebServer struct {
 	exchangeService  service.ExchangeService
 	authService      service.AuthService
 	userService      service.UserService
+	portfolioService service.PortfolioService
 }
 
 func NewWebServer(ctx *common.Context, port int, marketcapService *service.MarketCapService,
-	exchangeService service.ExchangeService, authService service.AuthService, userService service.UserService) *WebServer {
+	exchangeService service.ExchangeService, authService service.AuthService,
+	userService service.UserService, portfolioService service.PortfolioService) *WebServer {
 	return &WebServer{
 		ctx:              ctx,
 		port:             port,
 		marketcapService: marketcapService,
 		exchangeService:  exchangeService,
 		authService:      authService,
-		userService:      userService}
+		userService:      userService,
+		portfolioService: portfolioService}
 }
 
 func (ws *WebServer) Start() {
@@ -55,7 +58,7 @@ func (ws *WebServer) Start() {
 	http.HandleFunc("/portfolio", func(w http.ResponseWriter, r *http.Request) {
 		portfolioHub := NewPortfolioHub(ws.ctx.Logger)
 		go portfolioHub.Run()
-		ph := NewPortfolioHandler(ws.ctx, portfolioHub, ws.marketcapService, ws.userService)
+		ph := NewPortfolioHandler(ws.ctx, portfolioHub, ws.marketcapService, ws.userService, ws.portfolioService)
 		ph.onConnect(w, r)
 	})
 
