@@ -1,4 +1,4 @@
-package webservice
+package websocket
 
 import (
 	"log"

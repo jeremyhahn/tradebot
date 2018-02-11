@@ -47,7 +47,6 @@ func main() {
 		SSL:    *sslFlag}
 
 	userDAO := dao.NewUserDAO(ctx)
-	//users := userDAO.Find()
 
 	userMapper := mapper.NewUserMapper()
 	marketcapService := service.NewMarketCapService(logger)

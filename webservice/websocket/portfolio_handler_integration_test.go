@@ -1,6 +1,6 @@
-//// +build integration`
+// +build integration`
 
-package webservice
+package websocket
 
 import (
 	"net/http"
@@ -29,7 +29,7 @@ func TestPortfolioHandler_Stream(t *testing.T) {
 	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService)
 	portfolioHandler := NewPortfolioHandler(ctx, hub, marketcapService, userService, portfolioService)
 
-	s := httptest.NewServer(http.HandlerFunc(portfolioHandler.onConnect))
+	s := httptest.NewServer(http.HandlerFunc(portfolioHandler.OnConnect))
 	defer s.Close()
 
 	u := "ws" + strings.TrimPrefix(s.URL, "http")
@@ -49,6 +49,7 @@ func TestPortfolioHandler_Stream(t *testing.T) {
 		LocalCurrency: "USD"}
 
 	portfolio := <-portfolioService.Stream(user, currencyPair)
+
 	portfolioUser := portfolio.GetUser()
 	assert.Equal(t, uint(1), portfolioUser.GetId())
 	// Bug? Returning persisted database name instead of name defined in DTO
@@ -59,7 +60,7 @@ func TestPortfolioHandler_Stream(t *testing.T) {
 	assert.Equal(t, true, portfolio.GetNetWorth() > 0)
 	assert.Equal(t, true, portfolioService.IsStreaming(user))
 
-	portfolioService.Stop(user)
+	portfolioService.Stop(ctx.GetUser())
 	assert.Equal(t, false, portfolioService.IsStreaming(user))
 
 	test.CleanupIntegrationTest()

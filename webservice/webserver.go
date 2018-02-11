@@ -5,8 +5,9 @@ import (
 	"net/http"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/restapi"
 	"github.com/jeremyhahn/tradebot/service"
+	"github.com/jeremyhahn/tradebot/webservice/rest"
+	"github.com/jeremyhahn/tradebot/webservice/websocket"
 )
 
 type WebRequest struct {
@@ -18,7 +19,7 @@ type WebServer struct {
 	ctx              *common.Context
 	port             int
 	closeChan        chan bool
-	portfolioHandler *PortfolioHandler
+	portfolioHandler *websocket.PortfolioHandler
 	marketcapService *service.MarketCapService
 	exchangeService  service.ExchangeService
 	authService      service.AuthService
@@ -47,19 +48,19 @@ func (ws *WebServer) Start() {
 	http.Handle("/", http.FileServer(http.Dir("webui/public")))
 
 	// RestAPI Handlers
-	ohrs := restapi.NewOrderHistoryRestService(ws.ctx, ws.exchangeService)
-	as := restapi.NewLoginRestService(ws.ctx, ws.authService)
-	reg := restapi.NewRegisterRestService(ws.ctx, ws.authService)
+	ohrs := rest.NewOrderHistoryRestService(ws.ctx, ws.exchangeService)
+	as := rest.NewLoginRestService(ws.ctx, ws.authService)
+	reg := rest.NewRegisterRestService(ws.ctx, ws.authService)
 	http.HandleFunc("/orderhistory", ohrs.GetOrderHistory)
 	http.HandleFunc("/login", as.Login)
 	http.HandleFunc("/register", reg.Register)
 
 	// Websocket Handlers
 	http.HandleFunc("/portfolio", func(w http.ResponseWriter, r *http.Request) {
-		portfolioHub := NewPortfolioHub(ws.ctx.Logger)
+		portfolioHub := websocket.NewPortfolioHub(ws.ctx.Logger)
 		go portfolioHub.Run()
-		ph := NewPortfolioHandler(ws.ctx, portfolioHub, ws.marketcapService, ws.userService, ws.portfolioService)
-		ph.onConnect(w, r)
+		ph := websocket.NewPortfolioHandler(ws.ctx, portfolioHub, ws.marketcapService, ws.userService, ws.portfolioService)
+		ph.OnConnect(w, r)
 	})
 
 	sPort := fmt.Sprintf(":%d", ws.port)

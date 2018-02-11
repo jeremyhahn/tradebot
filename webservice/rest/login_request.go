@@ -1,4 +1,4 @@
-package restapi
+package rest
 
 type LoginRequest struct {
 	Username string `json:"username"`

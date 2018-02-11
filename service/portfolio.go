@@ -45,7 +45,7 @@ func (ps *PortfolioServiceImpl) Build(user common.User, currencyPair *common.Cur
 		Exchanges: exchangeList,
 		Wallets:   walletList}
 	ps.portfolios[user.GetId()] = portfolio
-	ps.stopChans[user.GetId()] = make(chan bool)
+	ps.stopChans[user.GetId()] = make(chan bool, 1)
 	return portfolio
 }
 
