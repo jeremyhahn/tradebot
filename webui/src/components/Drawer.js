@@ -1,7 +1,6 @@
 'use strict';
 
 import React from 'react';
-
 import Drawer from 'material-ui/Drawer';
 import ListSubheader from 'material-ui/List/ListSubheader';
 import List, {
@@ -37,7 +36,7 @@ const LeftDrawer = (props) => {
 
 	return (
 
-		<Drawer open={ props.open }>
+		<Drawer open={ props.open } onClose={ handleClose }>
 
 			<List className={classes.root} subheader={<ListSubheader>Navigation</ListSubheader>}>
 

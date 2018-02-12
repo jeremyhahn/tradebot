@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
@@ -101,5 +103,11 @@ func (eth *EthService) Register(username, password string) error {
 		LocalCurrency: user.GetLocalCurrency(),
 		Etherbase:     user.GetEtherbase(),
 		Keystore:      user.GetKeystore()})
-	return eth.userDAO.Save(user)
+	err = eth.userDAO.Save(user)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed: users.username") {
+			err = errors.New("User already exists")
+		}
+	}
+	return err
 }
