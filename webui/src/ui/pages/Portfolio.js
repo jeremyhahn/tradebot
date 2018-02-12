@@ -54,7 +54,7 @@ class Portfolio extends React.Component {
 		var loc = window.location, new_uri;
 		var protocol = (loc.protocol === "https:") ? "wss" : "ws";
 		if(this.ws == null) {
-		  this.ws = new WebSocket(protocol + "://localhost:8080/portfolio");
+		  this.ws = new WebSocket(protocol + "://localhost:8080/ws/portfolio");
 	  }
 		var ws = this.ws
 		this.ws.onopen = function() {
@@ -163,7 +163,7 @@ class Portfolio extends React.Component {
 					<Typography type="subheading" gutterBottom>Net worth: { this.state.netWorth.formatMoney() }</Typography>
 			  </div>
 
-				<Paper style={{ paddingTop: 40, }}>
+				<Paper style={{ paddingTop: 40, height: '100%'}}>
 
 					{ this.state.portfolio.exchanges.map( exchange =>
 

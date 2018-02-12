@@ -100,9 +100,9 @@ func (service *DefaultChartService) StopStream(chart common.Chart) {
 	service.closeChans[chart.GetId()] <- true
 }
 
-func (service *DefaultChartService) GetCharts() ([]common.Chart, error) {
+func (service *DefaultChartService) GetCharts(autoTradeOnly bool) ([]common.Chart, error) {
 	var charts []common.Chart
-	_charts, err := service.chartDAO.Find(service.ctx.User)
+	_charts, err := service.chartDAO.Find(service.ctx.User, autoTradeOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -122,6 +122,7 @@ func (service *DefaultChartService) GetCharts() ([]common.Chart, error) {
 			Quote:      chart.Quote,
 			Exchange:   chart.Exchange,
 			Period:     chart.Period,
+			AutoTrade:  chart.AutoTrade,
 			Indicators: indicators,
 			Trades:     trades})
 	}

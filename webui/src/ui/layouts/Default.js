@@ -6,11 +6,17 @@ import Header from 'app/components/Header';
 const DefaultLayout = (props) => {
 
 	return (
+
 		<div>
-			<Header title="Tradebot"/>
-				<div className="component--content">
-					{ props.children }
-				</div>
+
+			{props.user.id != null &&
+				<Header title="Tradebot" user={props.user}/>
+			}
+
+			<div>
+				{ props.children }
+			</div>
+
 		</div>
 	)
 }

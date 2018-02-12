@@ -42,7 +42,7 @@ func NewWebServer(ctx *common.Context, port int, marketcapService *service.Marke
 
 func (ws *WebServer) Start() {
 
-	ws.ctx.Logger.Debug("[WebServer] Starting on port: ", ws.port)
+	ws.ctx.Logger.Debugf("Starting web services on port %d", ws.port)
 
 	// Static content
 	http.Handle("/", http.FileServer(http.Dir("webui/public")))
@@ -51,12 +51,12 @@ func (ws *WebServer) Start() {
 	ohrs := rest.NewOrderHistoryRestService(ws.ctx, ws.exchangeService)
 	as := rest.NewLoginRestService(ws.ctx, ws.authService)
 	reg := rest.NewRegisterRestService(ws.ctx, ws.authService)
-	http.HandleFunc("/orderhistory", ohrs.GetOrderHistory)
-	http.HandleFunc("/login", as.Login)
-	http.HandleFunc("/register", reg.Register)
+	http.HandleFunc("/api/v1/orderhistory", ohrs.GetOrderHistory)
+	http.HandleFunc("/api/v1/login", as.Login)
+	http.HandleFunc("/api/v1/register", reg.Register)
 
 	// Websocket Handlers
-	http.HandleFunc("/portfolio", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/ws/portfolio", func(w http.ResponseWriter, r *http.Request) {
 		portfolioHub := websocket.NewPortfolioHub(ws.ctx.Logger)
 		go portfolioHub.Run()
 		ph := websocket.NewPortfolioHandler(ws.ctx, portfolioHub, ws.marketcapService, ws.userService, ws.portfolioService)
@@ -87,15 +87,11 @@ func (ws *WebServer) Start() {
 }
 
 func (ws *WebServer) Run() {
-	ws.ctx.Logger.Debug("[WebServer.run] Starting loop")
 	for {
-		ws.ctx.Logger.Debug("[WebServer.run] Main loop...")
 		select {
-		case close := <-ws.closeChan:
-			if close {
-				ws.ctx.Logger.Debug("[WebServer.run] Stopping Web server")
-				break
-			}
+		case <-ws.closeChan:
+			ws.ctx.Logger.Debug("[WebServer.run] Stopping Web server")
+			break
 		}
 	}
 }

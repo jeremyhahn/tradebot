@@ -20,7 +20,7 @@ func main() {
 
 	wd, _ := os.Getwd()
 	defaultIpc := fmt.Sprintf("%s/%s", wd, "test/ethereum/blockchain/geth.ipc")
-	defaultKeystore := fmt.Sprintf("%s/%s", wd, "test/ethereum/blockchain/keystore/test")
+	defaultKeystore := fmt.Sprintf("%s/%s", wd, "test/ethereum/blockchain/keystore")
 
 	portFlag := flag.Int("port", 8080, "Web server listen port")
 	sslFlag := flag.Bool("ssl", true, "Enable debug level logging")
@@ -33,8 +33,9 @@ func main() {
 	logger := logging.MustGetLogger(common.APPNAME)
 	logging.SetBackend(backend)
 	if *debugFlag == false {
-		logger.Debug("Starting in debug mode...")
 		logging.SetLevel(logging.ERROR, "")
+	} else {
+		logger.Debug("Starting in debug mode...")
 	}
 
 	sqlite := InitSQLite(*debugFlag)
@@ -51,12 +52,6 @@ func main() {
 	userMapper := mapper.NewUserMapper()
 	marketcapService := service.NewMarketCapService(logger)
 	userService := service.NewUserService(ctx, userDAO, marketcapService, userMapper)
-
-	user, err := userService.GetUserById(1)
-	if err != nil {
-		logger.Fatal(err.Error())
-	}
-	ctx.SetUser(user)
 
 	chartDAO := dao.NewChartDAO(ctx)
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
@@ -81,7 +76,7 @@ func main() {
 	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService, profitService, tradeService, strategyService)
 	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService)
 
-	err = autoTradeService.EndWorldHunger()
+	err := autoTradeService.EndWorldHunger()
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}

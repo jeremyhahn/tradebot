@@ -41,8 +41,8 @@ func NewEthereumService(ctx *common.Context, ipc, keystore string, userDAO dao.U
 		userDAO: userDAO,
 		keystore: ethkeystore.NewKeyStore(
 			keystore,
-			ethkeystore.LightScryptN,
-			ethkeystore.LightScryptP)}, nil
+			ethkeystore.StandardScryptN,
+			ethkeystore.StandardScryptP)}, nil
 }
 
 func (eth *EthService) CreateAccount(passphrase string) (accounts.Account, error) {
@@ -66,8 +66,23 @@ func (eth *EthService) Authenticate(address, passphrase string) error {
 	return eth.keystore.Unlock(acct, passphrase)
 }
 
-func (eth *EthService) Login(password string) error {
-	return eth.Authenticate("", password)
+func (eth *EthService) Login(username, password string) error {
+	userEntity, err := eth.userDAO.GetByName(username)
+	if err != nil {
+		return err
+	}
+	eth.ctx.Logger.Debugf("userEntity: %+v", userEntity)
+	err = eth.Authenticate(userEntity.GetEtherbase(), password)
+	if err != nil {
+		eth.ctx.Logger.Errorf("[EhtereumService.Login] %s", err.Error())
+	}
+	eth.ctx.SetUser(&dto.UserDTO{
+		Id:            userEntity.GetId(),
+		Username:      userEntity.GetUsername(),
+		LocalCurrency: userEntity.GetLocalCurrency(),
+		Etherbase:     userEntity.GetEtherbase(),
+		Keystore:      userEntity.GetKeystore()})
+	return err
 }
 
 func (eth *EthService) Register(username, password string) error {

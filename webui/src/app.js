@@ -25,10 +25,15 @@ import Exchanges from 'app/ui/pages/Exchanges';
 import Settings from 'app/ui/pages/Settings';
 import Chart from 'app/ui/pages/Chart';
 import OrderHistory from 'app/ui/pages/OrderHistory';
-//import Login from 'app/ui/pages/Login';
+
+import Login from 'app/components/Login';
 import Register from 'app/ui/pages/Register';
+import AuthService from 'app/components/AuthService';
+import withAuth from 'app/components/withAuth';
 
 import { install } from 'offline-plugin/runtime';
+
+const Auth = new AuthService();
 
 const muiTheme = createMuiTheme({
   palette: {
@@ -47,24 +52,33 @@ const muiTheme = createMuiTheme({
   },
 });
 
+const handleLogout = function() {
+   Auth.logout()
+   this.props.history.replace('/login');
+}
+
+const user = {
+  id: null,
+  username: null,
+  local_currency: null
+}
+
 render(
 	(
 	<Router>
 	<MuiThemeProvider theme={muiTheme}>
-
-		<DefaultLayout>
-			<Route exact path="/" component={ Register } />
+		<DefaultLayout user={user}>
+			<Route exact path="/" component={ user.id == null ? Login : Portfolio } />
 			<Switch>
 				<Route exact path="/portfolio" component={ Portfolio } />
 				<Route exact path="/orders" component={ OrderHistory } />
 				<Route exact path="/exchanges" component={ Exchanges } />
 				<Route exact path="/chart" component={ Chart } />
 				<Route exact path="/settings" component={ Settings } />
-
+        <Route exact path="/login" component={ Login } />
         <Route exact path="/register" component={ Register } />
 			</Switch>
 		</DefaultLayout>
-
 	</MuiThemeProvider>
 	</Router>
 	),
