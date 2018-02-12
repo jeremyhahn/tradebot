@@ -1,4 +1,4 @@
-//// +build integration
+// +build integration
 
 package dao
 
@@ -89,7 +89,7 @@ func TestChartDAO_Find(t *testing.T) {
 	err := chartDAO.Create(chart)
 	assert.Nil(t, err)
 
-	charts, err := chartDAO.Find(ctx.User)
+	charts, err := chartDAO.Find(ctx.User, false)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 

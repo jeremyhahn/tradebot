@@ -30,7 +30,11 @@ func NewAutoTradeService(ctx *common.Context, exchangeService ExchangeService, c
 }
 
 func (ats *DefaultAutoTradeService) EndWorldHunger() error {
-	charts, err := ats.chartService.GetCharts()
+	if ats.ctx.GetUser() == nil {
+		ats.ctx.Logger.Warningf("[DefaultAutoTradeService.EndWorldHunger] No users configured")
+		return nil
+	}
+	charts, err := ats.chartService.GetCharts(true)
 	if err != nil {
 		return err
 	}

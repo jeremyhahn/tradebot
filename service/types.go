@@ -26,8 +26,9 @@ type UserService interface {
 }
 
 type AuthService interface {
-	Login(passphrase string) error
+	Login(username, password string) error
 	Register(username, password string) error
+	IsLoggedIn() bool
 }
 
 type AutoTradeService interface {
@@ -40,7 +41,7 @@ type ChartService interface {
 	Stream(chart common.Chart, candlesticks []common.Candlestick, strategyHandler func(price float64) error) error
 	StopStream(chart common.Chart)
 	GetChart(id uint) (common.Chart, error)
-	GetCharts() ([]common.Chart, error)
+	GetCharts(autoTradeOnly bool) ([]common.Chart, error)
 	GetTrades(chart common.Chart) ([]common.Trade, error)
 	GetLastTrade(chart common.Chart) (common.Trade, error)
 	GetIndicator(chart common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error)

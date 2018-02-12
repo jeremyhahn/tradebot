@@ -24,18 +24,23 @@ func NewLoginRestService(ctx *common.Context, authService service.AuthService) L
 }
 
 func (service *LoginRestServiceImpl) Login(w http.ResponseWriter, r *http.Request) {
-	service.ctx.Logger.Debugf("[LoginRestService.Login]")
+	service.ctx.Logger.Debug("[LoginRestService.Login]")
 	var loginRequest LoginRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&loginRequest); err != nil {
+		service.ctx.Logger.Errorf("[LoginRestService.Login] %s", err.Error())
 		respondWithJSON(w, http.StatusBadRequest, LoginResponse{
 			Error: err.Error()})
 		return
 	}
-	err := service.authService.Login(loginRequest.Password)
+
+	service.ctx.Logger.Debugf("[LoginRestService.Login] username: %s, password: %s",
+		loginRequest.Username, loginRequest.Password)
+
+	err := service.authService.Login(loginRequest.Username, loginRequest.Password)
 	var response LoginResponse
 	if err != nil {
-		response.Error = err.Error()
+		response.Error = "Invalid username / password"
 		response.Success = false
 	} else {
 		response.Success = true

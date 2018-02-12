@@ -9,7 +9,7 @@ type ChartDAO interface {
 	Create(chart entity.ChartEntity) error
 	Save(chart entity.ChartEntity) error
 	Update(chart entity.ChartEntity) error
-	Find(user common.User) ([]entity.Chart, error)
+	Find(user common.User, autoTradeOnly bool) ([]entity.Chart, error)
 	Get(id uint) (entity.ChartEntity, error)
 	GetIndicators(chart entity.ChartEntity) ([]entity.ChartIndicator, error)
 	GetStrategies(chart entity.ChartEntity) ([]entity.ChartStrategy, error)
@@ -51,10 +51,16 @@ func (chartDAO *ChartDAOImpl) Get(id uint) (entity.ChartEntity, error) {
 	return &chart, nil
 }
 
-func (chartDAO *ChartDAOImpl) Find(user common.User) ([]entity.Chart, error) {
+func (chartDAO *ChartDAOImpl) Find(user common.User, autoTradeonly bool) ([]entity.Chart, error) {
 	var charts []entity.Chart
 	daoUser := &entity.User{Id: user.GetId()}
-	if err := chartDAO.ctx.DB.Model(daoUser).Related(&charts).Error; err != nil {
+	var err error
+	if autoTradeonly {
+		err = chartDAO.ctx.DB.Where("auto_trade = ?", 1).Model(daoUser).Related(&charts).Error
+	} else {
+		err = chartDAO.ctx.DB.Model(daoUser).Related(&charts).Error
+	}
+	if err != nil {
 		return charts, err
 	}
 	for i, chart := range charts {
