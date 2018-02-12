@@ -20,7 +20,6 @@ const styles = theme => ({
   textField: {
     marginLeft: theme.spacing.unit,
     marginRight: theme.spacing.unit,
-    width: 200,
   },
   error: {
     color: 'red',
@@ -32,6 +31,9 @@ class Login extends Component {
     constructor() {
       super();
       this.state = {
+        errors: null,
+        opacity: 0.6,
+        disabled: true,
         errors: null
       },
       this.handleChange = this.handleChange.bind(this);
@@ -63,6 +65,16 @@ class Login extends Component {
         this.setState({
             [e.target.name]: e.target.value
         })
+        if(this.state.password.length > 0) {
+          this.setState({
+            opacity: 1,
+            disabled: false})
+        } else {
+          this.setState({
+            opacity: 0.6,
+            disabled: true
+          })
+        }
     }
 
     render() {
@@ -83,6 +95,7 @@ class Login extends Component {
                             name="username"
                             label="Username"
                             type="username"
+                            value={this.state.username}
                             className={classes.textField}
                             onChange={this.handleChange}/>
 
@@ -91,12 +104,13 @@ class Login extends Component {
                             name="password"
                             label="Password"
                             type="password"
+                            value={this.state.password}
                             className={classes.textField}
                             onChange={this.handleChange}/>
 
-
                         <br/>
-                        <input className="form-submit" value="Login" type="submit"/>
+                        <input className="form-submit" value="Login" type="submit"
+                           style={{opacity: this.state.opacity}} disabled={this.state.disabled}/>
 
                         <br/>
                         <Button className="form-submit" component={Link} to="/register">Register</Button>

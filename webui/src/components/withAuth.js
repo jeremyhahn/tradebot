@@ -1,23 +1,31 @@
 import React, { Component } from 'react';
+import {BrowserRouter} from 'react-router';
 import AuthService from 'app/components/AuthService';
+import { createHashHistory } from 'history'
 
 export default function withAuth(AuthComponent) {
 
-var protocol = (loc.protocol === "https:") ? "wss" : "ws";
-
+    var protocol = (window.location.protocol === "https:") ? "wss" : "ws";
     const Auth = new AuthService(window.location.protocol + '://localhost:8080/login');
+    const history = createHashHistory()
 
     return class AuthWrapped extends Component {
+
         constructor() {
             super();
             this.state = {
-                user: null
+                user: null,
+                tempUser: {
+                  id: 1,
+                  username: "test",
+                  local_currency: "USD"
+                }
             }
         }
 
         componentWillMount() {
             if (!Auth.loggedIn()) {
-                this.props.history.replace('/login')
+                //history.replace('/login')
             }
             else {
                 try {
@@ -27,8 +35,9 @@ var protocol = (loc.protocol === "https:") ? "wss" : "ws";
                     })
                 }
                 catch(err){
-                    Auth.logout()
-                    this.props.history.replace('/login')
+                    //Auth.logout();
+                    console.log('Unable to load JWT profile');
+                    //history.replace('/login')
                 }
             }
         }
@@ -36,11 +45,14 @@ var protocol = (loc.protocol === "https:") ? "wss" : "ws";
         render() {
           if (this.state.user) {
               return (
-                  <AuthComponent history={this.props.history} user={this.state.user} />
+                  <AuthComponent history={history} user={this.state.user} />
               )
           }
           else {
-              return null
+              console.error('withAuth Authentication failed!')
+              return (
+                  <AuthComponent user={this.state.user} />
+              )
           }
         }
 

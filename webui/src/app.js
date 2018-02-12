@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { render } from 'react-dom';
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom'
+import { BrowserRouter, Route, Switch } from 'react-router-dom'
 
 import injectTapEventPlugin from 'react-tap-event-plugin';
 injectTapEventPlugin();
@@ -52,23 +52,12 @@ const muiTheme = createMuiTheme({
   },
 });
 
-const handleLogout = function() {
-   Auth.logout()
-   this.props.history.replace('/login');
-}
-
-const user = {
-  id: null,
-  username: null,
-  local_currency: null
-}
-
 render(
 	(
-	<Router>
+	<BrowserRouter>
 	<MuiThemeProvider theme={muiTheme}>
-		<DefaultLayout user={user}>
-			<Route exact path="/" component={ user.id == null ? Login : Portfolio } />
+		<DefaultLayout>
+			<Route exact path="/" component={ Login } />
 			<Switch>
 				<Route exact path="/portfolio" component={ Portfolio } />
 				<Route exact path="/orders" component={ OrderHistory } />
@@ -80,7 +69,7 @@ render(
 			</Switch>
 		</DefaultLayout>
 	</MuiThemeProvider>
-	</Router>
+	</BrowserRouter>
 	),
 	document.getElementById('root')
 );

@@ -5,7 +5,6 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/entity"
-	"github.com/jeremyhahn/tradebot/util"
 )
 
 type UserDAO interface {
@@ -59,7 +58,6 @@ func (dao *UserDAOImpl) GetByName(username string) (entity.UserEntity, error) {
 		return nil, err
 	}
 	if user.GetId() == 0 {
-		util.DUMP(user)
 		dao.ctx.Logger.Warningf("[UserDAO.GetByName] Unable to locate user: %s", username)
 		return nil, errors.New("User not found")
 	}

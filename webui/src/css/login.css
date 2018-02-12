@@ -22,6 +22,7 @@
 .card > form{
     display: flex;
     flex-direction: column;
+    min-width: 300px;
 }
 
 .card h1{
