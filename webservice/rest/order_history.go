@@ -17,12 +17,14 @@ type OrderHistoryRestService interface {
 type OrderHistoryRestServiceImpl struct {
 	ctx             *common.Context
 	exchangeService service.ExchangeService
+	jsonWriter      common.HttpWriter
 }
 
-func NewOrderHistoryRestService(ctx *common.Context, exchangeService service.ExchangeService) OrderHistoryRestService {
+func NewOrderHistoryRestService(ctx *common.Context, exchangeService service.ExchangeService, jsonWriter common.HttpWriter) OrderHistoryRestService {
 	return &OrderHistoryRestServiceImpl{
 		ctx:             ctx,
-		exchangeService: exchangeService}
+		exchangeService: exchangeService,
+		jsonWriter:      jsonWriter}
 }
 
 func (ohrs *OrderHistoryRestServiceImpl) GetOrderHistory(w http.ResponseWriter, r *http.Request) {

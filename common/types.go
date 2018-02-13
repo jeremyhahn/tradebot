@@ -1,10 +1,8 @@
 package common
 
 import (
+	"net/http"
 	"time"
-
-	"github.com/jinzhu/gorm"
-	logging "github.com/op/go-logging"
 )
 
 const (
@@ -200,12 +198,8 @@ type Portfolio interface {
 	GetWallets() []CryptoWallet
 }
 
-type Context struct {
-	Logger *logging.Logger
-	DB     *gorm.DB
-	User   User
-	Debug  bool
-	SSL    bool
+type HttpWriter interface {
+	Write(w http.ResponseWriter, status int, response interface{})
 }
 
 type TradingStrategyParams struct {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/codegangsta/negroni"
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/webservice/rest"
@@ -25,35 +26,48 @@ type WebServer struct {
 	authService      service.AuthService
 	userService      service.UserService
 	portfolioService service.PortfolioService
+	jwt              *JsonWebToken
+}
+
+type Response struct {
+	Data string `json:"data"`
 }
 
 func NewWebServer(ctx *common.Context, port int, marketcapService *service.MarketCapService,
 	exchangeService service.ExchangeService, authService service.AuthService,
-	userService service.UserService, portfolioService service.PortfolioService) *WebServer {
+	userService service.UserService, portfolioService service.PortfolioService, jwt *JsonWebToken) *WebServer {
 	return &WebServer{
 		ctx:              ctx,
 		port:             port,
+		closeChan:        make(chan bool, 1),
 		marketcapService: marketcapService,
 		exchangeService:  exchangeService,
 		authService:      authService,
 		userService:      userService,
-		portfolioService: portfolioService}
+		portfolioService: portfolioService,
+		jwt:              jwt}
 }
 
 func (ws *WebServer) Start() {
 
-	ws.ctx.Logger.Debugf("Starting web services on port %d", ws.port)
+	jsonWriter := NewJsonWriter()
 
 	// Static content
 	http.Handle("/", http.FileServer(http.Dir("webui/public")))
 
-	// REST Handlers
-	ohrs := rest.NewOrderHistoryRestService(ws.ctx, ws.exchangeService)
-	as := rest.NewLoginRestService(ws.ctx, ws.authService)
-	reg := rest.NewRegisterRestService(ws.ctx, ws.authService)
-	http.HandleFunc("/api/v1/orderhistory", ohrs.GetOrderHistory)
+	// REST Handlers - Public Access
+	as := rest.NewLoginRestService(ws.ctx, ws.authService, jsonWriter)
+	reg := rest.NewRegisterRestService(ws.ctx, ws.authService, jsonWriter)
 	http.HandleFunc("/api/v1/login", as.Login)
 	http.HandleFunc("/api/v1/register", reg.Register)
+	http.HandleFunc("/api/v1/jwt", ws.jwt.Generate)
+
+	// REST Handlers - Authentication Required
+	ohrs := rest.NewOrderHistoryRestService(ws.ctx, ws.exchangeService, jsonWriter)
+	http.Handle("/api/v1/orderhistory", negroni.New(
+		negroni.HandlerFunc(ws.jwt.MiddlewareValidator),
+		negroni.Wrap(http.HandlerFunc(ohrs.GetOrderHistory)),
+	))
 
 	// Websocket Handlers
 	http.HandleFunc("/ws/portfolio", func(w http.ResponseWriter, r *http.Request) {
@@ -66,17 +80,21 @@ func (ws *WebServer) Start() {
 	sPort := fmt.Sprintf(":%d", ws.port)
 	if ws.ctx.SSL {
 
+		ws.ctx.Logger.Debugf("Starting web services on TLS port %d", ws.port)
+
 		// Redirect HTTP -> HTTPS
 		go http.ListenAndServe(sPort, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "https://"+r.Host+r.URL.String(), http.StatusMovedPermanently)
 		}))
 
 		// Serve HTTPS Requests
-		err := http.ListenAndServeTLS(fmt.Sprintf(":%d", ws.port), "ssl/cert.pem", "ssl/key.pem", nil)
+		err := http.ListenAndServeTLS(fmt.Sprintf(":%d", ws.port), "keys/cert.pem", "keys/key.pem", nil)
 		if err != nil {
 			ws.ctx.Logger.Fatalf("[WebServer] Unable to start TLS web server: %s", err.Error())
 		}
 	} else {
+
+		ws.ctx.Logger.Debugf("Starting web services on port %d", ws.port)
 
 		// Serve HTTP Requests
 		err := http.ListenAndServe(sPort, nil)
@@ -97,5 +115,6 @@ func (ws *WebServer) Run() {
 }
 
 func (ws *WebServer) Stop() {
+	ws.ctx.Logger.Info("Stopping web server")
 	ws.closeChan <- true
 }

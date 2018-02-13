@@ -15,9 +15,10 @@ type LoginRestService interface {
 type LoginRestServiceImpl struct {
 	ctx         *common.Context
 	authService service.AuthService
+	jsonWriter  common.HttpWriter
 }
 
-func NewLoginRestService(ctx *common.Context, authService service.AuthService) LoginRestService {
+func NewLoginRestService(ctx *common.Context, authService service.AuthService, jsonWriter common.HttpWriter) LoginRestService {
 	return &LoginRestServiceImpl{
 		ctx:         ctx,
 		authService: authService}
@@ -45,5 +46,6 @@ func (service *LoginRestServiceImpl) Login(w http.ResponseWriter, r *http.Reques
 	} else {
 		response.Success = true
 	}
-	respondWithJSON(w, http.StatusOK, response)
+
+	service.jsonWriter.Write(w, http.StatusOK, response)
 }

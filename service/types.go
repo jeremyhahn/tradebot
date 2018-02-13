@@ -28,7 +28,7 @@ type UserService interface {
 type AuthService interface {
 	Login(username, password string) error
 	Register(username, password string) error
-	IsLoggedIn() bool
+	//IsLoggedIn() bool
 }
 
 type AutoTradeService interface {
