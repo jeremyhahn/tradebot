@@ -23,10 +23,12 @@ type JsonWebToken struct {
 	authService service.AuthService
 	rsaKeyPair  *common.RsaKeyPair
 	jsonWriter  common.HttpWriter
+	common.JsonWebToken
 }
 
 type JsonWebTokenDTO struct {
 	Value string `json:"token"`
+	Error string `json:"error"`
 }
 
 func NewJsonWebToken(ctx *common.Context, authService service.AuthService, jsonWriter common.HttpWriter) (*JsonWebToken, error) {
@@ -52,6 +54,10 @@ func (_jwt *JsonWebToken) GetToken() *jwt.Token {
 	return _jwt.token
 }
 
+func (_jwt *JsonWebToken) GetClaims() jwt.MapClaims {
+	return _jwt.GetToken().Claims.(jwt.MapClaims)
+}
+
 func (_jwt *JsonWebToken) ParseToken(r *http.Request) (*jwt.Token, error) {
 	token, err := request.ParseFromRequest(r, request.AuthorizationHeaderExtractor,
 		func(token *jwt.Token) (interface{}, error) {
@@ -63,7 +69,7 @@ func (_jwt *JsonWebToken) ParseToken(r *http.Request) (*jwt.Token, error) {
 	return token, nil
 }
 
-func (_jwt *JsonWebToken) Generate(w http.ResponseWriter, req *http.Request) {
+func (_jwt *JsonWebToken) GenerateToken(w http.ResponseWriter, req *http.Request) {
 
 	_jwt.ctx.Logger.Debugf("[JWT.createJsonWebToken] url: %s, method: %s, remoteAddress: %s, requestUri: %s ",
 		req.URL.Path, req.Method, req.RemoteAddr, req.RequestURI)
@@ -72,32 +78,32 @@ func (_jwt *JsonWebToken) Generate(w http.ResponseWriter, req *http.Request) {
 	err := json.NewDecoder(req.Body).Decode(&user)
 
 	if err != nil {
-		_jwt.ctx.Logger.Errorf("%v", "[WebServerRequest error")
-		http.Error(w, "Request has error", http.StatusForbidden)
+		_jwt.jsonWriter.Write(w, http.StatusBadRequest, JsonWebTokenDTO{Error: "Bad request"})
 		return
 	}
 
-	err = _jwt.authService.Login(user.Username, user.Password)
+	userDTO, err := _jwt.authService.Login(user.Username, user.Password)
 	if err != nil {
-		_jwt.ctx.Logger.Errorf("%v", "Invalid credentials")
-		http.Error(w, "Invalid credentials", http.StatusForbidden)
+		_jwt.jsonWriter.Write(w, http.StatusForbidden, JsonWebTokenDTO{Error: "Invalid credentials"})
 		return
 	}
 
 	claims := make(jwt.MapClaims)
 	claims["exp"] = time.Now().Add(time.Minute * _jwt.expiration).Unix()
 	claims["iat"] = time.Now().Unix()
-	claims["username"] = user.Username
+	claims["user_id"] = userDTO.GetId()
+	claims["username"] = userDTO.GetUsername()
+	claims["local_currency"] = userDTO.GetLocalCurrency()
+	claims["etherbase"] = userDTO.GetEtherbase()
 	_jwt.token.Claims = claims
 
 	tokenString, err := _jwt.token.SignedString(_jwt.rsaKeyPair.PrivateKey)
 	if err != nil {
-		_jwt.ctx.Logger.Errorf("%v", "Error signing JWT token")
-		http.Error(w, "Error signing the token", http.StatusInternalServerError)
+		_jwt.jsonWriter.Write(w, http.StatusInternalServerError, JsonWebTokenDTO{Error: "Error signing token"})
 		return
 	}
 
-	tokenDTO := JsonWebTokenDTO{tokenString}
+	tokenDTO := JsonWebTokenDTO{Value: tokenString}
 	_jwt.jsonWriter.Write(w, http.StatusOK, tokenDTO)
 }
 

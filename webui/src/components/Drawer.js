@@ -38,7 +38,7 @@ const LeftDrawer = (props) => {
 
 		<Drawer open={ props.open } onClose={ handleClose }>
 
-			<List className={classes.root} subheader={<ListSubheader>Navigation</ListSubheader>}>
+			<List className={classes.root} subheader={<ListSubheader>Navigation {props.user}</ListSubheader>}>
 
 				<ListItem onTouchTap={ handleClose } onClick={function() {navigate('/portfolio')} } button>
 					<ListItemAvatar>
@@ -73,6 +73,13 @@ const LeftDrawer = (props) => {
 					  <Avatar src={"images/avatars/128/settings.png"} />
 					</ListItemAvatar>
 					<ListItemText primary="Settings"/>
+				</ListItem>
+
+        <ListItem onTouchTap={ handleClose } onClick={function() {navigate('/logout')}} button>
+					<ListItemAvatar>
+					  <Avatar src={"images/avatars/128/logout.png"} />
+					</ListItemAvatar>
+					<ListItemText primary="Logout"/>
 				</ListItem>
 
 			</List>

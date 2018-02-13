@@ -3,6 +3,8 @@ package common
 import (
 	"net/http"
 	"time"
+
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 const (
@@ -200,6 +202,12 @@ type Portfolio interface {
 
 type HttpWriter interface {
 	Write(w http.ResponseWriter, status int, response interface{})
+}
+
+type JsonWebToken interface {
+	GetToken() *jwt.Token
+	GenerateToken(w http.ResponseWriter, req *http.Request)
+	MiddlewareValidator(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
 }
 
 type TradingStrategyParams struct {

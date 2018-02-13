@@ -1,37 +1,23 @@
 'use strict';
 
 import React from 'react';
-import withAuth from 'app/components/withAuth'
 import Header from 'app/components/Header';
-/*
-const DefaultLayout = (props) => {
-
-	return (
-		<div>
-		  {props.user != null &&
-				<Header title="Tradebot" />
-			}
-			<div>
-				{ props.children }
-			</div>
-		</div>
-	)
-}
-
-export default DefaultLayout;
-*/
+import AuthService from 'app/components/AuthService';
 
 class DefaultLayout extends React.Component {
 
   constructor(props) {
 		super(props)
+    this.Auth = new AuthService();
 	}
 
 	render() {
 
 		return (
 			<div>
-				<Header title="Tradebot" />
+        {this.Auth.loggedIn() &&
+				  <Header title="Tradebot" />
+        }
 				<div>
 					{ this.props.children }
 				</div>

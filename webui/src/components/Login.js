@@ -23,18 +23,20 @@ const styles = theme => ({
   },
   error: {
     color: 'red',
-    padding: 25
+    textAlign: 'center',
+    marginTop: '25'
   }
 });
 
 class Login extends Component {
-    constructor() {
-      super();
+
+    constructor(props) {
+      super(props);
       this.state = {
-        errors: null,
+        password: "",
         opacity: 0.6,
         disabled: true,
-        errors: null
+        errors: ""
       },
       this.handleChange = this.handleChange.bind(this);
       this.handleFormSubmit = this.handleFormSubmit.bind(this);
@@ -43,21 +45,25 @@ class Login extends Component {
 
     componentWillMount(){
       if(this.Auth.loggedIn())
-          this.props.history.replace('/');
+          this.props.history.replace('/portfolio');
     }
 
     handleFormSubmit(e){
        e.preventDefault();
        this.Auth.login(this.state.username, this.state.password)
-       .then(res =>{
-          if(res.success) {
+       .then(res => {
+          if(res.token.length) {
             this.props.history.replace('/portfolio');
           } else {
             this.setState({errors : res.error})
           }
        })
-       .catch(err =>{
-          console.error(err);
+       .catch(err => {
+          if(err.response) {
+            console.log(err.response)
+            console.log(err.statusText)
+            console.log(err)
+          }
        })
     }
 
@@ -85,7 +91,7 @@ class Login extends Component {
             <div className="center">
                 <div className="card">
                     <h1>Welcome</h1>
-                    {this.state.errors != null &&
+                    {this.state.errors != "" &&
                       <h3 className={classes.error}>{this.state.errors}</h3>
                     }
                     <form className="classes.form" noValidate autoComplete="off" onSubmit={this.handleFormSubmit}>

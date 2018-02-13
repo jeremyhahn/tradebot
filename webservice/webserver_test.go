@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
@@ -62,7 +63,7 @@ func TestWebServer(t *testing.T) {
 	assert.Nil(t, err)
 
 	client := &http.Client{}
-	req, _ := http.NewRequest("POST", "http://localhost:8081/api/v1/jwt", bytes.NewBuffer(jsonCreds))
+	req, _ := http.NewRequest("POST", "http://localhost:8081/api/v1/login", bytes.NewBuffer(jsonCreds))
 	req.Header.Set("Content-Type", "application/json")
 	res, _ := client.Do(req)
 
@@ -71,11 +72,22 @@ func TestWebServer(t *testing.T) {
 	assert.Contains(t, string(bodyBytes), "\"token\":")
 	assert.Equal(t, 200, res.StatusCode)
 
+	claims := jwt.GetClaims()
+	assert.NotNil(t, claims)
+	assert.NotNil(t, "1", claims["user_id"])
+	assert.NotNil(t, "testing", claims["username"])
+	assert.NotNil(t, "USD", claims["local_currency"])
+	assert.NotNil(t, "0xabc123", claims["etherbase"])
+
 	ws.Stop()
 }
 
-func (ethereum *MockEthereumService) Login(username, password string) error {
-	return nil
+func (ethereum *MockEthereumService) Login(username, password string) (common.User, error) {
+	return &dto.UserDTO{
+		Id:            1,
+		Username:      "testing",
+		LocalCurrency: "USD",
+		Etherbase:     "0xabc123"}, nil
 }
 
 func (ethereum *MockEthereumService) Register(username, password string) error {

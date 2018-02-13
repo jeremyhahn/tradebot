@@ -14,6 +14,7 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
+	"github.com/jeremyhahn/tradebot/mapper"
 )
 
 type EthereumService interface {
@@ -25,22 +26,25 @@ type EthereumService interface {
 }
 
 type EthService struct {
-	ctx      *common.Context
-	client   *ethclient.Client
-	keystore *ethkeystore.KeyStore
-	userDAO  dao.UserDAO
+	ctx        *common.Context
+	client     *ethclient.Client
+	keystore   *ethkeystore.KeyStore
+	userDAO    dao.UserDAO
+	userMapper mapper.UserMapper
 	EthereumService
 }
 
-func NewEthereumService(ctx *common.Context, ipc, keystore string, userDAO dao.UserDAO) (EthereumService, error) {
+func NewEthereumService(ctx *common.Context, ipc, keystore string, userDAO dao.UserDAO,
+	userMapper mapper.UserMapper) (EthereumService, error) {
 	client, err := ethclient.Dial(ipc)
 	if err != nil {
 		return nil, err
 	}
 	return &EthService{
-		ctx:     ctx,
-		client:  client,
-		userDAO: userDAO,
+		ctx:        ctx,
+		client:     client,
+		userDAO:    userDAO,
+		userMapper: userMapper,
 		keystore: ethkeystore.NewKeyStore(
 			keystore,
 			ethkeystore.StandardScryptN,
@@ -68,23 +72,20 @@ func (eth *EthService) Authenticate(address, passphrase string) error {
 	return eth.keystore.Unlock(acct, passphrase)
 }
 
-func (eth *EthService) Login(username, password string) error {
+func (eth *EthService) Login(username, password string) (common.User, error) {
 	userEntity, err := eth.userDAO.GetByName(username)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	eth.ctx.Logger.Debugf("userEntity: %+v", userEntity)
+	eth.ctx.Logger.Debugf("[EthereumService.Login] userEntity: %+v", userEntity)
 	err = eth.Authenticate(userEntity.GetEtherbase(), password)
 	if err != nil {
 		eth.ctx.Logger.Errorf("[EhtereumService.Login] %s", err.Error())
+		return nil, err
 	}
-	eth.ctx.SetUser(&dto.UserDTO{
-		Id:            userEntity.GetId(),
-		Username:      userEntity.GetUsername(),
-		LocalCurrency: userEntity.GetLocalCurrency(),
-		Etherbase:     userEntity.GetEtherbase(),
-		Keystore:      userEntity.GetKeystore()})
-	return err
+	userDTO := eth.userMapper.MapUserEntityToDto(userEntity)
+	eth.ctx.SetUser(userDTO)
+	return userDTO, err
 }
 
 func (eth *EthService) Register(username, password string) error {

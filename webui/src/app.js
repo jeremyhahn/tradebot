@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { render } from 'react-dom';
-import { BrowserRouter, Route, Switch } from 'react-router-dom'
+import { BrowserRouter, Route, Switch, browserHistory } from 'react-router-dom'
 
 import injectTapEventPlugin from 'react-tap-event-plugin';
 injectTapEventPlugin();
@@ -25,15 +25,10 @@ import Exchanges from 'app/ui/pages/Exchanges';
 import Settings from 'app/ui/pages/Settings';
 import Chart from 'app/ui/pages/Chart';
 import OrderHistory from 'app/ui/pages/OrderHistory';
-
 import Login from 'app/components/Login';
+import Logout from 'app/components/Logout';
 import Register from 'app/ui/pages/Register';
-import AuthService from 'app/components/AuthService';
-import withAuth from 'app/components/withAuth';
-
 import { install } from 'offline-plugin/runtime';
-
-const Auth = new AuthService();
 
 const muiTheme = createMuiTheme({
   palette: {
@@ -54,18 +49,19 @@ const muiTheme = createMuiTheme({
 
 render(
 	(
-	<BrowserRouter>
+	<BrowserRouter history={browserHistory}>
 	<MuiThemeProvider theme={muiTheme}>
 		<DefaultLayout>
 			<Route exact path="/" component={ Login } />
 			<Switch>
+        <Route exact path="/register" component={ Register } />
+        <Route exact path="/login" component={ Login } />
+        <Route exact path="/logout" component={ Logout } />
 				<Route exact path="/portfolio" component={ Portfolio } />
 				<Route exact path="/orders" component={ OrderHistory } />
 				<Route exact path="/exchanges" component={ Exchanges } />
 				<Route exact path="/chart" component={ Chart } />
 				<Route exact path="/settings" component={ Settings } />
-        <Route exact path="/login" component={ Login } />
-        <Route exact path="/register" component={ Register } />
 			</Switch>
 		</DefaultLayout>
 	</MuiThemeProvider>
