@@ -21,7 +21,8 @@ type LoginRestServiceImpl struct {
 func NewLoginRestService(ctx *common.Context, authService service.AuthService, jsonWriter common.HttpWriter) LoginRestService {
 	return &LoginRestServiceImpl{
 		ctx:         ctx,
-		authService: authService}
+		authService: authService,
+		jsonWriter:  jsonWriter}
 }
 
 func (service *LoginRestServiceImpl) Login(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +39,7 @@ func (service *LoginRestServiceImpl) Login(w http.ResponseWriter, r *http.Reques
 	service.ctx.Logger.Debugf("[LoginRestService.Login] username: %s, password: %s",
 		loginRequest.Username, loginRequest.Password)
 
-	err := service.authService.Login(loginRequest.Username, loginRequest.Password)
+	_, err := service.authService.Login(loginRequest.Username, loginRequest.Password)
 	var response LoginResponse
 	if err != nil {
 		response.Error = "Invalid username / password"

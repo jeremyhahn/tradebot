@@ -1,43 +1,40 @@
 import React, { Component } from 'react';
-import {BrowserRouter} from 'react-router';
+import {BrowserRouter, browserHistory} from 'react-router-dom';
+import { withRouter } from 'react-router'
+import Login from 'app/components/Login';
 import AuthService from 'app/components/AuthService';
-import { createHashHistory } from 'history'
+import createHistory from 'history/createBrowserHistory'
 
 export default function withAuth(AuthComponent) {
 
     var protocol = (window.location.protocol === "https:") ? "wss" : "ws";
     const Auth = new AuthService(window.location.protocol + '://localhost:8080/login');
-    const history = createHashHistory();
+    const history = createHistory();
 
-    return class AuthWrapped extends Component {
+    return withRouter(class AuthWrapped extends React.Component {
 
-        constructor(p) {
-            super();
+        constructor(props) {
+            super(props);
             this.state = {
-                user: null,
-                tempUser: {
-                  id: 1,
-                  username: "test",
-                  local_currency: "USD"
-                }
+                user: null
             }
         }
 
         componentWillMount() {
             if (!Auth.loggedIn()) {
-                //history.replace('/login')
+                history.replace('/login')
             }
             else {
                 try {
                     const profile = Auth.getProfile()
                     this.setState({
-                        user: profile
+                        user: Auth.getUser()
                     })
                 }
                 catch(err){
-                    //Auth.logout();
-                    console.log('Unable to load JWT profile');
-                    //history.replace('/login')
+                  console.error('Unable to load JWT profile');
+                    Auth.logout();
+                    history.replace('/login')
                 }
             }
         }
@@ -45,16 +42,16 @@ export default function withAuth(AuthComponent) {
         render() {
           if (this.state.user) {
               return (
-                  <AuthComponent history={history} user={this.state.user} />
+                  <AuthComponent history={this.history} user={this.state.user} />
               )
           }
           else {
-              console.error('withAuth Authentication failed!')
+              console.error('Authentication required!')
               return (
-                  <AuthComponent user={this.state.tempUser} />
+                  <Login history={this.history}/>
               )
           }
         }
 
-    }
+    })
 }

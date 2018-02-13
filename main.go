@@ -80,7 +80,7 @@ func main() {
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
-	ethereumService, err := service.NewEthereumService(ctx, *ipcFlag, *keystoreFlag, userDAO)
+	ethereumService, err := service.NewEthereumService(ctx, *ipcFlag, *keystoreFlag, userDAO, userMapper)
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}

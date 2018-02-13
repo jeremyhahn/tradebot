@@ -56,11 +56,9 @@ func (ws *WebServer) Start() {
 	http.Handle("/", http.FileServer(http.Dir("webui/public")))
 
 	// REST Handlers - Public Access
-	as := rest.NewLoginRestService(ws.ctx, ws.authService, jsonWriter)
 	reg := rest.NewRegisterRestService(ws.ctx, ws.authService, jsonWriter)
-	http.HandleFunc("/api/v1/login", as.Login)
 	http.HandleFunc("/api/v1/register", reg.Register)
-	http.HandleFunc("/api/v1/jwt", ws.jwt.Generate)
+	http.HandleFunc("/api/v1/login", ws.jwt.GenerateToken)
 
 	// REST Handlers - Authentication Required
 	ohrs := rest.NewOrderHistoryRestService(ws.ctx, ws.exchangeService, jsonWriter)

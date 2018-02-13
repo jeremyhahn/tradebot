@@ -12,6 +12,7 @@ import BuySellDialog from 'app/components/dialogs/BuySell'
 import Coin from 'app/components/Coin';
 import Avatar from 'material-ui/Avatar';
 import Typography from 'material-ui/Typography';
+import withAuth from 'app/components/withAuth';
 
 class Portfolio extends React.Component {
 
@@ -56,13 +57,10 @@ class Portfolio extends React.Component {
 		if(this.ws == null) {
 		  this.ws = new WebSocket(protocol + "://localhost:8080/ws/portfolio");
 	  }
-		var ws = this.ws
+		var _this = this;
+		var ws = this.ws;
 		this.ws.onopen = function() {
-			 ws.send(JSON.stringify({
-				 id: 1,
-				 username: "jeremy",
-				 local_currency: "USD"
-			}));
+      ws.send(JSON.stringify(_this.props.user))
 		};
 		this.ws.onclose = function() {
 			console.log("Websocket connection closed")
@@ -157,13 +155,13 @@ class Portfolio extends React.Component {
 
 		return (
 
-			<div>
+			<div style={{flex: '100%', height: '100%'}}>
 
-				<div style={{float: 'right', paddingTop: '25px', marginRight: '35px'}}>
+				<div style={{float: 'right', marginTop: '20px', marginRight: '35px'}}>
 					<Typography type="subheading" gutterBottom>Net worth: { this.state.netWorth.formatMoney() }</Typography>
 			  </div>
 
-				<Paper style={{ paddingTop: 40, height: '100%'}}>
+				<Paper style={{ marginTop: '60px', height: '100%'}}>
 
 					{ this.state.portfolio.exchanges.map( exchange =>
 
@@ -222,4 +220,4 @@ class Portfolio extends React.Component {
 
 }
 
-export default Portfolio;
+export default withAuth(Portfolio);
