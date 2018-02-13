@@ -17,15 +17,19 @@ deps:
 	go get "github.com/jinzhu/gorm/dialects/sqlite"
 #	go get "github.com/jinzhu/gorm/dialects/mysql"
 	go get "github.com/gorilla/websocket"
+	go get "github.com/codegangsta/negroni"
+	go get "github.com/dgrijalva/jwt-go"
 	go get "github.com/preichenberger/go-gdax"
 	go get "github.com/toorop/go-bittrex"
 	go get "github.com/adshao/go-binance"
 	go get "github.com/ethereum/go-ethereum"
 
-cert:
-	mkdir -p ssl
-	openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -keyout ssl/key.pem -out ssl/cert.pem \
+certs:
+	mkdir -p keys
+	openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -keyout keys/key.pem -out keys/cert.pem \
     -subj "/C=US/ST=Blockchain/L=Tradebot/O=Cryptoconomy/CN=localhost"
+	openssl genrsa -out keys/rsa.key 1024
+	openssl rsa -in keys/rsa.key -pubout > keys/rsa.pub
 
 unittest:
 	cd dao && go test -v
@@ -54,7 +58,7 @@ strategies:
 plugins: indicators strategies
 
 clean:
-	rm -rf ssl/
+	rm -rf keys/
 	cd plugins/indicators && rm -rf *.so
 	cd plugins/strategies && rm -rf *.so
 	rm -rf tradebot
@@ -68,5 +72,5 @@ quickdebug:
 quickbuild:
 	go build -ldflags "-w"
 
-build: clean cert plugins test
+build: clean certs plugins test
 	go build

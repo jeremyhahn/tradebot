@@ -7,11 +7,11 @@ export default function withAuth(AuthComponent) {
 
     var protocol = (window.location.protocol === "https:") ? "wss" : "ws";
     const Auth = new AuthService(window.location.protocol + '://localhost:8080/login');
-    const history = createHashHistory()
+    const history = createHashHistory();
 
     return class AuthWrapped extends Component {
 
-        constructor() {
+        constructor(p) {
             super();
             this.state = {
                 user: null,
@@ -51,7 +51,7 @@ export default function withAuth(AuthComponent) {
           else {
               console.error('withAuth Authentication failed!')
               return (
-                  <AuthComponent user={this.state.user} />
+                  <AuthComponent user={this.state.tempUser} />
               )
           }
         }

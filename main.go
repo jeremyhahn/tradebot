@@ -23,9 +23,9 @@ func main() {
 	defaultKeystore := fmt.Sprintf("%s/%s", wd, "test/ethereum/blockchain/keystore")
 
 	portFlag := flag.Int("port", 8080, "Web server listen port")
-	sslFlag := flag.Bool("ssl", true, "Enable debug level logging")
+	sslFlag := flag.Bool("ssl", true, "Enable HTTPS / WSS over TLS")
 	ipcFlag := flag.String("ipc", defaultIpc, "Path to geth IPC socket")
-	keystoreFlag := flag.String("keystore", defaultKeystore, "Path to Ethereum keystore")
+	keystoreFlag := flag.String("keystore", defaultKeystore, "Path to default Ethereum keystore")
 	debugFlag := flag.Bool("debug", false, "Enable debug level logging")
 	flag.Parse()
 
@@ -72,21 +72,24 @@ func main() {
 	chartService := service.NewChartService(ctx, chartDAO, exchangeService, indicatorService)
 	profitService := service.NewProfitService(ctx, profitDAO)
 	tradeService := service.NewTradeService(ctx, tradeDAO, tradeMapper)
+	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService)
 	strategyService := service.NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
 	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService, profitService, tradeService, strategyService)
-	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService)
 
 	err := autoTradeService.EndWorldHunger()
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
-
 	ethereumService, err := service.NewEthereumService(ctx, *ipcFlag, *keystoreFlag, userDAO)
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
+	jwt, err := webservice.NewJsonWebToken(ctx, ethereumService, webservice.NewJsonWriter())
+	if err != nil {
+		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
+	}
 
-	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService, exchangeService, ethereumService, userService, portfolioService)
+	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService, exchangeService, ethereumService, userService, portfolioService, jwt)
 	go ws.Start()
 	ws.Run()
 }

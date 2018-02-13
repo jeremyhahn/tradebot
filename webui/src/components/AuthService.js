@@ -3,7 +3,13 @@ import decode from 'jwt-decode';
 export default class AuthService {
 
     constructor(domain) {
-        this.domain = domain || 'https://localhost:8080/api/v1'
+
+      console.log(window.location.protocol)
+
+        this.domain = domain || window.location.protocol + '//localhost:8080/api/v1'
+
+        console.log('domain: ' + this.domain)
+
         this.fetch = this.fetch.bind(this)
         this.login = this.login.bind(this)
         this.getProfile = this.getProfile.bind(this)

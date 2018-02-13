@@ -15,12 +15,14 @@ type RegisterRestService interface {
 type RegisterRestServiceImpl struct {
 	ctx         *common.Context
 	authService service.AuthService
+	jsonWriter  common.HttpWriter
 }
 
-func NewRegisterRestService(ctx *common.Context, authService service.AuthService) RegisterRestService {
+func NewRegisterRestService(ctx *common.Context, authService service.AuthService, jsonWriter common.HttpWriter) RegisterRestService {
 	return &RegisterRestServiceImpl{
 		ctx:         ctx,
-		authService: authService}
+		authService: authService,
+		jsonWriter:  jsonWriter}
 }
 
 func (service *RegisterRestServiceImpl) Register(w http.ResponseWriter, r *http.Request) {
@@ -40,5 +42,5 @@ func (service *RegisterRestServiceImpl) Register(w http.ResponseWriter, r *http.
 	} else {
 		response.Success = true
 	}
-	respondWithJSON(w, http.StatusOK, response)
+	service.jsonWriter.Write(w, http.StatusOK, response)
 }

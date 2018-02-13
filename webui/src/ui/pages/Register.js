@@ -142,7 +142,7 @@ class Register extends React.Component {
                     type="password"
                     className={classes.textField}
                     value={this.state.confirm}
-                    error={!this.state.passwordsMatch && this.state.password}
+                    error={!this.state.passwordsMatch && this.state.password != ""}
                     onChange={(event) => this.handlePasswordChange(event)}/>
 
                 <br/>

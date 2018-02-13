@@ -2,13 +2,10 @@ db/*
 tradebot
 node_modules/
 npm-debug.log
-indicators/debug.test
 debug
-service/debug.test
-strategy/debug.test
-indicators/debug.test
+**/debug.test
 webui/yarn-error.log
 webui/public/scripts
 **/*.so
-ssl/*
+keys/*
 test/ethereum/blockchain/*
