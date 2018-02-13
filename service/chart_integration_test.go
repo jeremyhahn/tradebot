@@ -1,4 +1,4 @@
-// +build integration
+//// +build integration
 
 package service
 
@@ -43,7 +43,7 @@ func TestChartDAO(t *testing.T) {
 	chart := createChart(ctx)
 	chartDAO.Create(chart)
 
-	charts, err := chartDAO.Find(ctx.User)
+	charts, err := chartDAO.Find(ctx.User, false)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
@@ -78,7 +78,7 @@ func TestChartDAO_GetIndicators(t *testing.T) {
 	chart.SetIndicators(nil)
 	chartDAO.Create(chart)
 
-	charts, err := chartDAO.Find(ctx.User)
+	charts, err := chartDAO.Find(ctx.User, false)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
@@ -107,7 +107,7 @@ func TestChartDAO_GetTrades(t *testing.T) {
 	chart.SetIndicators(nil)
 	chartDAO.Create(chart)
 
-	charts, err := chartDAO.Find(ctx.User)
+	charts, err := chartDAO.Find(ctx.User, false)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
@@ -150,7 +150,7 @@ func TestChartService_GetIndicators(t *testing.T) {
 	chart := createChart(ctx)
 	chartDAO.Create(chart)
 
-	charts, err := chartDAO.Find(ctx.User)
+	charts, err := chartDAO.Find(ctx.User, false)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())

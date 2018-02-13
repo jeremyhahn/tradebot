@@ -1,4 +1,4 @@
-// +build integration
+//// +build integration
 
 package service
 
@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -26,8 +27,9 @@ var ETHEREUM_BALANCE = "42000000000000000000"
 func TestEthereumService_CreateDeleteAccount(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
+	userMapper := mapper.NewUserMapper()
 	userDAO := dao.NewUserDAO(ctx)
-	service, err := NewEthereumService(ctx, ETHEREUM_IPC, ETHEREUM_KEYSTORE, userDAO)
+	service, err := NewEthereumService(ctx, ETHEREUM_IPC, ETHEREUM_KEYSTORE, userDAO, userMapper)
 	assert.Nil(t, err)
 
 	err = service.Register("testuser", ETHEREUM_PASSPHRASE)
@@ -43,8 +45,9 @@ func TestEthereumService_CreateDeleteAccount(t *testing.T) {
 func TestEthereumService_Authenticate(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
+	userMapper := mapper.NewUserMapper()
 	userDAO := dao.NewUserDAO(ctx)
-	service, err := NewEthereumService(ctx, ETHEREUM_IPC, ETHEREUM_KEYSTORE, userDAO)
+	service, err := NewEthereumService(ctx, ETHEREUM_IPC, ETHEREUM_KEYSTORE, userDAO, userMapper)
 	assert.Equal(t, nil, err)
 
 	testuser := "testuser"
@@ -59,10 +62,12 @@ func TestEthereumService_Authenticate(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, "could not decrypt key with given passphrase", err.Error())
 
-	err = service.Login(testuser, ETHEREUM_PASSPHRASE)
+	user, err := service.Login(testuser, ETHEREUM_PASSPHRASE)
 	assert.Nil(t, err)
+	assert.Equal(t, uint(2), user.GetId())
+	assert.Equal(t, "testuser", user.GetUsername())
 
-	err = service.Login(testuser, "badpass")
+	user, err = service.Login(testuser, "badpass")
 	assert.NotNil(t, err)
 	assert.Equal(t, "could not decrypt key with given passphrase", err.Error())
 
@@ -97,8 +102,9 @@ func TestEthereumService_GetBalance(t *testing.T) {
 func TestEthereumService_Register(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
+	userMapper := mapper.NewUserMapper()
 	userDAO := dao.NewUserDAO(ctx)
-	service, err := NewEthereumService(ctx, ETHEREUM_IPC, ETHEREUM_KEYSTORE, userDAO)
+	service, err := NewEthereumService(ctx, ETHEREUM_IPC, ETHEREUM_KEYSTORE, userDAO, userMapper)
 	assert.Nil(t, err)
 
 	err = service.Register("ethtest", ETHEREUM_PASSPHRASE)
