@@ -1,3 +1,5 @@
+// +build integration_webservice
+
 package webservice
 
 import (

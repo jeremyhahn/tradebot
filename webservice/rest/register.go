@@ -31,8 +31,9 @@ func (service *RegisterRestServiceImpl) Register(w http.ResponseWriter, r *http.
 	var request RegisterRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&request); err != nil {
-		respondWithJSON(w, http.StatusBadRequest, RestResponse{
-			Error: err.Error()})
+		service.jsonWriter.Write(w, http.StatusBadRequest, RestResponse{
+			Success: false,
+			Error:   err.Error()})
 		return
 	}
 	err := service.authService.Register(request.Username, request.Password)

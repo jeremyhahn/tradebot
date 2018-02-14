@@ -53,7 +53,7 @@ class Login extends Component {
        this.Auth.login(this.state.username, this.state.password)
        .then(res => {
           if(res.token.length) {
-            this.props.history.replace('/portfolio');
+            this.props.history.push('/portfolio');
           } else {
             this.setState({errors : res.error})
           }

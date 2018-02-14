@@ -6,7 +6,7 @@ import Paper from 'material-ui/Paper';
 const Settings = (props) => {
 
 	return (
-		<Paper style={{ padding: 20, }} zDepth={1} rounded={false}>
+		<Paper style={{ padding: '20px', marginTop: '60px' }}>
 			<h2>Settings</h2>
 		</Paper>
 	)

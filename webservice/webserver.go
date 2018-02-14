@@ -61,7 +61,7 @@ func (ws *WebServer) Start() {
 	http.HandleFunc("/api/v1/login", ws.jwt.GenerateToken)
 
 	// REST Handlers - Authentication Required
-	ohrs := rest.NewOrderHistoryRestService(ws.ctx, ws.exchangeService, jsonWriter)
+	ohrs := rest.NewOrderHistoryRestService(ws.ctx, ws.exchangeService, ws.userService, jsonWriter)
 	http.Handle("/api/v1/orderhistory", negroni.New(
 		negroni.HandlerFunc(ws.jwt.MiddlewareValidator),
 		negroni.Wrap(http.HandlerFunc(ohrs.GetOrderHistory)),

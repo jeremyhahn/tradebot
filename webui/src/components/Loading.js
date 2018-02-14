@@ -8,7 +8,7 @@ const Loading = (props) => {
 	const style = theme => ({
 		container: {
 			textAlign: 'center',
-			marginTop: 260,
+			marginTop: '50%',
 			marginLeft: '50%'
 		},
 		refresh: {
@@ -16,7 +16,7 @@ const Loading = (props) => {
 			position: 'relative',
 		},
 		text: {
-			marginTop: 10
+			marginTop: '50%'
 		},
 		progress: {
 	    margin: `0 ${theme.spacing.unit * 2}px`,

@@ -1,3 +1,3 @@
 #!/bin/bash
 
-geth attach ./blockchain/geth.ipc
+geth attach --datadir blockchain/ ./blockchain/geth.ipc

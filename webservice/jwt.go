@@ -2,12 +2,15 @@ package webservice
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/service"
 )
 
@@ -31,7 +34,9 @@ type JsonWebTokenDTO struct {
 	Error string `json:"error"`
 }
 
-func NewJsonWebToken(ctx *common.Context, authService service.AuthService, jsonWriter common.HttpWriter) (*JsonWebToken, error) {
+func NewJsonWebToken(ctx *common.Context, authService service.AuthService,
+	jsonWriter common.HttpWriter) (*JsonWebToken, error) {
+
 	keypair, err := common.NewRsaKeyPair(ctx)
 	if err != nil {
 		return nil, err
@@ -39,8 +44,9 @@ func NewJsonWebToken(ctx *common.Context, authService service.AuthService, jsonW
 	return CreateJsonWebToken(ctx, authService, jsonWriter, 10, keypair), nil
 }
 
-func CreateJsonWebToken(ctx *common.Context, authService service.AuthService, jsonWriter common.HttpWriter,
-	expiration int64, rsaKeyPair *common.RsaKeyPair) *JsonWebToken {
+func CreateJsonWebToken(ctx *common.Context, authService service.AuthService,
+	jsonWriter common.HttpWriter, expiration int64, rsaKeyPair *common.RsaKeyPair) *JsonWebToken {
+
 	return &JsonWebToken{
 		ctx:         ctx,
 		authService: authService,
@@ -95,12 +101,18 @@ func (_jwt *JsonWebToken) GenerateToken(w http.ResponseWriter, req *http.Request
 	claims["username"] = userDTO.GetUsername()
 	claims["local_currency"] = userDTO.GetLocalCurrency()
 	claims["etherbase"] = userDTO.GetEtherbase()
+	claims["keystore"] = userDTO.GetKeystore()
 	_jwt.token.Claims = claims
 
 	tokenString, err := _jwt.token.SignedString(_jwt.rsaKeyPair.PrivateKey)
 	if err != nil {
 		_jwt.jsonWriter.Write(w, http.StatusInternalServerError, JsonWebTokenDTO{Error: "Error signing token"})
 		return
+	}
+
+	if err = _jwt.setApplicationStateFromToken(); err != nil {
+		_jwt.ctx.Logger.Errorf("[JsonWebToken.GenerateToken] Failed to set application state using generated claims: %s", err.Error())
+		http.Error(w, "Invalid claims", http.StatusInternalServerError)
 	}
 
 	tokenDTO := JsonWebTokenDTO{Value: tokenString}
@@ -111,6 +123,10 @@ func (_jwt *JsonWebToken) MiddlewareValidator(w http.ResponseWriter, r *http.Req
 	token, err := _jwt.ParseToken(r)
 	if err == nil {
 		if token.Valid {
+			if err := _jwt.setApplicationStateFromToken(); err != nil {
+				_jwt.ctx.Logger.Errorf("[JsonWebToken.MiddlewareValidator] Failed to set application state using JWT claims: %s", err.Error())
+				http.Error(w, "Invalid claims", http.StatusInternalServerError)
+			}
 			next(w, r)
 		} else {
 			_jwt.ctx.Logger.Errorf("[JsonWebToken.MiddlewareValidator] Invalid token")
@@ -136,4 +152,23 @@ func (_jwt *JsonWebToken) MiddlewareValidator(w http.ResponseWriter, r *http.Req
 		_jwt.ctx.Logger.Errorf("Unauthorized access to %s by %s", r.RequestURI, claims["username"])
 		http.Error(w, "Unauthorized request", http.StatusUnauthorized)
 	}
+}
+
+func (_jwt *JsonWebToken) setApplicationStateFromToken() error {
+	claims := _jwt.token.Claims.(jwt.MapClaims)
+	_jwt.ctx.Logger.Debugf("[JsonWebToken.setApplicationState] claims: %+v", claims)
+	claimIds := []string{"user_id", "username", "local_currency", "etherbase", "keystore"}
+	for _, id := range claimIds {
+		if _, ok := claims[id]; !ok {
+			return errors.New(fmt.Sprintf("missing %s field", id))
+		}
+	}
+	userDTO := &dto.UserDTO{
+		Id:            claims["user_id"].(uint),
+		Username:      claims["username"].(string),
+		LocalCurrency: claims["local_currency"].(string),
+		Etherbase:     claims["etherbase"].(string),
+		Keystore:      claims["keystore"].(string)}
+	_jwt.ctx.SetUser(userDTO)
+	return nil
 }

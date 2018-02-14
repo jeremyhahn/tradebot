@@ -54,6 +54,7 @@ func main() {
 	userService := service.NewUserService(ctx, userDAO, marketcapService, userMapper)
 
 	chartDAO := dao.NewChartDAO(ctx)
+	exchangeDAO := dao.NewExchangeDAO(ctx)
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
 	profitDAO := dao.NewProfitDAO(ctx)
@@ -66,7 +67,7 @@ func main() {
 	strategyMapper := mapper.NewStrategyMapper()
 	tradeMapper := mapper.NewTradeMapper()
 
-	exchangeService := service.NewExchangeService(ctx, dao.NewExchangeDAO(ctx))
+	exchangeService := service.NewExchangeService(ctx, exchangeDAO, userDAO, userMapper)
 	pluginService := service.NewPluginService(ctx)
 	indicatorService := service.NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
 	chartService := service.NewChartService(ctx, chartDAO, exchangeService, indicatorService)
@@ -80,16 +81,18 @@ func main() {
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
-	ethereumService, err := service.NewEthereumService(ctx, *ipcFlag, *keystoreFlag, userDAO, userMapper)
-	if err != nil {
-		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
-	}
-	jwt, err := webservice.NewJsonWebToken(ctx, ethereumService, webservice.NewJsonWriter())
+
+	authService, err := service.NewEthereumService(ctx, *ipcFlag, *keystoreFlag, userDAO, userMapper)
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
-	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService, exchangeService, ethereumService, userService, portfolioService, jwt)
+	jwt, err := webservice.NewJsonWebToken(ctx, authService, webservice.NewJsonWriter())
+	if err != nil {
+		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
+	}
+
+	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService, exchangeService, authService, userService, portfolioService, jwt)
 	go ws.Start()
 	ws.Run()
 }

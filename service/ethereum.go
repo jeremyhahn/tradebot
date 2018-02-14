@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
-	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 )
@@ -56,6 +55,11 @@ func (eth *EthService) CreateAccount(passphrase string) (accounts.Account, error
 }
 
 func (eth *EthService) DeleteAccount(passphrase string) error {
+	user := eth.ctx.GetUser()
+	if user == nil {
+		eth.ctx.Logger.Error("[EthereumService.DeleteAccount] No user context")
+		return errors.New("No user context")
+	}
 	acct := accounts.Account{
 		Address: ethcommon.HexToAddress(eth.ctx.GetUser().GetEtherbase()),
 		URL:     accounts.URL{Path: eth.ctx.GetUser().GetKeystore()}}
@@ -83,32 +87,34 @@ func (eth *EthService) Login(username, password string) (common.User, error) {
 		eth.ctx.Logger.Errorf("[EhtereumService.Login] %s", err.Error())
 		return nil, err
 	}
-	userDTO := eth.userMapper.MapUserEntityToDto(userEntity)
-	eth.ctx.SetUser(userDTO)
-	return userDTO, err
+	return eth.userMapper.MapUserEntityToDto(userEntity), err
 }
 
 func (eth *EthService) Register(username, password string) error {
+	_, err := eth.userDAO.GetByName(username)
+	if err != nil && err.Error() != "record not found" {
+		eth.ctx.Logger.Errorf("[EthereumService.Register] %s", err.Error())
+		return errors.New("Unexpected error")
+	}
 	acct, err := eth.CreateAccount(password)
 	if err != nil {
 		return err
 	}
-	user := &entity.User{
+	newUserEntity := &entity.User{
 		Username:      username,
 		LocalCurrency: "USD",
 		Etherbase:     acct.Address.String(),
 		Keystore:      acct.URL.String()}
-	eth.ctx.SetUser(&dto.UserDTO{
-		Id:            user.GetId(),
-		Username:      user.GetUsername(),
-		LocalCurrency: user.GetLocalCurrency(),
-		Etherbase:     user.GetEtherbase(),
-		Keystore:      user.GetKeystore()})
-	err = eth.userDAO.Save(user)
+	err = eth.userDAO.Save(newUserEntity)
+	userDTO := eth.userMapper.MapUserEntityToDto(newUserEntity)
+	eth.ctx.SetUser(userDTO)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed: users.username") {
-			err = errors.New("User already exists")
+		eth.DeleteAccount(password)
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return errors.New("User already exists")
 		}
+		eth.ctx.Logger.Errorf("[EthereumService.Register] %s", err.Error())
+		return errors.New("Unexpected error")
 	}
 	return err
 }
