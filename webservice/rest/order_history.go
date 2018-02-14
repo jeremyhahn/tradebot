@@ -10,6 +10,11 @@ import (
 	"github.com/jeremyhahn/tradebot/service"
 )
 
+type OrderHistoryResponse struct {
+	Payload interface{}
+	RestResponse
+}
+
 type OrderHistoryRestService interface {
 	GetOrderHistory(w http.ResponseWriter, r *http.Request)
 }
@@ -17,10 +22,12 @@ type OrderHistoryRestService interface {
 type OrderHistoryRestServiceImpl struct {
 	ctx             *common.Context
 	exchangeService service.ExchangeService
+	userService     service.UserService
 	jsonWriter      common.HttpWriter
 }
 
-func NewOrderHistoryRestService(ctx *common.Context, exchangeService service.ExchangeService, jsonWriter common.HttpWriter) OrderHistoryRestService {
+func NewOrderHistoryRestService(ctx *common.Context, exchangeService service.ExchangeService,
+	userService service.UserService, jsonWriter common.HttpWriter) OrderHistoryRestService {
 	return &OrderHistoryRestServiceImpl{
 		ctx:             ctx,
 		exchangeService: exchangeService,
@@ -29,9 +36,11 @@ func NewOrderHistoryRestService(ctx *common.Context, exchangeService service.Exc
 
 func (ohrs *OrderHistoryRestServiceImpl) GetOrderHistory(w http.ResponseWriter, r *http.Request) {
 	ohrs.ctx.Logger.Debugf("[OrderHistoryRestService.GetOrderHistory]")
-	service := service.NewOrderService(ohrs.ctx, ohrs.exchangeService)
+	service := service.NewOrderService(ohrs.ctx, ohrs.exchangeService, ohrs.userService)
 	history := service.GetOrderHistory()
-	respondWithJSON(w, http.StatusOK, history)
+	ohrs.jsonWriter.Write(w, http.StatusOK, RestResponse{
+		Success: true,
+		Payload: history})
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {

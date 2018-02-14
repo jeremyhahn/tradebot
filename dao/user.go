@@ -1,8 +1,6 @@
 package dao
 
 import (
-	"errors"
-
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/entity"
 )
@@ -54,12 +52,8 @@ func (dao *UserDAOImpl) GetById(userId uint) (entity.UserEntity, error) {
 func (dao *UserDAOImpl) GetByName(username string) (entity.UserEntity, error) {
 	var user entity.User
 	if err := dao.ctx.DB.First(&user, "username = ?", username).Error; err != nil {
-		dao.ctx.Logger.Errorf("[UserDAO.GetByName] Error: %s", err.Error())
+		dao.ctx.Logger.Errorf("[UserDAO.GetByName] %s", err.Error())
 		return nil, err
-	}
-	if user.GetId() == 0 {
-		dao.ctx.Logger.Warningf("[UserDAO.GetByName] Unable to locate user: %s", username)
-		return nil, errors.New("User not found")
 	}
 	return &user, nil
 }

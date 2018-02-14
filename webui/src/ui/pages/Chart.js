@@ -23,7 +23,7 @@ class Chart extends React.Component {
 
 	render() {
 		return (
-			<Paper style={{ padding: 20, }} zDepth={1} rounded={false}>
+			<Paper style={{ padding: '20px', marginTop: '60px' }}>
 				<h2>Chart</h2>
 				<TypeChooser>
 				{type => <TradeChart type={type} data={this.state.data} />}

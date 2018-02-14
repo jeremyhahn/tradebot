@@ -61,7 +61,9 @@ func (service *DefaultUserService) GetExchange(user common.User, name string, cu
 	exchanges := service.userDAO.GetExchanges(daoUser)
 	for _, ex := range exchanges {
 		if ex.Name == name {
-			return NewExchangeService(service.ctx, dao.NewExchangeDAO(service.ctx)).CreateExchange(user, ex.Name)
+			exchangeDAO := dao.NewExchangeDAO(service.ctx)
+			return NewExchangeService(service.ctx, exchangeDAO, service.userDAO, service.userMapper).
+				CreateExchange(user, ex.Name)
 		}
 	}
 	return nil
@@ -79,7 +81,7 @@ func (service *DefaultUserService) GetExchanges(user common.User, currencyPair *
 		c := make(chan common.CryptoExchange, 1)
 		chans = append(chans, c)
 		exchangeDAO := dao.NewExchangeDAO(service.ctx)
-		exchangeService := NewExchangeService(service.ctx, exchangeDAO)
+		exchangeService := NewExchangeService(service.ctx, exchangeDAO, service.userDAO, service.userMapper)
 		exchange := exchangeService.CreateExchange(user, ex.Name)
 		go func() { c <- exchange.GetExchange() }()
 	}

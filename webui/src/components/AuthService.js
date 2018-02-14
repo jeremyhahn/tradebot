@@ -27,9 +27,7 @@ export default class AuthService {
               password: password
             })
         }).then(res => {
-            if(res.token.length) {
-              this.setToken(res.token)
-            }
+            this.setToken(res.token)
             return Promise.resolve(res);
         })
     }
@@ -55,10 +53,11 @@ export default class AuthService {
         try {
             const decoded = decode(token);
             if (decoded.exp < Date.now() / 1000) {
-                return true;
+              console.log('JWT expired');
+              return true;
             }
             else
-                return false;
+              return false;
         }
         catch (err) {
             return false;
@@ -66,7 +65,9 @@ export default class AuthService {
     }
 
     setToken(idToken) {
+        console.log(idToken)
         localStorage.setItem('id_token', idToken)
+        console.log(this.getProfile())
     }
 
     getToken() {

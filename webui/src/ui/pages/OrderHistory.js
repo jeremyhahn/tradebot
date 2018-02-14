@@ -18,7 +18,8 @@ import Tooltip from 'material-ui/Tooltip';
 import DeleteIcon from 'material-ui-icons/Delete';
 import FilterListIcon from 'material-ui-icons/FilterList';
 import { lighten } from 'material-ui/styles/colorManipulator';
-import axios from 'axios';
+import withAuth from 'app/components/withAuth';
+import AuthService from 'app/components/AuthService';
 
 const columnData = [
   { id: 'date', numeric: false, disablePadding: true, label: 'Date' },
@@ -76,15 +77,16 @@ OrderHistoryHead.propTypes = {
   rowCount: PropTypes.number.isRequired,
 };
 
-
 const styles = theme => ({
   root: {
+    flex: 1,
     paddingLeft: '1%',
     width: '99%',
-    marginTop: theme.spacing.unit * 3,
+    height: '100%',
+    marginTop: theme.spacing.unit * 9,
   },
   table: {
-    minWidth: 800,
+    width: '100%',
   },
   tableWrapper: {
     overflowX: 'auto',
@@ -94,7 +96,6 @@ const styles = theme => ({
 class OrderHistory extends React.Component {
   constructor(props, context) {
     super(props, context);
-
     this.state = {
       order: 'asc',
       orderBy: 'calories',
@@ -103,6 +104,7 @@ class OrderHistory extends React.Component {
       page: 0,
       rowsPerPage: 10,
     };
+    this.Auth = new AuthService();
   }
 
   handleRequestSort = (event, property) => {
@@ -121,7 +123,6 @@ class OrderHistory extends React.Component {
     this.setState({ data, order, orderBy });
   };
 
-
   handleChangePage = (event, page) => {
     this.setState({ page });
   };
@@ -133,15 +134,16 @@ class OrderHistory extends React.Component {
   isSelected = id => this.state.selected.indexOf(id) !== -1;
 
   componentDidMount() {
-		var self = this
-		axios.get('/orderhistory')
+    this.Auth.fetch('/api/v1/orderhistory')
       .then(function (response) {
         console.log(response);
-        for(var i=0; i<response.data.length; i++) {
-          response.data[i].price = response.data[i].price.addMoneySymbol();
+        if(response.success) {
+          for(var i=0; i<response.payload.length; i++) {
+            response.payload[i].price = response.payload[i].price.addMoneySymbol();
+          }
+  		    this.setState({ data: response.payload })
         }
-		    self.setState({ data: response.data })
-      })
+      }.bind(this))
 	}
 
   render() {
@@ -210,4 +212,4 @@ OrderHistory.propTypes = {
   classes: PropTypes.object.isRequired,
 };
 
-export default withStyles(styles)(OrderHistory);
+export default withAuth(withStyles(styles)(OrderHistory));

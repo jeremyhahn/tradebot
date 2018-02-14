@@ -25,9 +25,9 @@ deps:
 	go get "github.com/ethereum/go-ethereum"
 
 certs:
-	mkdir -p keys
+	mkdir -p keys/
 	openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -keyout keys/key.pem -out keys/cert.pem \
-    -subj "/C=US/ST=Blockchain/L=Tradebot/O=Cryptoconomy/CN=localhost"
+          -subj "/C=US/ST=Blockchain/L=Tradebot/O=Cryptoconomy/CN=localhost"
 	openssl genrsa -out keys/rsa.key 1024
 	openssl rsa -in keys/rsa.key -pubout > keys/rsa.pub
 

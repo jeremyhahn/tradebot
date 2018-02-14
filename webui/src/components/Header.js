@@ -10,6 +10,7 @@ import { withStyles } from 'material-ui/styles';
 import Typography from 'material-ui/Typography';
 import IconButton from 'material-ui/IconButton';
 import MenuIcon from 'material-ui-icons/Menu';
+import AuthService from 'app/components/AuthService';
 
 const styles = {
 	root: {
@@ -35,7 +36,14 @@ class Header extends React.Component {
 		this.handleDrawerChange = this.handleDrawerChange.bind(this);
 		this.handleTitleTap = this.handleTitleTap.bind(this);
 		this.navigate = this.navigate.bind(this);
+		this.Auth = new AuthService();
 	}
+
+	componentWillMount() {
+    if(!this.Auth.loggedIn()) {
+      location.href = '/login'
+    }
+  }
 
 	handleDrawerToggle() {
 		this.setState({ drawer: !this.state.drawer });
