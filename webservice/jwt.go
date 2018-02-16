@@ -156,7 +156,7 @@ func (_jwt *JsonWebToken) MiddlewareValidator(w http.ResponseWriter, r *http.Req
 
 func (_jwt *JsonWebToken) setApplicationStateFromToken() error {
 	claims := _jwt.token.Claims.(jwt.MapClaims)
-	_jwt.ctx.Logger.Debugf("[JsonWebToken.setApplicationState] claims: %+v", claims)
+	_jwt.ctx.Logger.Debugf("[JsonWebToken.setApplicationState] Setting claims: %+v", claims)
 	claimIds := []string{"user_id", "username", "local_currency", "etherbase", "keystore"}
 	for _, id := range claimIds {
 		if _, ok := claims[id]; !ok {

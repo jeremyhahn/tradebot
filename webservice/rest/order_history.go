@@ -8,6 +8,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/service"
+	"github.com/jeremyhahn/tradebot/viewmodel"
 )
 
 type OrderHistoryResponse struct {
@@ -38,9 +39,20 @@ func (ohrs *OrderHistoryRestServiceImpl) GetOrderHistory(w http.ResponseWriter, 
 	ohrs.ctx.Logger.Debugf("[OrderHistoryRestService.GetOrderHistory]")
 	service := service.NewOrderService(ohrs.ctx, ohrs.exchangeService, ohrs.userService)
 	history := service.GetOrderHistory()
+	var orders []viewmodel.Order
+	for _, order := range history {
+		orders = append(orders, viewmodel.Order{
+			Id:       order.GetId(),
+			Date:     order.GetDate().Format(common.TIME_DISPLAY_FORMAT),
+			Type:     order.GetType(),
+			Price:    order.GetPrice(),
+			Currency: order.GetCurrency(),
+			Quantity: order.GetQuantity(),
+			Exchange: order.GetExchange()})
+	}
 	ohrs.jsonWriter.Write(w, http.StatusOK, RestResponse{
 		Success: true,
-		Payload: history})
+		Payload: orders})
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {

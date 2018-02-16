@@ -11,6 +11,7 @@ const (
 	APPNAME               = "tradebot"
 	APPVERSION            = "0.0.1"
 	TIME_FORMAT           = time.RFC3339
+	TIME_DISPLAY_FORMAT   = "01-02-2006 15:04:05 MST"
 	BUFFERED_CHANNEL_SIZE = 256
 	WEBSOCKET_KEEPALIVE   = 10 * time.Second
 	HTTP_CLIENT_TIMEOUT   = 10 * time.Second

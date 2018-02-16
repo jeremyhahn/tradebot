@@ -82,11 +82,10 @@ const styles = theme => ({
     flex: 1,
     paddingLeft: '1%',
     width: '99%',
-    height: '100%',
     marginTop: theme.spacing.unit * 9,
   },
   table: {
-    width: '100%',
+    width: '100%'
   },
   tableWrapper: {
     overflowX: 'auto',
@@ -98,7 +97,7 @@ class OrderHistory extends React.Component {
     super(props, context);
     this.state = {
       order: 'asc',
-      orderBy: 'calories',
+      orderBy: 'date',
       selected: [],
       data: [],
       page: 0,
@@ -163,7 +162,7 @@ class OrderHistory extends React.Component {
               onRequestSort={this.handleRequestSort}
               rowCount={data.length}
             />
-            <TableBody>
+            <TableBody className={classes.tableBody}>
               {data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(n => {
                 const isSelected = this.isSelected(n.id);
                 return (

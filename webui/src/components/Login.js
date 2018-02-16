@@ -45,15 +45,17 @@ class Login extends Component {
 
     componentWillMount(){
       if(this.Auth.loggedIn())
-          this.props.history.replace('/portfolio');
+          this.props.history.replace('/orders');
     }
 
     handleFormSubmit(e){
        e.preventDefault();
        this.Auth.login(this.state.username, this.state.password)
        .then(res => {
+         console.log(res.token.length)
           if(res.token.length) {
-            this.props.history.push('/portfolio');
+console.log('navigating to /orders')
+            this.props.history.replace('/orders');
           } else {
             this.setState({errors : res.error})
           }
