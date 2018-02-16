@@ -51,9 +51,7 @@ func NewWebServer(ctx *common.Context, port int, marketcapService *service.Marke
 func (ws *WebServer) Start() {
 
 	jsonWriter := NewJsonWriter()
-
-	// Static content
-	http.Handle("/", http.FileServer(http.Dir("webui/public")))
+	fs := http.FileServer(http.Dir("webui/public"))
 
 	// REST Handlers - Public Access
 	reg := rest.NewRegisterRestService(ws.ctx, ws.authService, jsonWriter)
@@ -74,6 +72,18 @@ func (ws *WebServer) Start() {
 		ph := websocket.NewPortfolioHandler(ws.ctx, portfolioHub, ws.marketcapService, ws.userService, ws.portfolioService)
 		ph.OnConnect(w, r)
 	})
+
+	// React Routes
+	routes := []string{"login", "register", "portfolio", "trades", "orders",
+		"exchanges", "settings", "logout"}
+	for _, r := range routes {
+		route := fmt.Sprintf("/%s", r)
+		http.Handle(route, http.StripPrefix(route, fs))
+	}
+
+	// Default route / static content
+	http.Handle("/static/", http.FileServer(http.Dir("webui/public/static/")))
+	http.Handle("/", fs)
 
 	sPort := fmt.Sprintf(":%d", ws.port)
 	if ws.ctx.SSL {

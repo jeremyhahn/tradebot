@@ -45,7 +45,7 @@ func (os *DefaultOrderService) GetOrderHistory() []common.Order {
 		}
 	}
 	sort.Slice(orders, func(i, j int) bool {
-		return orders[i].GetDate().Before(orders[j].GetDate())
+		return orders[i].GetDate().After(orders[j].GetDate())
 	})
 	return orders
 }

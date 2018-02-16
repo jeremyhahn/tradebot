@@ -184,7 +184,7 @@ func (b *Binance) GetPriceHistory(currencyPair *common.CurrencyPair,
 func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Order {
 	var _orders []common.Order
 	formattedCurrencyPair := b.FormattedCurrencyPair(currencyPair)
-	orders, err := b.client.NewListTradesService().
+	orders, err := b.client.NewListTradesService().FromID(0).
 		Symbol(formattedCurrencyPair).Do(context.Background())
 	if err != nil {
 		b.logger.Errorf("[Binance.GetOrderHistory] %s", err.Error())
@@ -203,10 +203,9 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Or
 			Exchange: "binance",
 			Type:     orderType,
 			Currency: formattedCurrencyPair,
-			//Date:     time.Unix(o.Time, 0),
+			Date:     time.Unix(o.Time/1000, 0),
 			Quantity: qty,
 			Price:    p})
-		fmt.Println(o)
 	}
 	return _orders
 }
