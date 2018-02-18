@@ -22,25 +22,25 @@ type StrategyDAOImpl struct {
 }
 
 func NewStrategyDAO(ctx *common.Context) StrategyDAO {
-	ctx.DB.AutoMigrate(&Strategy{})
+	ctx.CoreDB.AutoMigrate(&Strategy{})
 	return &StrategyDAOImpl{ctx: ctx}
 }
 
 func (dao *StrategyDAOImpl) Create(indicator StrategyEntity) error {
-	return dao.ctx.DB.Create(indicator).Error
+	return dao.ctx.CoreDB.Create(indicator).Error
 }
 
 func (dao *StrategyDAOImpl) Save(indicator StrategyEntity) error {
-	return dao.ctx.DB.Save(indicator).Error
+	return dao.ctx.CoreDB.Save(indicator).Error
 }
 
 func (dao *StrategyDAOImpl) Update(indicator StrategyEntity) error {
-	return dao.ctx.DB.Update(indicator).Error
+	return dao.ctx.CoreDB.Update(indicator).Error
 }
 
 func (dao *StrategyDAOImpl) Get(name string) (StrategyEntity, error) {
 	var strategies []Strategy
-	if err := dao.ctx.DB.Where("name = ?", name).Find(&strategies).Error; err != nil {
+	if err := dao.ctx.CoreDB.Where("name = ?", name).Find(&strategies).Error; err != nil {
 		return nil, err
 	}
 	if strategies == nil || len(strategies) == 0 {
@@ -51,7 +51,7 @@ func (dao *StrategyDAOImpl) Get(name string) (StrategyEntity, error) {
 
 func (dao *StrategyDAOImpl) Find() ([]Strategy, error) {
 	var strategies []Strategy
-	if err := dao.ctx.DB.Order("name asc").Find(&strategies).Error; err != nil {
+	if err := dao.ctx.CoreDB.Order("name asc").Find(&strategies).Error; err != nil {
 		return nil, err
 	}
 	return strategies, nil

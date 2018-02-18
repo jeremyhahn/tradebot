@@ -2,9 +2,10 @@
 /* Loading login styles: start */
 @import url('https://fonts.googleapis.com/css?family=Raleway');
 
-.center{
+.center {
     font-family: 'Raleway', sans-serif;
     background-color: #ffffff;
+    background-image: url(../images/backgrounds/Ethereum-homestead-background-1.jpg);
     position: absolute;
     height: 100%;
     width: 100%;
@@ -44,7 +45,8 @@
     font-family: 'Raleway', sans-serif;
     height: 35px;
     color: #fff;
-    background-color: #2196F3;
+    /*background-color: #2196F3;*/
+    background-color: #EE82EE;
     border: none;
     letter-spacing: 0.2rem;
     transition: 0.3s opacity ease;

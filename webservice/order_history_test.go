@@ -41,10 +41,11 @@ func TestOrderHistory(t *testing.T) {
 
 	mockEthereumService := new(MockEthereum_OrderHistory)
 	marketcapService := service.NewMarketCapService(ctx.Logger)
+	priceHistoryService := service.NewPriceHistoryService(ctx)
 
 	rsaKeyPair, err := common.CreateRsaKeyPair(ctx, "../test/keys")
 	jwt := CreateJsonWebToken(ctx, mockEthereumService, NewJsonWriter(), 10, rsaKeyPair)
-	ws := NewWebServer(ctx, 8081, marketcapService, new(MockExchange_OrderHistory),
+	ws := NewWebServer(ctx, 8081, marketcapService, priceHistoryService, new(MockExchange_OrderHistory),
 		mockEthereumService, new(MockUser_OrderHistory), new(MockPortfolio_OrderHistory), jwt)
 
 	go ws.Start()

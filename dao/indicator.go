@@ -22,25 +22,25 @@ type IndicatorDAOImpl struct {
 }
 
 func NewIndicatorDAO(ctx *common.Context) IndicatorDAO {
-	ctx.DB.AutoMigrate(&Indicator{})
+	ctx.CoreDB.AutoMigrate(&Indicator{})
 	return &IndicatorDAOImpl{ctx: ctx}
 }
 
 func (dao *IndicatorDAOImpl) Create(indicator IndicatorEntity) error {
-	return dao.ctx.DB.Create(indicator).Error
+	return dao.ctx.CoreDB.Create(indicator).Error
 }
 
 func (dao *IndicatorDAOImpl) Save(indicator IndicatorEntity) error {
-	return dao.ctx.DB.Save(indicator).Error
+	return dao.ctx.CoreDB.Save(indicator).Error
 }
 
 func (dao *IndicatorDAOImpl) Update(indicator IndicatorEntity) error {
-	return dao.ctx.DB.Update(indicator).Error
+	return dao.ctx.CoreDB.Update(indicator).Error
 }
 
 func (dao *IndicatorDAOImpl) Get(name string) (IndicatorEntity, error) {
 	var indicators []Indicator
-	if err := dao.ctx.DB.Where("name = ?", name).Find(&indicators).Error; err != nil {
+	if err := dao.ctx.CoreDB.Where("name = ?", name).Find(&indicators).Error; err != nil {
 		return nil, err
 	}
 	if indicators == nil || len(indicators) == 0 {
@@ -51,7 +51,7 @@ func (dao *IndicatorDAOImpl) Get(name string) (IndicatorEntity, error) {
 
 func (dao *IndicatorDAOImpl) Find() ([]Indicator, error) {
 	var indicators []Indicator
-	if err := dao.ctx.DB.Order("name asc").Find(&indicators).Error; err != nil {
+	if err := dao.ctx.CoreDB.Order("name asc").Find(&indicators).Error; err != nil {
 		return nil, err
 	}
 	return indicators, nil

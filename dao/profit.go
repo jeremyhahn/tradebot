@@ -44,22 +44,22 @@ type Profit struct {
 }
 
 func NewProfitDAO(ctx *common.Context) ProfitDAO {
-	ctx.DB.AutoMigrate(&Profit{})
+	ctx.CoreDB.AutoMigrate(&Profit{})
 	return &ProfitDAOImpl{ctx: ctx}
 }
 
 func (dao *ProfitDAOImpl) Create(profit ProfitEntity) error {
-	return dao.ctx.DB.Create(profit).Error
+	return dao.ctx.CoreDB.Create(profit).Error
 }
 
 func (dao *ProfitDAOImpl) Save(profit ProfitEntity) error {
-	return dao.ctx.DB.Save(profit).Error
+	return dao.ctx.CoreDB.Save(profit).Error
 }
 
 func (dao *ProfitDAOImpl) Find() ([]Profit, error) {
 	var profits []Profit
 	daoUser := &entity.User{Id: dao.ctx.User.GetId()}
-	if err := dao.ctx.DB.Model(daoUser).Related(&profits).Error; err != nil {
+	if err := dao.ctx.CoreDB.Model(daoUser).Related(&profits).Error; err != nil {
 		return nil, err
 	}
 	return profits, nil
@@ -67,7 +67,7 @@ func (dao *ProfitDAOImpl) Find() ([]Profit, error) {
 
 func (dao *ProfitDAOImpl) GetByTrade(trade entity.TradeEntity) (ProfitEntity, error) {
 	var profit Profit
-	if err := dao.ctx.DB.Model(trade).Related(&profit).Error; err != nil {
+	if err := dao.ctx.CoreDB.Model(trade).Related(&profit).Error; err != nil {
 		return nil, err
 	}
 	return &profit, nil

@@ -74,3 +74,13 @@ type TradeEntity interface {
 	GetAmount() float64
 	GetChartData() string
 }
+
+type PriceHistoryEntity interface {
+	GetTime() int64
+	GetOpen() float64
+	GetHigh() float64
+	GetLow() float64
+	GetClose() float64
+	GetVolume() float64
+	GetMarketCap() int64
+}

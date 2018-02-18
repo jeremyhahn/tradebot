@@ -1,7 +1,8 @@
 package test
 
 var TEST_USERNAME = "test"
-var TEST_DBPATH = "/tmp/tradebot-integration-testing.db"
+var TEST_COREDBPATH = "/tmp/tradebot-integration-testing.db"
+var TEST_PRICEDBPATH = "/tmp/tradebot-integration-testing.db"
 
 var BTC_ADDRESS = "1P3uzujGZA8hQX6VJU9QtFgzNzN47P4Eri"
 var XRP_ADDRESS = "r3sSmW9gSCbQc7qWhK2ERgcaVCLo7RBD48"

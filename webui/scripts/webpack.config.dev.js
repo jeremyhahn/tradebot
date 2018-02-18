@@ -60,7 +60,7 @@ const WebpackConfig = {
 			},
 			{
 				use: ExtractTextPlugin.extract({
-					use: 'css-loader',
+					use: 'css-loader?url=false',
 				}),
 				test: /\.css$/
 			},

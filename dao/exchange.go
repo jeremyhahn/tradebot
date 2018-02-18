@@ -28,18 +28,18 @@ type CryptoExchange struct {
 }
 
 func NewExchangeDAO(ctx *common.Context) ExchangeDAO {
-	ctx.DB.AutoMigrate(&CryptoExchange{})
+	ctx.CoreDB.AutoMigrate(&CryptoExchange{})
 	return &ExchangeDAOImpl{
 		ctx: ctx}
 }
 
 func (dao *ExchangeDAOImpl) Create(exchange *CryptoExchange) error {
-	return dao.ctx.DB.Create(exchange).Error
+	return dao.ctx.CoreDB.Create(exchange).Error
 }
 
 func (dao *ExchangeDAOImpl) Find() ([]CryptoExchange, error) {
 	var exchanges []CryptoExchange
-	if err := dao.ctx.DB.Find(&exchanges).Error; err != nil {
+	if err := dao.ctx.CoreDB.Find(&exchanges).Error; err != nil {
 		return nil, err
 	}
 	return exchanges, nil

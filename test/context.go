@@ -36,15 +36,22 @@ func NewIntegrationTestContext() *common.Context {
 	logging.SetBackend(backend)
 	logger := logging.MustGetLogger(common.APPNAME)
 
-	db, err := gorm.Open("sqlite3", TEST_DBPATH)
-	db.LogMode(true)
+	coreDB, err := gorm.Open("sqlite3", TEST_COREDBPATH)
+	coreDB.LogMode(true)
+	if err != nil {
+		panic(err)
+	}
+
+	priceDB, err := gorm.Open("sqlite3", TEST_PRICEDBPATH)
+	priceDB.LogMode(true)
 	if err != nil {
 		panic(err)
 	}
 
 	TEST_CONTEXT = &common.Context{
-		DB:     db,
-		Logger: logger,
+		CoreDB:  coreDB,
+		PriceDB: priceDB,
+		Logger:  logger,
 		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,
@@ -126,8 +133,10 @@ func NewIntegrationTestContext() *common.Context {
 
 func CleanupIntegrationTest() {
 	if TEST_CONTEXT != nil {
-		TEST_CONTEXT.DB.Close()
-		os.Remove(TEST_DBPATH)
+		TEST_CONTEXT.CoreDB.Close()
+		TEST_CONTEXT.PriceDB.Close()
+		os.Remove(TEST_COREDBPATH)
+		os.Remove(TEST_PRICEDBPATH)
 		TEST_LOCK.Unlock()
 	}
 }

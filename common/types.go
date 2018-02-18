@@ -16,6 +16,7 @@ const (
 	WEBSOCKET_KEEPALIVE   = 10 * time.Second
 	HTTP_CLIENT_TIMEOUT   = 10 * time.Second
 	CANDLESTICK_MIN_LOAD  = 250
+	DB_DIR                = "./db"
 )
 
 type Indicator interface {
@@ -80,9 +81,12 @@ type Order interface {
 	GetExchange() string
 	GetDate() time.Time
 	GetType() string
-	GetCurrency() string
+	GetCurrencyPair() *CurrencyPair
 	GetQuantity() float64
 	GetPrice() float64
+	GetFee() float64
+	GetTotal() float64
+	String() string
 }
 
 type Profit interface {
@@ -211,6 +215,16 @@ type JsonWebToken interface {
 	MiddlewareValidator(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
 }
 
+type PriceHistory interface {
+	GetTime() int64
+	GetOpen() float64
+	GetHigh() float64
+	GetLow() float64
+	GetClose() float64
+	GetVolume() float64
+	GetMarketCap() int64
+}
+
 type TradingStrategyParams struct {
 	CurrencyPair *CurrencyPair
 	Balances     []Coin
@@ -219,12 +233,6 @@ type TradingStrategyParams struct {
 	LastTrade    Trade
 	TradeFee     float64
 	Config       []string
-}
-
-type CurrencyPair struct {
-	Base          string `json:"base"`
-	Quote         string `json:"quote"`
-	LocalCurrency string `json:"local_currency"`
 }
 
 type PriceChange struct {

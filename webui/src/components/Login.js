@@ -9,8 +9,7 @@ import 'app/css/login.css';
 
 const styles = theme => ({
   container: {
-    margin: '0 auto',
-    width: '100px',
+    margin: '0 auto'
   },
   form: {
     marginLeft: '400',
@@ -55,7 +54,9 @@ class Login extends Component {
          console.log(res.token.length)
           if(res.token.length) {
 console.log('navigating to /orders')
-            this.props.history.replace('/orders');
+            //this.props.history.replace('/orders');
+            location.href = '/orders'
+
           } else {
             this.setState({errors : res.error})
           }
@@ -90,6 +91,7 @@ console.log('navigating to /orders')
         const { classes } = this.props;
 
         return (
+          <div className={classes.container}>
             <div className="center">
                 <div className="card">
                     <h1>Welcome</h1>
@@ -126,6 +128,7 @@ console.log('navigating to /orders')
                     </form>
                 </div>
             </div>
+        </div>
         );
     }
 

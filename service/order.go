@@ -4,6 +4,8 @@ import (
 	"sort"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/util"
 )
 
 type DefaultOrderService struct {
@@ -41,11 +43,32 @@ func (os *DefaultOrderService) GetOrderHistory() []common.Order {
 			return orders
 		}
 		for _, currencyPair := range currencyPairs {
-			orders = append(orders, ex.GetOrderHistory(&currencyPair)...)
+			history := ex.GetOrderHistory(&common.CurrencyPair{
+				Base:          currencyPair.Base,
+				Quote:         currencyPair.Quote,
+				LocalCurrency: os.ctx.GetUser().GetLocalCurrency()})
+			orders = append(orders, history...)
 		}
 	}
 	sort.Slice(orders, func(i, j int) bool {
+		orders[i] = &dto.OrderDTO{
+			Id:           orders[i].GetId(),
+			Exchange:     orders[i].GetExchange(),
+			Date:         orders[i].GetDate(),
+			Type:         orders[i].GetType(),
+			CurrencyPair: orders[i].GetCurrencyPair(),
+			Quantity:     orders[i].GetQuantity(),
+			Price:        orders[i].GetPrice(),
+			Fee:          orders[i].GetFee(),
+			Total:        orders[i].GetTotal()}
 		return orders[i].GetDate().After(orders[j].GetDate())
 	})
 	return orders
+}
+
+func (dos *DefaultOrderService) format(f float64, currency string) float64 {
+	if currency == "USD" {
+		return util.TruncateFloat(f, 2)
+	}
+	return util.TruncateFloat(f, 8)
 }

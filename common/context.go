@@ -6,11 +6,12 @@ import (
 )
 
 type Context struct {
-	Logger *logging.Logger
-	DB     *gorm.DB
-	User   User
-	Debug  bool
-	SSL    bool
+	Logger  *logging.Logger
+	CoreDB  *gorm.DB
+	PriceDB *gorm.DB
+	User    User
+	Debug   bool
+	SSL     bool
 }
 
 func (c *Context) GetUser() User {

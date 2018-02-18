@@ -19,33 +19,32 @@ type ChartDAO interface {
 
 type ChartDAOImpl struct {
 	ctx *common.Context
-	//Coins []Chart
 	ChartDAO
 }
 
 func NewChartDAO(ctx *common.Context) ChartDAO {
-	ctx.DB.AutoMigrate(&entity.Chart{})
-	ctx.DB.AutoMigrate(&entity.ChartStrategy{})
-	ctx.DB.AutoMigrate(&entity.ChartIndicator{})
-	ctx.DB.AutoMigrate(&entity.Trade{})
+	ctx.CoreDB.AutoMigrate(&entity.Chart{})
+	ctx.CoreDB.AutoMigrate(&entity.ChartStrategy{})
+	ctx.CoreDB.AutoMigrate(&entity.ChartIndicator{})
+	ctx.CoreDB.AutoMigrate(&entity.Trade{})
 	return &ChartDAOImpl{ctx: ctx}
 }
 
 func (chartDAO *ChartDAOImpl) Create(chart entity.ChartEntity) error {
-	return chartDAO.ctx.DB.Create(chart).Error
+	return chartDAO.ctx.CoreDB.Create(chart).Error
 }
 
 func (chartDAO *ChartDAOImpl) Save(chart entity.ChartEntity) error {
-	return chartDAO.ctx.DB.Save(chart).Error
+	return chartDAO.ctx.CoreDB.Save(chart).Error
 }
 
 func (chartDAO *ChartDAOImpl) Update(chart entity.ChartEntity) error {
-	return chartDAO.ctx.DB.Update(chart).Error
+	return chartDAO.ctx.CoreDB.Update(chart).Error
 }
 
 func (chartDAO *ChartDAOImpl) Get(id uint) (entity.ChartEntity, error) {
 	chart := entity.Chart{}
-	if err := chartDAO.ctx.DB.First(&chart, id).Error; err != nil {
+	if err := chartDAO.ctx.CoreDB.First(&chart, id).Error; err != nil {
 		return nil, err
 	}
 	return &chart, nil
@@ -56,9 +55,9 @@ func (chartDAO *ChartDAOImpl) Find(user common.User, autoTradeonly bool) ([]enti
 	daoUser := &entity.User{Id: user.GetId()}
 	var err error
 	if autoTradeonly {
-		err = chartDAO.ctx.DB.Where("auto_trade = ?", 1).Model(daoUser).Related(&charts).Error
+		err = chartDAO.ctx.CoreDB.Where("auto_trade = ?", 1).Related(&charts).Error
 	} else {
-		err = chartDAO.ctx.DB.Model(daoUser).Related(&charts).Error
+		err = chartDAO.ctx.CoreDB.Model(daoUser).Related(&charts).Error
 	}
 	if err != nil {
 		return charts, err
@@ -66,10 +65,10 @@ func (chartDAO *ChartDAOImpl) Find(user common.User, autoTradeonly bool) ([]enti
 	for i, chart := range charts {
 		var trades []entity.Trade
 		var indicators []entity.ChartIndicator
-		if err := chartDAO.ctx.DB.Model(&chart).Related(&trades).Error; err != nil {
+		if err := chartDAO.ctx.CoreDB.Model(&chart).Related(&trades).Error; err != nil {
 			return charts, err
 		}
-		if err := chartDAO.ctx.DB.Model(&chart).Related(&indicators).Error; err != nil {
+		if err := chartDAO.ctx.CoreDB.Model(&chart).Related(&indicators).Error; err != nil {
 			return charts, err
 		}
 		charts[i].Indicators = indicators
@@ -80,7 +79,7 @@ func (chartDAO *ChartDAOImpl) Find(user common.User, autoTradeonly bool) ([]enti
 
 func (chartDAO *ChartDAOImpl) GetIndicators(chart entity.ChartEntity) ([]entity.ChartIndicator, error) {
 	var indicators []entity.ChartIndicator
-	if err := chartDAO.ctx.DB.Order("id asc").Model(chart).Related(&indicators).Error; err != nil {
+	if err := chartDAO.ctx.CoreDB.Order("id asc").Model(chart).Related(&indicators).Error; err != nil {
 		return nil, err
 	}
 	return indicators, nil
@@ -88,7 +87,7 @@ func (chartDAO *ChartDAOImpl) GetIndicators(chart entity.ChartEntity) ([]entity.
 
 func (chartDAO *ChartDAOImpl) GetStrategies(chart entity.ChartEntity) ([]entity.ChartStrategy, error) {
 	var strategies []entity.ChartStrategy
-	if err := chartDAO.ctx.DB.Order("id asc").Model(chart).Related(&strategies).Error; err != nil {
+	if err := chartDAO.ctx.CoreDB.Order("id asc").Model(chart).Related(&strategies).Error; err != nil {
 		return nil, err
 	}
 	return strategies, nil
@@ -97,7 +96,7 @@ func (chartDAO *ChartDAOImpl) GetStrategies(chart entity.ChartEntity) ([]entity.
 func (chartDAO *ChartDAOImpl) GetTrades(user common.User) ([]entity.Trade, error) {
 	var trades []entity.Trade
 	daoUser := &entity.User{Id: user.GetId(), Username: user.GetUsername()}
-	if err := chartDAO.ctx.DB.Order("id asc").Model(daoUser).Related(&trades).Error; err != nil {
+	if err := chartDAO.ctx.CoreDB.Order("id asc").Model(daoUser).Related(&trades).Error; err != nil {
 		return nil, err
 	}
 	return trades, nil
@@ -105,7 +104,7 @@ func (chartDAO *ChartDAOImpl) GetTrades(user common.User) ([]entity.Trade, error
 
 func (chartDAO *ChartDAOImpl) GetLastTrade(chart entity.ChartEntity) (entity.TradeEntity, error) {
 	var trades []entity.Trade
-	if err := chartDAO.ctx.DB.Order("date desc").Limit(1).Model(chart).Related(&trades).Error; err != nil {
+	if err := chartDAO.ctx.CoreDB.Order("date desc").Limit(1).Model(chart).Related(&trades).Error; err != nil {
 		chartDAO.ctx.Logger.Errorf("[ChartDAOImpl.GetLastTrade] Error: %s", err.Error())
 	}
 	tradeLen := len(trades)
