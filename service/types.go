@@ -2,9 +2,14 @@ package service
 
 import (
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 )
+
+type PriceHistoryService interface {
+	GetPriceHistory(currency string) []dto.PriceHistoryDTO
+}
 
 type PortfolioService interface {
 	Build(user common.User, currencyPair *common.CurrencyPair) common.Portfolio
@@ -28,7 +33,6 @@ type UserService interface {
 type AuthService interface {
 	Login(username, password string) (common.User, error)
 	Register(username, password string) error
-	//IsLoggedIn() bool
 }
 
 type AutoTradeService interface {

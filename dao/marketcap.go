@@ -39,10 +39,10 @@ type MarketCapDAO struct {
 }
 
 func NewMarketCapDAO(ctx *common.Context) *MarketCapDAO {
-	ctx.DB.AutoMigrate(&MarketCap{})
-	ctx.DB.AutoMigrate(&GlobalMarketCap{})
+	ctx.CoreDB.AutoMigrate(&MarketCap{})
+	ctx.CoreDB.AutoMigrate(&GlobalMarketCap{})
 	return &MarketCapDAO{
-		db:     ctx.DB,
+		db:     ctx.CoreDB,
 		logger: ctx.Logger}
 }
 

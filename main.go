@@ -38,19 +38,24 @@ func main() {
 		logger.Debug("Starting in debug mode...")
 	}
 
-	sqlite := InitSQLite(*debugFlag)
-	defer sqlite.Close()
+	coreDB := InitCoreDB(*debugFlag)
+	defer coreDB.Close()
+
+	priceDB := InitPriceDB(*debugFlag)
+	defer coreDB.Close()
 
 	ctx := &common.Context{
-		DB:     sqlite,
-		Logger: logger,
-		Debug:  *debugFlag,
-		SSL:    *sslFlag}
+		CoreDB:  coreDB,
+		PriceDB: priceDB,
+		Logger:  logger,
+		Debug:   *debugFlag,
+		SSL:     *sslFlag}
 
 	userDAO := dao.NewUserDAO(ctx)
 
 	userMapper := mapper.NewUserMapper()
 	marketcapService := service.NewMarketCapService(logger)
+	//priceHistoryService := service.NewPriceHistoryService(ctx)
 	userService := service.NewUserService(ctx, userDAO, marketcapService, userMapper)
 
 	chartDAO := dao.NewChartDAO(ctx)
@@ -92,13 +97,25 @@ func main() {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
-	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService, exchangeService, authService, userService, portfolioService, jwt)
+	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService,
+		exchangeService, authService, userService, portfolioService, jwt)
+
 	go ws.Start()
 	ws.Run()
 }
 
-func InitSQLite(logMode bool) *gorm.DB {
-	db, err := gorm.Open("sqlite3", "./db/tradebot.db")
+func InitCoreDB(logMode bool) *gorm.DB {
+	database := fmt.Sprintf("%s/%s.db", common.DB_DIR, common.APPNAME)
+	return NewSQLite(database, logMode)
+}
+
+func InitPriceDB(logMode bool) *gorm.DB {
+	database := fmt.Sprintf("%s/prices.db", common.DB_DIR)
+	return NewSQLite(database, logMode)
+}
+
+func NewSQLite(database string, logMode bool) *gorm.DB {
+	db, err := gorm.Open("sqlite3", database)
 	db.LogMode(logMode)
 	if err != nil {
 		panic(err)

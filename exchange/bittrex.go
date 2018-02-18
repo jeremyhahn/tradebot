@@ -27,7 +27,7 @@ type Bittrex struct {
 func NewBittrex(ctx *common.Context, btx entity.UserExchangeEntity) common.Exchange {
 	return &Bittrex{
 		ctx:        ctx,
-		client:     bittrex.New(btx.GetKey(), btx.GetExtra()),
+		client:     bittrex.New(btx.GetKey(), btx.GetSecret()),
 		logger:     ctx.Logger,
 		name:       "bittrex",
 		tradingFee: .025}
@@ -76,8 +76,9 @@ func (b *Bittrex) GetPriceHistory(currencyPair *common.CurrencyPair,
 }
 
 func (b *Bittrex) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Order {
-	var orders []common.Order
 	formattedCurrencyPair := b.FormattedCurrencyPair(currencyPair)
+	b.logger.Debugf("[Bittrex.GetOrderHistory] Getting %s order history", formattedCurrencyPair)
+	var orders []common.Order
 	orderHistory, err := b.client.GetOrderHistory(formattedCurrencyPair)
 	if err != nil {
 		b.logger.Errorf("[Bittrex.GetOrderHistory] %s", err.Error())
@@ -86,13 +87,14 @@ func (b *Bittrex) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Or
 		q, _ := o.Quantity.Float64()
 		p, _ := o.Price.Float64()
 		orders = append(orders, &dto.OrderDTO{
-			Id:       o.OrderUuid,
-			Exchange: "bittrex",
-			Date:     o.TimeStamp.Time,
-			Type:     o.OrderType,
-			Currency: formattedCurrencyPair,
-			Quantity: q,
-			Price:    p})
+			Id:           o.OrderUuid,
+			Exchange:     "bittrex",
+			Date:         o.TimeStamp.Time,
+			Type:         o.OrderType,
+			CurrencyPair: currencyPair,
+			Quantity:     q,
+			Price:        p,
+			Total:        q * p})
 	}
 	return orders
 }

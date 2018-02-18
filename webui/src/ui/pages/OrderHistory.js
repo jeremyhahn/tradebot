@@ -25,9 +25,11 @@ const columnData = [
   { id: 'date', numeric: false, disablePadding: true, label: 'Date' },
   { id: 'exchange', numeric: false, disablePadding: false, label: 'Exchange' },
   { id: 'type', numeric: false, disablePadding: false, label: 'Type' },
-  { id: 'currency', numeric: true, disablePadding: false, label: 'Currency' },
+  { id: 'currency_pair', numeric: true, disablePadding: false, label: 'Currency' },
   { id: 'quantity', numeric: true, disablePadding: false, label: 'Quantity' },
   { id: 'price', numeric: true, disablePadding: false, label: 'Price' },
+  { id: 'fee', numeric: true, disablePadding: false, label: 'Fee' },
+  { id: 'total', numeric: true, disablePadding: false, label: 'Total' }
 ];
 
 class OrderHistoryHead extends React.Component {
@@ -82,7 +84,8 @@ const styles = theme => ({
     flex: 1,
     paddingLeft: '1%',
     width: '99%',
-    marginTop: theme.spacing.unit * 9,
+    marginTop: '68px'
+    //marginTop: theme.spacing.unit * 8,
   },
   table: {
     width: '100%'
@@ -90,12 +93,20 @@ const styles = theme => ({
   tableWrapper: {
     overflowX: 'auto',
   },
+  currencyIcon: {
+    paddingLeft: '5px',
+    width: '16px',
+    height: '16px',
+    float: 'right'
+  }
 });
 
 class OrderHistory extends React.Component {
   constructor(props, context) {
     super(props, context);
+    this.Auth = new AuthService();
     this.state = {
+      local_currency: this.Auth.getUser().local_currency,
       order: 'asc',
       orderBy: 'date',
       selected: [],
@@ -103,7 +114,6 @@ class OrderHistory extends React.Component {
       page: 0,
       rowsPerPage: 10,
     };
-    this.Auth = new AuthService();
   }
 
   handleRequestSort = (event, property) => {
@@ -138,12 +148,16 @@ class OrderHistory extends React.Component {
         console.log(response);
         if(response.success) {
           for(var i=0; i<response.payload.length; i++) {
-            response.payload[i].price = response.payload[i].price.addMoneySymbol();
+            response.payload[i].price = response.payload[i].price;
           }
   		    this.setState({ data: response.payload })
         }
       }.bind(this))
 	}
+
+  currencyIcon(currency) {
+    return "images/crypto/128/" + currency.toLowerCase() + ".png";
+  }
 
   render() {
     const { classes } = this.props;
@@ -170,9 +184,23 @@ class OrderHistory extends React.Component {
                     <TableCell padding="none">{n.date}</TableCell>
                     <TableCell numeric>{n.exchange}</TableCell>
                     <TableCell numeric>{n.type}</TableCell>
-                    <TableCell numeric>{n.currency}</TableCell>
+                    <TableCell numeric>{n.currency_pair.base}-{n.currency_pair.quote}</TableCell>
                     <TableCell numeric>{n.quantity}</TableCell>
-                    <TableCell numeric>{n.price}</TableCell>
+                    <TableCell numeric>{n.price.formatCurrency(n.currency_pair.quote == this.state.local_currency ? n.currency_pair.quote : n.currency_pair.base)}
+                      <img className={classes.currencyIcon}
+                         src={this.currencyIcon(n.currency_pair.quote == this.state.local_currency ? n.currency_pair.quote : n.currency_pair.base)}
+                         title={n.currency_pair.quote == this.state.local_currency ? n.currency_pair.quote : n.currency_pair.base} />
+                    </TableCell>
+                    <TableCell numeric>{n.fee.formatCurrency(n.currency_pair.quote)}
+                      <img className={classes.currencyIcon}
+                           src={this.currencyIcon(n.currency_pair.base)}
+                           title={n.currency_pair.base} />
+                    </TableCell>
+                    <TableCell numeric>{n.total.formatCurrency(n.currency_pair.quote)}
+                      <img className={classes.currencyIcon}
+                           src={this.currencyIcon(n.currency_pair.quote)}
+                           title={n.currency_pair.quote} />
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -184,6 +212,9 @@ class OrderHistory extends React.Component {
             </TableBody>
             <TableFooter>
               <TableRow>
+
+                <div><i className="material-icons">file_download</i>Download 8949 Statement</div>
+
                 <TablePagination
                   colSpan={6}
                   count={data.length}
@@ -202,6 +233,7 @@ class OrderHistory extends React.Component {
             </TableFooter>
           </Table>
         </div>
+
       </Paper>
     );
   }

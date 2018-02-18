@@ -182,13 +182,14 @@ func (b *Binance) GetPriceHistory(currencyPair *common.CurrencyPair,
 }
 
 func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Order {
-	var _orders []common.Order
+	b.logger.Errorf("[Binance.GetOrderHistory] Getting %s order history", b.FormattedCurrencyPair(currencyPair))
 	formattedCurrencyPair := b.FormattedCurrencyPair(currencyPair)
 	orders, err := b.client.NewListTradesService().FromID(0).
 		Symbol(formattedCurrencyPair).Do(context.Background())
 	if err != nil {
 		b.logger.Errorf("[Binance.GetOrderHistory] %s", err.Error())
 	}
+	var _orders []common.Order
 	for _, o := range orders {
 		var orderType string
 		if o.IsBuyer {
@@ -196,16 +197,28 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Or
 		} else {
 			orderType = "sell"
 		}
-		qty, _ := strconv.ParseFloat(o.Quantity, 64)
-		p, _ := strconv.ParseFloat(o.Price, 64)
+		qty, err := strconv.ParseFloat(o.Quantity, 64)
+		if err != nil {
+			b.ctx.Logger.Errorf("[Binance.GetOrderHistory] Failed to parse quantity to float64: %s", err.Error())
+		}
+		p, err := strconv.ParseFloat(o.Price, 64)
+		if err != nil {
+			b.ctx.Logger.Errorf("[Binance.GetOrderHistory] Failed to parse price to float64: %s", err.Error())
+		}
+		c, err := strconv.ParseFloat(o.Commission, 64)
+		if err != nil {
+			b.ctx.Logger.Errorf("[Binance.GetOrderHistory] Failed to parse commission to float64: %s", err.Error())
+		}
 		_orders = append(_orders, &dto.OrderDTO{
-			Id:       strconv.FormatInt(int64(o.ID), 10),
-			Exchange: "binance",
-			Type:     orderType,
-			Currency: formattedCurrencyPair,
-			Date:     time.Unix(o.Time/1000, 0),
-			Quantity: qty,
-			Price:    p})
+			Id:           strconv.FormatInt(int64(o.ID), 10),
+			Exchange:     "binance",
+			Type:         orderType,
+			CurrencyPair: currencyPair,
+			Date:         time.Unix(o.Time/1000, 0),
+			Fee:          c,
+			Quantity:     qty,
+			Price:        p,
+			Total:        qty * p})
 	}
 	return _orders
 }
@@ -332,13 +345,10 @@ func (b *Binance) FormattedCurrencyPair(currencyPair *common.CurrencyPair) strin
 }
 
 func (b *Binance) localizedCurrencyPair(currencyPair *common.CurrencyPair) *common.CurrencyPair {
-	var cp *common.CurrencyPair
 	if currencyPair.Quote == "USD" {
-		cp = &common.CurrencyPair{
+		return &common.CurrencyPair{
 			Base:  currencyPair.Base,
 			Quote: "USDT"}
-	} else {
-		cp = currencyPair
 	}
-	return cp
+	return currencyPair
 }

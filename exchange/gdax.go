@@ -102,6 +102,7 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.O
 	_gdax.logger.Debug("[GDAX.GetOrderHistory] Getting order history")
 	var orders []common.Order
 	var ledger []gdax.LedgerEntry
+	orderIds := make(map[string]bool)
 	accounts, err := _gdax.gdax.GetAccounts()
 	if err != nil {
 		_gdax.logger.Errorf("[GDAX.GetOrderHistory] %s", err.Error())
@@ -113,27 +114,32 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.O
 				_gdax.logger.Errorf("[GDAX.GetOrderHistory] %s", err.Error())
 			}
 			for _, e := range ledger {
-				var cp *common.CurrencyPair
-				if e.Type != "transfer" {
-					pieces := strings.Split(e.Details.ProductId, "-")
-					base, quote := pieces[0], pieces[1]
-					cp = &common.CurrencyPair{
-						Base:  base,
-						Quote: quote}
-				} else {
-					cp = &common.CurrencyPair{
-						Base:          _gdax.ctx.User.GetLocalCurrency(),
-						Quote:         _gdax.ctx.User.GetLocalCurrency(),
-						LocalCurrency: _gdax.ctx.User.GetLocalCurrency()}
+				if e.Type != "match" {
+					continue
 				}
+				if _, ok := orderIds[e.Details.OrderId]; ok {
+					continue
+				}
+				orderIds[e.Details.OrderId] = true
+				order, err := _gdax.gdax.GetOrder(e.Details.OrderId)
+				if err != nil {
+					_gdax.ctx.Logger.Errorf("[GDAX.GetOrderHistory] Error retrieving order: %s", err.Error())
+					return orders
+				}
+				pieces := strings.Split(e.Details.ProductId, "-")
+				base, quote := pieces[0], pieces[1]
 				orders = append(orders, &dto.OrderDTO{
 					Id:       strconv.FormatInt(int64(e.Id), 10),
 					Exchange: "gdax",
 					Date:     e.CreatedAt.Time(),
-					Type:     e.Type,
-					Currency: _gdax.formatCurrencyPair(cp),
-					Quantity: e.Amount,
-					Price:    e.Balance})
+					Type:     order.Side,
+					CurrencyPair: &common.CurrencyPair{
+						Base:  base,
+						Quote: quote},
+					Quantity: order.FilledSize,
+					Fee:      util.TruncateFloat(order.FillFees, 2),
+					Price:    order.Price,
+					Total:    order.ExecutedValue})
 			}
 		}
 	}

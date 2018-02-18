@@ -18,7 +18,8 @@ import (
 var TEST_CONTEXT *common.Context
 var TEST_LOCK sync.Mutex
 var TEST_USERNAME = "test"
-var TEST_DBPATH = "/tmp/tradebot-integration-dao-testing.db"
+var TEST_COREDB_PATH = "/tmp/tradebot-integration-dao-testing.db"
+var TEST_PRICEDB_PATH = "/tmp/tradebot-pricehistory.db"
 
 func NewIntegrationTestContext() *common.Context {
 
@@ -28,15 +29,21 @@ func NewIntegrationTestContext() *common.Context {
 	logging.SetBackend(backend)
 	logger := logging.MustGetLogger(common.APPNAME)
 
-	db, err := gorm.Open("sqlite3", TEST_DBPATH)
-	db.LogMode(true)
+	coredb, err := gorm.Open("sqlite3", TEST_COREDB_PATH)
+	coredb.LogMode(true)
+	if err != nil {
+		panic(err)
+	}
+	pricedb, err := gorm.Open("sqlite3", TEST_COREDB_PATH)
+	pricedb.LogMode(true)
 	if err != nil {
 		panic(err)
 	}
 
 	TEST_CONTEXT = &common.Context{
-		DB:     db,
-		Logger: logger,
+		CoreDB:  coredb,
+		PriceDB: pricedb,
+		Logger:  logger,
 		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,
@@ -50,8 +57,10 @@ func NewIntegrationTestContext() *common.Context {
 
 func CleanupIntegrationTest() {
 	if TEST_CONTEXT != nil {
-		TEST_CONTEXT.DB.Close()
-		os.Remove(TEST_DBPATH)
+		TEST_CONTEXT.CoreDB.Close()
+		TEST_CONTEXT.PriceDB.Close()
+		os.Remove(TEST_COREDB_PATH)
+		os.Remove(TEST_PRICEDB_PATH)
 		TEST_LOCK.Unlock()
 		TEST_CONTEXT = nil
 	}

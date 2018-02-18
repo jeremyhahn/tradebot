@@ -25,16 +25,16 @@ type UserDAOImpl struct {
 }
 
 func NewUserDAO(ctx *common.Context) UserDAO {
-	ctx.DB.AutoMigrate(&entity.User{})
-	ctx.DB.AutoMigrate(&entity.UserWallet{})
-	ctx.DB.AutoMigrate(&entity.UserCryptoExchange{})
+	ctx.CoreDB.AutoMigrate(&entity.User{})
+	ctx.CoreDB.AutoMigrate(&entity.UserWallet{})
+	ctx.CoreDB.AutoMigrate(&entity.UserCryptoExchange{})
 	return &UserDAOImpl{ctx: ctx}
 }
 
 func CreateUserDAO(ctx *common.Context, user common.User) UserDAO {
-	ctx.DB.AutoMigrate(&entity.User{})
-	ctx.DB.AutoMigrate(&entity.UserWallet{})
-	ctx.DB.AutoMigrate(&entity.UserCryptoExchange{})
+	ctx.CoreDB.AutoMigrate(&entity.User{})
+	ctx.CoreDB.AutoMigrate(&entity.UserWallet{})
+	ctx.CoreDB.AutoMigrate(&entity.UserCryptoExchange{})
 	ctx.SetUser(user)
 	return &UserDAOImpl{ctx: ctx}
 }
@@ -42,7 +42,7 @@ func CreateUserDAO(ctx *common.Context, user common.User) UserDAO {
 func (dao *UserDAOImpl) GetById(userId uint) (entity.UserEntity, error) {
 	var user entity.User
 	user.Id = userId
-	if err := dao.ctx.DB.First(&user, userId).Error; err != nil {
+	if err := dao.ctx.CoreDB.First(&user, userId).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.GetById] Error: %s", err.Error())
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (dao *UserDAOImpl) GetById(userId uint) (entity.UserEntity, error) {
 
 func (dao *UserDAOImpl) GetByName(username string) (entity.UserEntity, error) {
 	var user entity.User
-	if err := dao.ctx.DB.First(&user, "username = ?", username).Error; err != nil {
+	if err := dao.ctx.CoreDB.First(&user, "username = ?", username).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.GetByName] %s", err.Error())
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (dao *UserDAOImpl) GetByName(username string) (entity.UserEntity, error) {
 }
 
 func (dao *UserDAOImpl) Create(user *entity.User) error {
-	if err := dao.ctx.DB.Create(user).Error; err != nil {
+	if err := dao.ctx.CoreDB.Create(user).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.Create] Error:%s", err.Error())
 		return err
 	}
@@ -67,7 +67,7 @@ func (dao *UserDAOImpl) Create(user *entity.User) error {
 }
 
 func (dao *UserDAOImpl) Save(user *entity.User) error {
-	if err := dao.ctx.DB.Save(user).Error; err != nil {
+	if err := dao.ctx.CoreDB.Save(user).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.Save] Error:%s", err.Error())
 		return err
 	}
@@ -76,7 +76,7 @@ func (dao *UserDAOImpl) Save(user *entity.User) error {
 
 func (dao *UserDAOImpl) Find() ([]entity.User, error) {
 	var users []entity.User
-	if err := dao.ctx.DB.Find(&users).Error; err != nil {
+	if err := dao.ctx.CoreDB.Find(&users).Error; err != nil {
 		return nil, err
 	}
 	return users, nil
@@ -84,7 +84,7 @@ func (dao *UserDAOImpl) Find() ([]entity.User, error) {
 
 func (dao *UserDAOImpl) GetWallets(user *entity.User) []entity.UserWallet {
 	var wallets []entity.UserWallet
-	if err := dao.ctx.DB.Model(user).Related(&wallets).Error; err != nil {
+	if err := dao.ctx.CoreDB.Model(user).Related(&wallets).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.GetWallets] Error: %s", err.Error())
 	}
 	return wallets
@@ -102,7 +102,7 @@ func (dao *UserDAOImpl) GetWallet(user *entity.User, currency string) entity.Use
 
 func (dao *UserDAOImpl) GetExchanges(user *entity.User) []entity.UserCryptoExchange {
 	var exchanges []entity.UserCryptoExchange
-	if err := dao.ctx.DB.Model(user).Related(&exchanges).Error; err != nil {
+	if err := dao.ctx.CoreDB.Model(user).Related(&exchanges).Error; err != nil {
 		dao.ctx.Logger.Errorf("[UserDAO.GetExchanges] Error: %s", err.Error())
 	}
 	return exchanges
