@@ -4,22 +4,31 @@ import (
 	"sort"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dto"
-	"github.com/jeremyhahn/tradebot/util"
+	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/mapper"
 )
 
 type DefaultOrderService struct {
 	ctx             *common.Context
+	orderDAO        dao.OrderDAO
+	orderMapper     mapper.OrderMapper
 	exchangeService ExchangeService
 	userService     UserService
 	OrderService
 }
 
-func NewOrderService(ctx *common.Context, exchangeService ExchangeService, userService UserService) OrderService {
+func NewOrderService(ctx *common.Context, orderDAO dao.OrderDAO, orderMapper mapper.OrderMapper,
+	exchangeService ExchangeService, userService UserService) OrderService {
 	return &DefaultOrderService{
 		ctx:             ctx,
+		orderDAO:        orderDAO,
+		orderMapper:     orderMapper,
 		exchangeService: exchangeService,
 		userService:     userService}
+}
+
+func (os *DefaultOrderService) GetMapper() mapper.OrderMapper {
+	return os.orderMapper
 }
 
 func (os *DefaultOrderService) GetOrderHistory() []common.Order {
@@ -50,25 +59,30 @@ func (os *DefaultOrderService) GetOrderHistory() []common.Order {
 			orders = append(orders, history...)
 		}
 	}
+	orderEntities, err := os.orderDAO.Find()
+	if err != nil {
+		os.ctx.Logger.Errorf("[OrderService.GetOrderHistory] %s", err.Error())
+	} else {
+		for _, entity := range orderEntities {
+			orders = append(orders, os.orderMapper.MapOrderEntityToDto(&entity))
+		}
+	}
 	sort.Slice(orders, func(i, j int) bool {
-		orders[i] = &dto.OrderDTO{
-			Id:           orders[i].GetId(),
-			Exchange:     orders[i].GetExchange(),
-			Date:         orders[i].GetDate(),
-			Type:         orders[i].GetType(),
-			CurrencyPair: orders[i].GetCurrencyPair(),
-			Quantity:     orders[i].GetQuantity(),
-			Price:        orders[i].GetPrice(),
-			Fee:          orders[i].GetFee(),
-			Total:        orders[i].GetTotal()}
 		return orders[i].GetDate().After(orders[j].GetDate())
 	})
 	return orders
 }
 
-func (dos *DefaultOrderService) format(f float64, currency string) float64 {
-	if currency == "USD" {
-		return util.TruncateFloat(f, 2)
+func (dos *DefaultOrderService) ImportCSV(file, exchangeName string) ([]common.Order, error) {
+	dos.ctx.Logger.Debugf("[OrderService.ImportCSV] Creating %s exchange service", exchangeName)
+	exchange := dos.exchangeService.GetExchange(dos.ctx.GetUser(), exchangeName)
+	orderDTOs, err := exchange.ParseImport(file)
+	if err != nil {
+		return nil, err
 	}
-	return util.TruncateFloat(f, 8)
+	for _, dto := range orderDTOs {
+		entity := dos.orderMapper.MapOrderDtoToEntity(dto)
+		dos.orderDAO.Create(entity)
+	}
+	return orderDTOs, nil
 }

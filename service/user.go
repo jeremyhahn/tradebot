@@ -19,7 +19,7 @@ type DefaultUserService struct {
 }
 
 func NewUserService(ctx *common.Context, userDAO dao.UserDAO,
-	marketcapService *MarketCapService, userMapper mapper.UserMapper) *DefaultUserService {
+	marketcapService *MarketCapService, userMapper mapper.UserMapper) UserService {
 	return &DefaultUserService{
 		ctx:              ctx,
 		userDAO:          userDAO,

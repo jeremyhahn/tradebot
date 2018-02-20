@@ -9,3 +9,4 @@ webui/public/scripts
 **/*.so
 keys/*
 test/ethereum/blockchain/*
+.env

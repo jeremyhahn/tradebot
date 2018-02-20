@@ -2,6 +2,7 @@ package exchange
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -210,15 +211,18 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Or
 			b.ctx.Logger.Errorf("[Binance.GetOrderHistory] Failed to parse commission to float64: %s", err.Error())
 		}
 		_orders = append(_orders, &dto.OrderDTO{
-			Id:           strconv.FormatInt(int64(o.ID), 10),
-			Exchange:     "binance",
-			Type:         orderType,
-			CurrencyPair: currencyPair,
-			Date:         time.Unix(o.Time/1000, 0),
-			Fee:          c,
-			Quantity:     qty,
-			Price:        p,
-			Total:        qty * p})
+			Id:            strconv.FormatInt(int64(o.ID), 10),
+			Exchange:      "binance",
+			Type:          orderType,
+			CurrencyPair:  currencyPair,
+			Date:          time.Unix(o.Time/1000, 0),
+			Fee:           c,
+			Quantity:      qty,
+			Price:         p,
+			Total:         qty * p,
+			PriceCurrency: "BTC",
+			FeeCurrency:   currencyPair.Base,
+			TotalCurrency: currencyPair.Quote})
 	}
 	return _orders
 }
@@ -269,6 +273,12 @@ func (b *Binance) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceCh
 	b.SubscribeToLiveFeed(currencyPair, priceChange)
 }
 
+func (b *Binance) ParseImport(file string) ([]common.Order, error) {
+	var orders []common.Order
+	b.ctx.Logger.Error("[Binance.ParseImport] Unsupported!")
+	return orders, errors.New("Binance.ParseImport Unsupported")
+}
+
 func (b *Binance) getBitcoin() *binance.PriceChangeStats {
 	currencyPair := &common.CurrencyPair{
 		Base:          "BTC",
@@ -302,10 +312,6 @@ func (b *Binance) parseBitcoinPrice(bitcoin *binance.PriceChangeStats) float64 {
 		b.logger.Errorf("[Binance.parseBitcoinPrice] %s", err.Error())
 	}
 	return f
-}
-
-func (b *Binance) GetExchangeAsync(exchangeChan *chan common.CryptoExchange) {
-	go func() { *exchangeChan <- b.GetExchange() }()
 }
 
 func (b *Binance) GetExchange() common.CryptoExchange {

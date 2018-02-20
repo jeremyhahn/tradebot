@@ -9,10 +9,14 @@ import Dialog, {
 } from 'material-ui/Dialog';
 import Tabs, { Tab } from 'material-ui/Tabs';
 
-export default class BuySellDialog extends React.Component {
-  state = {
-    value: 0
-  };
+class BuySellDialog extends React.Component {
+
+  constructor(props) {
+    super(props);
+    this.state = {
+      value: 0
+    }
+  }
 
   handleChange = (event, value) => {
     this.setState({ value });
@@ -48,3 +52,5 @@ export default class BuySellDialog extends React.Component {
     );
   }
 }
+
+export default BuySellDialog;

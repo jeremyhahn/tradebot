@@ -66,11 +66,13 @@ func main() {
 	tradeDAO := dao.NewTradeDAO(ctx)
 	strategyDAO := dao.NewStrategyDAO(ctx)
 	chartStrategyDAO := dao.NewChartStrategyDAO(ctx)
+	orderDAO := dao.NewOrderDAO(ctx)
 
 	chartMapper := mapper.NewChartMapper(ctx)
 	indicatorMapper := mapper.NewIndicatorMapper()
 	strategyMapper := mapper.NewStrategyMapper()
 	tradeMapper := mapper.NewTradeMapper()
+	orderMapper := mapper.NewOrderMapper(ctx)
 
 	exchangeService := service.NewExchangeService(ctx, exchangeDAO, userDAO, userMapper)
 	pluginService := service.NewPluginService(ctx)
@@ -81,6 +83,7 @@ func main() {
 	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService)
 	strategyService := service.NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
 	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService, profitService, tradeService, strategyService)
+	orderService := service.NewOrderService(ctx, orderDAO, orderMapper, exchangeService, userService)
 
 	err := autoTradeService.EndWorldHunger()
 	if err != nil {
@@ -98,7 +101,8 @@ func main() {
 	}
 
 	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService,
-		exchangeService, authService, userService, portfolioService, jwt)
+		exchangeService, authService, userService, portfolioService,
+		orderService, jwt)
 
 	go ws.Start()
 	ws.Run()

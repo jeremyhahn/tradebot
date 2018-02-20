@@ -289,8 +289,20 @@ func (mes *MockExchangeService_Chart) CreateExchange(user common.User, exchangeN
 	return new(MockExchange_Chart)
 }
 
+func (mes *MockExchangeService_Chart) GetCurrencyPairs(user common.User, exchangeName string) ([]common.CurrencyPair, error) {
+	return []common.CurrencyPair{
+		common.CurrencyPair{
+			Base:          "BTC",
+			Quote:         "USD",
+			LocalCurrency: "USD"}}, nil
+}
+
 func (mes *MockExchangeService_Chart) GetExchange(user common.User, exchangeName string) common.Exchange {
 	return new(MockExchange_Chart)
+}
+
+func (mes *MockExchangeService_Chart) GetDisplayNames(user common.User) []string {
+	return []string{"Exchange 1", "Exchange 2", "Exchange 3"}
 }
 
 func (mes *MockExchangeService_Chart) GetExchanges(user common.User) []common.Exchange {

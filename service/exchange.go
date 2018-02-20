@@ -38,6 +38,16 @@ func (service *DefaultExchangeService) CreateExchange(user common.User, exchange
 	return service.exchangeMap[exchangeName](service.ctx, exchange)
 }
 
+func (service *DefaultExchangeService) GetDisplayNames(user common.User) []string {
+	var exchanges []string
+	userEntity := &entity.User{Id: user.GetId()}
+	userExchanges := service.userDAO.GetExchanges(userEntity)
+	for _, ex := range userExchanges {
+		exchanges = append(exchanges, ex.Name)
+	}
+	return exchanges
+}
+
 func (service *DefaultExchangeService) GetExchanges(user common.User) []common.Exchange {
 	var exchanges []common.Exchange
 	userEntity := &entity.User{Id: user.GetId()}

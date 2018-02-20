@@ -10,11 +10,15 @@ import (
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/joho/godotenv"
 	logging "github.com/op/go-logging"
 )
 
 var TEST_CONTEXT *common.Context
 var TEST_LOCK sync.Mutex
+var TEST_USERNAME = "test"
+var TEST_COREDBPATH = "/tmp/tradebot-coredb-testing.db"
+var TEST_PRICEDBPATH = "/tmp/tradebot-pricedb-testing.db"
 
 func NewUnitTestContext() *common.Context {
 	backend, _ := logging.NewSyslogBackend(common.APPNAME)
@@ -48,6 +52,15 @@ func NewIntegrationTestContext() *common.Context {
 		panic(err)
 	}
 
+	err = godotenv.Load("../.env")
+	if err != nil {
+		panic("Error loading test environment from .env")
+	}
+
+	if address := os.Getenv("BTC_ADDRESS"); address == "" {
+		panic("Unable to load BTC_ADDRESS environment variable")
+	}
+
 	TEST_CONTEXT = &common.Context{
 		CoreDB:  coreDB,
 		PriceDB: priceDB,
@@ -60,31 +73,31 @@ func NewIntegrationTestContext() *common.Context {
 	var wallets []entity.UserWallet
 	wallets = append(wallets, entity.UserWallet{
 		Currency: "BTC",
-		Address:  BTC_ADDRESS})
+		Address:  os.Getenv("BTC_ADDRESS")})
 	wallets = append(wallets, entity.UserWallet{
 		Currency: "XRP",
-		Address:  XRP_ADDRESS})
+		Address:  os.Getenv("XRP_ADDRESS")})
 
 	var exchanges []entity.UserCryptoExchange
 	exchanges = append(exchanges, entity.UserCryptoExchange{
 		Name:   "gdax",
-		Key:    GDAX_APIKEY,
-		Secret: GDAX_SECRET,
-		Extra:  GDAX_PASSPHRASE})
+		Key:    os.Getenv("GDAX_APIKEY"),
+		Secret: os.Getenv("GDAX_SECRET"),
+		Extra:  os.Getenv("GDAX_PASSPHRASE")})
 	exchanges = append(exchanges, entity.UserCryptoExchange{
 		Name:   "bittrex",
-		Key:    BITTREX_APIKEY,
-		Secret: BITTREX_SECRET,
-		Extra:  BITTREX_EXTRA})
+		Key:    os.Getenv("BITTREX_APIKEY"),
+		Secret: os.Getenv("BITTREX_SECRET"),
+		Extra:  os.Getenv("BITTREX_EXTRA")})
 	exchanges = append(exchanges, entity.UserCryptoExchange{
 		Name:   "binance",
-		Key:    BINANCE_APIKEY,
-		Secret: BINANCE_SECRET,
-		Extra:  BINANCE_EXTRA})
+		Key:    os.Getenv("BINANCE_APIKEY"),
+		Secret: os.Getenv("BINANCE_SECRET"),
+		Extra:  os.Getenv("BINANCE_EXTRA")})
 	/*exchanges = append(exchanges, entity.UserCryptoExchange{
 	Name:   "bithumb",
-	Key:    BITHUMB_APIKEY,
-	Secret: BITHUMB_SECRET})*/
+	Key:     os.Getenv("BITHUMB_APIKEY"),
+	Secret: os.Getenv("BINANCE_SECRET")})*/
 
 	userDAO := dao.NewUserDAO(TEST_CONTEXT)
 	userDAO.Save(&entity.User{Username: TEST_USERNAME, LocalCurrency: "USD", Exchanges: exchanges, Wallets: wallets})
@@ -92,41 +105,41 @@ func NewIntegrationTestContext() *common.Context {
 	/*exchangeDAO := exchange.NewExchangeDAO(TEST_CONTEXT)
 	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:       "gdax",
-		Key:        GDAX_APIKEY,
-		Secret:     GDAX_SECRET,
-		Passphrase: GDAX_PASSPHRASE})
+		Key:        os.Getenv("GDAX_APIKEY"),
+		Secret:     os.Getenv("GDAX_SECRET"),
+		Passphrase: os.Getenv("GDAX_PASSPHRASE")})
 	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:   "bittrex",
-		Key:    BITTREX_APIKEY,
-		Secret: BITTREX_SECRET})
+		Key:    os.Getenv("BITTREX_APIKEY"),
+		Secret: os.Getenv("BITTREX_SECRET")})
 	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:   "binance",
-		Key:    BINANCE_APIKEY,
-		Secret: BINANCE_SECRET})
+		Key:    os.Getenv("BINANCE_APIKEY"),
+		Secret: os.Getenv("BINANCE_SECRET")})
 	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:   "bithumb",
-		Key:    BITHUMB_APIKEY,
-		Secret: BITHUMB_SECRET})
+		Key:    os.Getenv("BITHUMB_APIKEY"),
+		Secret: os.Getenv("BINANCE_SECRET")})
 
 	userDAO.Create(&entity.User{
 		Id: TEST_CONTEXT.User
 		Exchanges: . exchange.CryptoExchange{
 		Name:       "gdax",
-		Key:        GDAX_APIKEY,
-		Secret:     GDAX_SECRET,
-		Passphrase: GDAX_PASSPHRASE})
+		Key:        os.Getenv("GDAX_APIKEY"),
+		Secret:     os.Getenv("GDAX_SECRET"),
+		Passphrase: os.Getenv("GDAX_PASSPHRASE")})
 	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:   "bittrex",
-		Key:    BITTREX_APIKEY,
-		Secret: BITTREX_SECRET})
+		Key:    os.Getenv("BITTREX_APIKEY"),
+		Secret: os.Getenv("BITTREX_SECRET")})
 	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:   "binance",
-		Key:    BINANCE_APIKEY,
-		Secret: BINANCE_SECRET})
+		Key:    os.Getenv("BINANCE_APIKEY"),
+		Secret: os.Getenv("BINANCE_SECRET")})
 	exchangeDAO.Create(&exchange.CryptoExchange{
 		Name:   "bithumb",
-		Key:    BITHUMB_APIKEY,
-		Secret: BITHUMB_SECRET})*/
+		Key:    os.Getenv("BITHUMB_APIKEY"),
+		Secret: os.Getenv("BITHUMB_SECRET")})*/
 
 	return TEST_CONTEXT
 }

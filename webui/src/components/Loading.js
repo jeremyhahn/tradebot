@@ -1,38 +1,35 @@
 'use strict';
 
 import React from 'react';
+import PropTypes from 'prop-types';
 import { withStyles } from 'material-ui/styles';
 import { CircularProgress } from 'material-ui/Progress';
 
 const styles = theme => ({
 	container: {
-		textAlign: 'center',
-		marginTop: '50%',
-		marginLeft: '50%'
+		textAlign: 'center'
 	},
 	refresh: {
 		display: 'inline-block',
-		position: 'relative',
-	},
-	text: {
-		marginTop: '50%'
+		position: 'relative'
 	},
 	progress: {
-		margin: `0 ${theme.spacing.unit * 2}px`,
-	}
+    margin: theme.spacing.unit * 2,
+  },
 });
 
 const Loading = (props) => {
 
+  const { classes, text } = props;
+
 	return (
-		<div style={ styles.container }>
-		  <CircularProgress className={styles.progress} size={50} />
+		<div className={classes.container}>
+		  <CircularProgress className={classes.progress} size={50} />
 			{ props.text &&
-				<div style={ styles.text }>{ props.text }</div>
+				<div className={classes.refresh}>{props.text}</div>
 			}
 		</div>
 	)
-
 }
 
 export default withStyles(styles)(Loading);

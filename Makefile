@@ -23,6 +23,8 @@ deps:
 	go get "github.com/toorop/go-bittrex"
 	go get "github.com/adshao/go-binance"
 	go get "github.com/ethereum/go-ethereum"
+	go get "github.com/joho/godotenv"
+	go get "golang.org/x/text/encoding/unicode"
 
 certs:
 	mkdir -p keys/

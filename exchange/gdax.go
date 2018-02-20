@@ -1,6 +1,7 @@
 package exchange
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -136,10 +137,13 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.O
 					CurrencyPair: &common.CurrencyPair{
 						Base:  base,
 						Quote: quote},
-					Quantity: order.FilledSize,
-					Fee:      util.TruncateFloat(order.FillFees, 2),
-					Price:    order.Price,
-					Total:    order.ExecutedValue})
+					Quantity:      order.FilledSize,
+					Fee:           util.TruncateFloat(order.FillFees, 2),
+					Price:         order.Price,
+					Total:         order.ExecutedValue,
+					PriceCurrency: quote,
+					FeeCurrency:   quote,
+					TotalCurrency: quote})
 			}
 		}
 	}
@@ -271,6 +275,12 @@ func (_gdax *GDAX) GetExchange() common.CryptoExchange {
 		Satoshis: s,
 		Coins:    balances}
 	return exchange
+}
+
+func (_gdax *GDAX) ParseImport(file string) ([]common.Order, error) {
+	var orders []common.Order
+	_gdax.ctx.Logger.Error("[GDAX.ParseImport] Unsupported!")
+	return orders, errors.New("GDAX.ParseImport Unsupported")
 }
 
 func (_gdax *GDAX) ToUSD(price, satoshis float64) float64 {

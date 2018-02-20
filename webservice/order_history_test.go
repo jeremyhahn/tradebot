@@ -1,4 +1,6 @@
-package webservice
+// +build broken_integration
+
+package webservic
 
 import (
 	"bytes"
@@ -8,9 +10,12 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/test"
+	"github.com/jeremyhahn/tradebot/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -36,17 +41,30 @@ type MockPortfolio_OrderHistory struct {
 	mock.Mock
 }
 
+type MockUserService_OrderHistory struct {
+	mock.Mock
+	service.UserService
+}
+
 func TestOrderHistory(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
+	orderDAO := dao.NewOrderDAO(ctx)
+
+	exchangeService := new(MockExchange_OrderHistory)
+	userService := new(MockUserService_OrderHistory)
+	orderMapper := mapper.NewOrderMapper(ctx)
+
 	mockEthereumService := new(MockEthereum_OrderHistory)
 	marketcapService := service.NewMarketCapService(ctx.Logger)
-	priceHistoryService := service.NewPriceHistoryService(ctx)
+	orderService := service.NewOrderService(ctx, orderDAO, orderMapper, exchangeService, userService)
+	//priceHistoryService := service.NewPriceHistoryService(ctx)
 
 	rsaKeyPair, err := common.CreateRsaKeyPair(ctx, "../test/keys")
 	jwt := CreateJsonWebToken(ctx, mockEthereumService, NewJsonWriter(), 10, rsaKeyPair)
-	ws := NewWebServer(ctx, 8081, marketcapService, priceHistoryService, new(MockExchange_OrderHistory),
-		mockEthereumService, new(MockUser_OrderHistory), new(MockPortfolio_OrderHistory), jwt)
+	ws := NewWebServer(ctx, 8081, marketcapService, exchangeService,
+		mockEthereumService, new(MockUser_OrderHistory), new(MockPortfolio_OrderHistory),
+		orderService, jwt)
 
 	go ws.Start()
 	go ws.Run()
@@ -56,9 +74,12 @@ func TestOrderHistory(t *testing.T) {
 		Password: "unittest"}
 	jsonCreds, err := json.Marshal(creds)
 	client := &http.Client{}
-	req, _ := http.NewRequest("POST", "http://localhost:8081/api/v1/login", bytes.NewBuffer(jsonCreds))
+	req, _ := http.NewRequest("POST", "https://localhost:8081/api/v1/login", bytes.NewBuffer(jsonCreds))
 	req.Header.Set("Content-Type", "application/json")
 	res, _ := client.Do(req)
+
+	util.DUMP(res)
+
 	bodyBytes, err := ioutil.ReadAll(res.Body)
 	jwtResponse := string(bodyBytes)
 	assert.Nil(t, err)
@@ -67,16 +88,16 @@ func TestOrderHistory(t *testing.T) {
 	token := JsonWebTokenDTO{}
 	err = json.Unmarshal(bodyBytes, &token)
 
-	req, _ = http.NewRequest("GET", "http://localhost:8081/api/v1/orderhistory", nil)
+	req, _ = http.NewRequest("GET", "https://localhost:8081/api/v1/orderhistory", nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token.Value)
 	res, _ = client.Do(req)
 	bodyBytes, err = ioutil.ReadAll(res.Body)
 	assert.Nil(t, err)
-	assert.Contains(t, string(bodyBytes), "\"token\":")
+	assert.Contains(t, string(bodyBytes), "\"success\":true")
 
 	ws.Stop()
-	//	test.CleanupIntegrationTest()
+	test.CleanupIntegrationTest()
 }
 
 func (ethereum *MockEthereum_OrderHistory) Login(username, password string) (common.User, error) {
@@ -110,6 +131,10 @@ func (exchange *MockExchange_OrderHistory) GetCurrencyPairs(user common.User, pa
 			Base:          "BTC",
 			Quote:         "USD",
 			LocalCurrency: "USD"}}, nil
+}
+
+func (exchange *MockExchange_OrderHistory) GetDisplayNames(user common.User) []string {
+	return []string{"Exchange 1", "Exchange 2", "Exchange 3"}
 }
 
 func (mock *MockUser_OrderHistory) CreateUser(user common.User) {

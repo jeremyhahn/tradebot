@@ -17,6 +17,7 @@ const (
 	HTTP_CLIENT_TIMEOUT   = 10 * time.Second
 	CANDLESTICK_MIN_LOAD  = 250
 	DB_DIR                = "./db"
+	TMP_DIR               = "/tmp"
 )
 
 type Indicator interface {
@@ -86,6 +87,9 @@ type Order interface {
 	GetPrice() float64
 	GetFee() float64
 	GetTotal() float64
+	GetPriceCurrency() string
+	GetFeeCurrency() string
+	GetTotalCurrency() string
 	String() string
 }
 
@@ -144,6 +148,7 @@ type Exchange interface {
 	GetPriceHistory(currencyPair *CurrencyPair, start, end time.Time, granularity int) []Candlestick
 	GetOrderHistory(currencyPair *CurrencyPair) []Order
 	FormattedCurrencyPair(currencyPair *CurrencyPair) string
+	ParseImport(file string) ([]Order, error)
 }
 
 type User interface {

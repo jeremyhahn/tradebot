@@ -1,7 +1,9 @@
 package exchange
 
 import (
+	"encoding/csv"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/jeremyhahn/tradebot/entity"
 	logging "github.com/op/go-logging"
 	bittrex "github.com/toorop/go-bittrex"
+	"golang.org/x/text/encoding/unicode"
 )
 
 type Bittrex struct {
@@ -87,14 +90,17 @@ func (b *Bittrex) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Or
 		q, _ := o.Quantity.Float64()
 		p, _ := o.Price.Float64()
 		orders = append(orders, &dto.OrderDTO{
-			Id:           o.OrderUuid,
-			Exchange:     "bittrex",
-			Date:         o.TimeStamp.Time,
-			Type:         o.OrderType,
-			CurrencyPair: currencyPair,
-			Quantity:     q,
-			Price:        p,
-			Total:        q * p})
+			Id:            o.OrderUuid,
+			Exchange:      "bittrex",
+			Date:          o.TimeStamp.Time,
+			Type:          o.OrderType,
+			CurrencyPair:  currencyPair,
+			Quantity:      q,
+			Price:         p,
+			Total:         q * p,
+			PriceCurrency: currencyPair.Base,
+			FeeCurrency:   currencyPair.Base,
+			TotalCurrency: currencyPair.Base})
 	}
 	return orders
 }
@@ -232,6 +238,73 @@ func (b *Bittrex) GetName() string {
 
 func (b *Bittrex) GetTradingFee() float64 {
 	return b.tradingFee
+}
+
+func (b *Bittrex) ParseImport(file string) ([]common.Order, error) {
+	var orders []common.Order
+	f, err := os.Open(file)
+	if err != nil {
+		return orders, err
+	}
+	defer f.Close()
+	codec := unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewDecoder()
+	reader := codec.Reader(f)
+	lines, err := csv.NewReader(reader).ReadAll()
+	if err != nil {
+		return orders, err
+	}
+	for i, values := range lines {
+		if i == 0 {
+			continue // skip header
+		}
+		qty, err := strconv.ParseFloat(values[3], 64)
+		if err != nil {
+			b.ctx.Logger.Errorf("[Bittrex.ParseImport] Error parsing quantity: %s", err.Error())
+			return orders, err
+		}
+		price, err := strconv.ParseFloat(values[4], 64)
+		if err != nil {
+			b.ctx.Logger.Errorf("[Bittrex.ParseImport] Error parsing price: %s", err.Error())
+			return orders, err
+		}
+		fee, err := strconv.ParseFloat(values[5], 64)
+		if err != nil {
+			b.ctx.Logger.Errorf("[Bittrex.ParseImport] Error parsing fee: %s", err.Error())
+			return orders, err
+		}
+		total, err := strconv.ParseFloat(values[6], 64)
+		if err != nil {
+			b.ctx.Logger.Errorf("[Bittrex.ParseImport] Error parsing totalt: %s", err.Error())
+			return orders, err
+		}
+		date, err := time.Parse("1/2/2006 15:04:05 PM", values[8])
+		if err != nil {
+			b.ctx.Logger.Errorf("[Bittrex.ParseImport] Error parsing float: %s", err.Error())
+			return orders, err
+		}
+		var orderType string
+		if values[2] == "LIMIT_BUY" {
+			orderType = "buy"
+		} else {
+			orderType = "sell"
+		}
+		currencyPair := common.NewCurrencyPair(values[1], b.ctx.GetUser().GetLocalCurrency())
+		order := &dto.OrderDTO{
+			Id:            fmt.Sprintf("%d", b.ctx.GetUser().GetId()),
+			Exchange:      b.name,
+			Date:          date,
+			Type:          orderType,
+			CurrencyPair:  currencyPair,
+			Quantity:      qty,
+			Price:         price,
+			Fee:           fee,
+			Total:         total,
+			PriceCurrency: currencyPair.Base,
+			FeeCurrency:   currencyPair.Base,
+			TotalCurrency: currencyPair.Base}
+		orders = append(orders, order)
+	}
+	return orders, nil
 }
 
 func (b *Bittrex) FormattedCurrencyPair(currencyPair *common.CurrencyPair) string {
