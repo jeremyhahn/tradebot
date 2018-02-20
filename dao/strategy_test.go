@@ -5,6 +5,7 @@ package dao
 import (
 	"testing"
 
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,8 +13,8 @@ func TestStrategyDAO(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	strategyDAO := NewStrategyDAO(ctx)
 
-	strategies := []Strategy{
-		Strategy{
+	strategies := []entity.Strategy{
+		entity.Strategy{
 			Name:     "DefaultTradingStrategy",
 			Filename: "default.so",
 			Version:  "0.0.1a"}}
@@ -35,16 +36,16 @@ func TestStrategyDAO_Get(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	strategyDAO := NewStrategyDAO(ctx)
 
-	strategies := []Strategy{
-		Strategy{
+	strategies := []entity.Strategy{
+		entity.Strategy{
 			Name:     "TestStrategy1",
 			Filename: "test.so",
 			Version:  "0.0.1a"},
-		Strategy{
+		entity.Strategy{
 			Name:     "StrategyFindMe",
 			Filename: "findme.so",
 			Version:  "0.0.2a"},
-		Strategy{
+		entity.Strategy{
 			Name:     "TestStrategy2",
 			Filename: "test2.so",
 			Version:  "0.0.3a"}}

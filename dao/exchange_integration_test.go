@@ -5,6 +5,7 @@ package dao
 import (
 	"testing"
 
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,7 +13,7 @@ func TestExchangeDAO(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	exchangeDAO := NewExchangeDAO(ctx)
 
-	exchange := &CryptoExchange{
+	exchange := &entity.CryptoExchange{
 		UserID: ctx.User.GetId(),
 		Name:   "Test Exchange",
 		Key:    "ABC123",

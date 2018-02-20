@@ -5,6 +5,7 @@ package dao
 import (
 	"testing"
 
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,16 +13,16 @@ func TestIndicatorDAO(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	indicatorDAO := NewIndicatorDAO(ctx)
 
-	indicators := []Indicator{
-		Indicator{
+	indicators := []entity.Indicator{
+		entity.Indicator{
 			Name:     "RelativeStrengthIndex",
 			Filename: "rsi.so",
 			Version:  "0.0.1a"},
-		Indicator{
+		entity.Indicator{
 			Name:     "BollingerBands",
 			Filename: "bollinger_bands.so",
 			Version:  "0.0.1a"},
-		Indicator{
+		entity.Indicator{
 			Name:     "MovingAverageConvergenceDivergence",
 			Filename: "macd.so",
 			Version:  "0.0.1a"}}
@@ -49,16 +50,16 @@ func TestIndicatorDAO_Get(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	indicatorDAO := NewIndicatorDAO(ctx)
 
-	indicators := []Indicator{
-		Indicator{
+	indicators := []entity.Indicator{
+		entity.Indicator{
 			Name:     "TestIndicator",
 			Filename: "test.so",
 			Version:  "0.0.1a"},
-		Indicator{
+		entity.Indicator{
 			Name:     "FindMe",
 			Filename: "findme.so",
 			Version:  "0.0.2a"},
-		Indicator{
+		entity.Indicator{
 			Name:     "TestIndicator2",
 			Filename: "test2.so",
 			Version:  "0.0.3a"}}

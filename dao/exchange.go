@@ -5,12 +5,13 @@ import (
 	"fmt"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/entity"
 )
 
 type ExchangeDAO interface {
-	Create(exchange *CryptoExchange) error
-	Get(name string) (*CryptoExchange, error)
-	Find() ([]CryptoExchange, error)
+	Create(exchange *entity.CryptoExchange) error
+	Get(name string) (*entity.CryptoExchange, error)
+	Find() ([]entity.CryptoExchange, error)
 }
 
 type ExchangeDAOImpl struct {
@@ -18,34 +19,25 @@ type ExchangeDAOImpl struct {
 	ExchangeDAO
 }
 
-type CryptoExchange struct {
-	UserID uint
-	Name   string `gorm:"primary_key" sql:"type:varchar(255)"`
-	URL    string `gorm:"not null" sql:"type:varchar(255)"`
-	Key    string `gorm:"not null" sql:"type:varchar(255)"`
-	Secret string `gorm:"not null" sql:"type:text"`
-	Extra  string `gorm:"not null" sql:"type:varchar(255)"`
-}
-
 func NewExchangeDAO(ctx *common.Context) ExchangeDAO {
-	ctx.CoreDB.AutoMigrate(&CryptoExchange{})
+	ctx.CoreDB.AutoMigrate(&entity.CryptoExchange{})
 	return &ExchangeDAOImpl{
 		ctx: ctx}
 }
 
-func (dao *ExchangeDAOImpl) Create(exchange *CryptoExchange) error {
+func (dao *ExchangeDAOImpl) Create(exchange *entity.CryptoExchange) error {
 	return dao.ctx.CoreDB.Create(exchange).Error
 }
 
-func (dao *ExchangeDAOImpl) Find() ([]CryptoExchange, error) {
-	var exchanges []CryptoExchange
+func (dao *ExchangeDAOImpl) Find() ([]entity.CryptoExchange, error) {
+	var exchanges []entity.CryptoExchange
 	if err := dao.ctx.CoreDB.Find(&exchanges).Error; err != nil {
 		return nil, err
 	}
 	return exchanges, nil
 }
 
-func (dao *ExchangeDAOImpl) Get(name string) (*CryptoExchange, error) {
+func (dao *ExchangeDAOImpl) Get(name string) (*entity.CryptoExchange, error) {
 	exchanges, err := dao.Find()
 	if err != nil {
 		return nil, err
