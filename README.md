@@ -6,7 +6,7 @@ Ethereum powered automated cryptocurrency trading platform.
 ## Current Features
 
 * User friendly web interface
-* Portfolio, Order history reporting, Tax form 8
+* Portfolio, Order history & accounting / tax reporting; Form 8949 statement
 * Exchange order / trade history reporting; Generate accounting reports
 * Plugin system supports financial indicators, trading strategies, exchanges and wallets
 * Add / remove functionality without interrupting underlying platform or current trades
@@ -41,8 +41,9 @@ Due to limitations of [Golang plugins](https://golang.org/pkg/plugin/), this sof
 
 After installing the dependencies listed above, simply run `make` to build the `tradebot` binary and then run the application.
 
-  make
-  ./tradebot --debug
+    make
+    ./tradebot --debug
+
 
 #### Linux / MacOS - Docker
 
@@ -51,6 +52,7 @@ Simply install docker and run the `build-docker.sh` bash script in the project r
     ./docker-build.sh
     ./docker-run.sh
 
+
 #### Windows
 
 1. [Docker Toolkit](https://docs.docker.com/toolbox/toolbox_install_windows/) (Windows Home Edition or < Windows 10)
@@ -58,11 +60,14 @@ Simply install docker and run the `build-docker.sh` bash script in the project r
 
 Windows Home Edition and versions prior to Windows 10 do not support native virtualization. As such, they require `docker-machine` included in the Docker Toolkit. Newer versions of Windows that support native virtualization can take advantage of the latest Docker CE with enhanced performance.
 
+
 ## Tech Stack
+
 
 #### User Interface
 * [React.js](https://reactjs.org/)
 * [Material-UI](https://material-ui-next.com/)
+
 
 #### Backend
 * [Golang](https://golang.org/)
