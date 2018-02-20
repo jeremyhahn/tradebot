@@ -75,5 +75,8 @@ quickdebug:
 quickbuild:
 	go build -ldflags "-w"
 
+dockerbuild: clean deps certs plugins
+	go build
+
 build: clean certs plugins test
 	go build
