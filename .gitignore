@@ -10,3 +10,4 @@ webui/public/scripts
 keys/*
 test/ethereum/blockchain/*
 .env
+*.log

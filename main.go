@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -31,9 +32,16 @@ func main() {
 	debugFlag := flag.Bool("debug", false, "Enable debug level logging")
 	flag.Parse()
 
-	backend, _ := logging.NewSyslogBackend(common.APPNAME)
+	f, err := os.OpenFile("tradebot.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		panic("Unable to open log file")
+	}
+	stdout := logging.NewLogBackend(os.Stdout, "", 0)
+	logfile := logging.NewLogBackend(f, "", log.Lshortfile)
+	//syslog, _ := logging.NewSyslogBackend(common.APPNAME)
+	backends := logging.MultiLogger(stdout, logfile)
 	logger := logging.MustGetLogger(common.APPNAME)
-	logging.SetBackend(backend)
+	logging.SetBackend(backends)
 	if *debugFlag == false {
 		logging.SetLevel(logging.ERROR, "")
 	} else {
@@ -91,7 +99,7 @@ func main() {
 	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService, profitService, tradeService, strategyService)
 	orderService := service.NewOrderService(ctx, orderDAO, orderMapper, exchangeService, userService)
 
-	err := autoTradeService.EndWorldHunger()
+	err = autoTradeService.EndWorldHunger()
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
