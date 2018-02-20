@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com-backup/gorilla/mux"
 	"github.com/codegangsta/negroni"
+	"github.com/gorilla/mux"
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/webservice/rest"
