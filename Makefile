@@ -17,6 +17,7 @@ deps:
 	go get "github.com/jinzhu/gorm/dialects/sqlite"
 #	go get "github.com/jinzhu/gorm/dialects/mysql"
 	go get "github.com/gorilla/websocket"
+	go get "github.com-backup/gorilla/mux"
 	go get "github.com/codegangsta/negroni"
 	go get "github.com/dgrijalva/jwt-go"
 	go get "github.com/preichenberger/go-gdax"

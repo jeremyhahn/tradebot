@@ -5,41 +5,42 @@ import (
 	"fmt"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/entity"
 )
 
 type StrategyDAO interface {
-	Create(indicator StrategyEntity) error
-	Save(indicator StrategyEntity) error
-	Update(indicator StrategyEntity) error
-	Find() ([]Strategy, error)
-	Get(name string) (StrategyEntity, error)
+	Create(indicator entity.StrategyEntity) error
+	Save(indicator entity.StrategyEntity) error
+	Update(indicator entity.StrategyEntity) error
+	Find() ([]entity.Strategy, error)
+	Get(name string) (entity.StrategyEntity, error)
 }
 
 type StrategyDAOImpl struct {
 	ctx       *common.Context
-	Strategys []Strategy
+	Strategys []entity.Strategy
 	ChartDAO
 }
 
 func NewStrategyDAO(ctx *common.Context) StrategyDAO {
-	ctx.CoreDB.AutoMigrate(&Strategy{})
+	ctx.CoreDB.AutoMigrate(&entity.Strategy{})
 	return &StrategyDAOImpl{ctx: ctx}
 }
 
-func (dao *StrategyDAOImpl) Create(indicator StrategyEntity) error {
+func (dao *StrategyDAOImpl) Create(indicator entity.StrategyEntity) error {
 	return dao.ctx.CoreDB.Create(indicator).Error
 }
 
-func (dao *StrategyDAOImpl) Save(indicator StrategyEntity) error {
+func (dao *StrategyDAOImpl) Save(indicator entity.StrategyEntity) error {
 	return dao.ctx.CoreDB.Save(indicator).Error
 }
 
-func (dao *StrategyDAOImpl) Update(indicator StrategyEntity) error {
+func (dao *StrategyDAOImpl) Update(indicator entity.StrategyEntity) error {
 	return dao.ctx.CoreDB.Update(indicator).Error
 }
 
-func (dao *StrategyDAOImpl) Get(name string) (StrategyEntity, error) {
-	var strategies []Strategy
+func (dao *StrategyDAOImpl) Get(name string) (entity.StrategyEntity, error) {
+	var strategies []entity.Strategy
 	if err := dao.ctx.CoreDB.Where("name = ?", name).Find(&strategies).Error; err != nil {
 		return nil, err
 	}
@@ -49,34 +50,10 @@ func (dao *StrategyDAOImpl) Get(name string) (StrategyEntity, error) {
 	return &strategies[0], nil
 }
 
-func (dao *StrategyDAOImpl) Find() ([]Strategy, error) {
-	var strategies []Strategy
+func (dao *StrategyDAOImpl) Find() ([]entity.Strategy, error) {
+	var strategies []entity.Strategy
 	if err := dao.ctx.CoreDB.Order("name asc").Find(&strategies).Error; err != nil {
 		return nil, err
 	}
 	return strategies, nil
-}
-
-type StrategyEntity interface {
-	GetName() string
-	GetFilename() string
-	GetVersion() string
-}
-
-type Strategy struct {
-	Name     string `gorm:"primary_key"`
-	Filename string `gorm:"not null"`
-	Version  string `gorm:"not null"`
-}
-
-func (entity *Strategy) GetName() string {
-	return entity.Name
-}
-
-func (entity *Strategy) GetFilename() string {
-	return entity.Filename
-}
-
-func (entity *Strategy) GetVersion() string {
-	return entity.Version
 }

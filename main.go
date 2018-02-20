@@ -7,6 +7,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/webservice"
@@ -22,6 +23,7 @@ func main() {
 	defaultIpc := fmt.Sprintf("%s/%s", wd, "test/ethereum/blockchain/geth.ipc")
 	defaultKeystore := fmt.Sprintf("%s/%s", wd, "test/ethereum/blockchain/keystore")
 
+	initDbFlag := flag.Bool("initdb", false, "Create initial database schema and exit")
 	portFlag := flag.Int("port", 8080, "Web server listen port")
 	sslFlag := flag.Bool("ssl", true, "Enable HTTPS / WSS over TLS")
 	ipcFlag := flag.String("ipc", defaultIpc, "Path to geth IPC socket")
@@ -43,6 +45,10 @@ func main() {
 
 	priceDB := InitPriceDB(*debugFlag)
 	defer coreDB.Close()
+
+	if *initDbFlag {
+		os.Exit(0)
+	}
 
 	ctx := &common.Context{
 		CoreDB:  coreDB,
@@ -110,12 +116,31 @@ func main() {
 
 func InitCoreDB(logMode bool) *gorm.DB {
 	database := fmt.Sprintf("%s/%s.db", common.DB_DIR, common.APPNAME)
-	return NewSQLite(database, logMode)
+	db := NewSQLite(database, logMode)
+	db.AutoMigrate(&entity.ChartIndicator{})
+	db.AutoMigrate(&entity.ChartStrategy{})
+	db.AutoMigrate(&entity.Chart{})
+	db.AutoMigrate(&entity.ChartStrategy{})
+	db.AutoMigrate(&entity.ChartIndicator{})
+	db.AutoMigrate(&entity.Trade{})
+	db.AutoMigrate(&entity.CryptoExchange{})
+	db.AutoMigrate(&entity.Indicator{})
+	db.AutoMigrate(&entity.MarketCap{})
+	db.AutoMigrate(&entity.GlobalMarketCap{})
+	db.AutoMigrate(&entity.Order{})
+	db.AutoMigrate(&entity.Strategy{})
+	db.AutoMigrate(&entity.Trade{})
+	db.AutoMigrate(&entity.User{})
+	db.AutoMigrate(&entity.UserWallet{})
+	db.AutoMigrate(&entity.UserCryptoExchange{})
+	return db
 }
 
 func InitPriceDB(logMode bool) *gorm.DB {
 	database := fmt.Sprintf("%s/prices.db", common.DB_DIR)
-	return NewSQLite(database, logMode)
+	db := NewSQLite(database, logMode)
+	db.AutoMigrate(&entity.PriceHistory{})
+	return db
 }
 
 func NewSQLite(database string, logMode bool) *gorm.DB {

@@ -2,6 +2,18 @@ package entity
 
 import "time"
 
+type StrategyEntity interface {
+	GetName() string
+	GetFilename() string
+	GetVersion() string
+}
+
+type IndicatorEntity interface {
+	GetName() string
+	GetFilename() string
+	GetVersion() string
+}
+
 type OrderEntity interface {
 	GetId() uint
 	GetUserId() uint

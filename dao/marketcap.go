@@ -2,36 +2,10 @@ package dao
 
 import (
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )
-
-type MarketCap struct {
-	Id               string `gorm:"index"`
-	Name             string `gorm:"index"`
-	Symbol           string `gorm:"primary_key"`
-	Rank             string
-	PriceUSD         string
-	PriceBTC         string
-	VolumeUSD24h     string
-	MarketCapUSD     string
-	AvailableSupply  string
-	TotalSupply      string
-	MaxSupply        string
-	PercentChange1h  string
-	PercentChange24h string
-	PercentChange7d  string
-	LastUpdated      string
-}
-
-type GlobalMarketCap struct {
-	TotalMarketCapUSD float64
-	Total24HVolumeUSD float64
-	BitcoinDominance  float64
-	ActiveCurrencies  float64
-	ActiveMarkets     float64
-	LastUpdated       int64
-}
 
 type MarketCapDAO struct {
 	db     *gorm.DB
@@ -39,15 +13,15 @@ type MarketCapDAO struct {
 }
 
 func NewMarketCapDAO(ctx *common.Context) *MarketCapDAO {
-	ctx.CoreDB.AutoMigrate(&MarketCap{})
-	ctx.CoreDB.AutoMigrate(&GlobalMarketCap{})
+	ctx.CoreDB.AutoMigrate(&entity.MarketCap{})
+	ctx.CoreDB.AutoMigrate(&entity.GlobalMarketCap{})
 	return &MarketCapDAO{
 		db:     ctx.CoreDB,
 		logger: ctx.Logger}
 }
 
 func (dao *MarketCapDAO) Get(symbol string) (*common.MarketCap, error) {
-	var market MarketCap
+	var market entity.MarketCap
 	if err := dao.db.First(&symbol).Error; err != nil {
 		return nil, err
 	}
@@ -70,5 +44,5 @@ func (dao *MarketCapDAO) Get(symbol string) (*common.MarketCap, error) {
 }
 
 func (dao *MarketCapDAO) Delete(symbol string) error {
-	return dao.db.Delete(&MarketCap{Symbol: symbol}).Error
+	return dao.db.Delete(&entity.MarketCap{Symbol: symbol}).Error
 }

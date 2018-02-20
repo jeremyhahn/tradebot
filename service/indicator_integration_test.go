@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/stretchr/testify/assert"
 )
@@ -13,7 +14,7 @@ import (
 func TestGetIndicator_Success(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
-	indicatorDAO.Create(&dao.Indicator{
+	indicatorDAO.Create(&entity.Indicator{
 		Name:     "RelativeStrengthIndex",
 		Filename: "rsi.so",
 		Version:  "0.0.1a"})
@@ -38,7 +39,7 @@ func TestGetIndicator_SuccessfulLoadingTwice(t *testing.T) {
 	assert.NotNil(t, indicatorDAO)
 	indicatorDAO.Find()
 
-	indicatorDAO.Create(&dao.Indicator{
+	indicatorDAO.Create(&entity.Indicator{
 		Name:     "RelativeStrengthIndex",
 		Filename: "rsi.so",
 		Version:  "0.0.1a"})
@@ -83,7 +84,7 @@ func TestGetIndicator_IndicatorDoesntExistInDatabase(t *testing.T) {
 func TestGetIndicator_IndicatorDoesntExist(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
-	indicator := &dao.Indicator{
+	indicator := &entity.Indicator{
 		Name:     "IndicatorDoesntExist",
 		Filename: "fake.so",
 		Version:  "0.0.1a"}
@@ -109,7 +110,7 @@ func TestGetChartIndicator_GetIndicator(t *testing.T) {
 
 	chartDAO := dao.NewChartDAO(ctx)
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
-	indicatorDAO.Create(&dao.Indicator{
+	indicatorDAO.Create(&entity.Indicator{
 		Name:     "RelativeStrengthIndex",
 		Filename: "rsi.so",
 		Version:  "0.0.1a"})
@@ -143,21 +144,21 @@ func TestGetChartIndicator_GetIndicators(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
-	indicatorDAO.Create(&dao.Indicator{
+	indicatorDAO.Create(&entity.Indicator{
 		Name:     "RelativeStrengthIndex",
 		Filename: "rsi.so",
 		Version:  "0.0.1a"})
-	indicatorDAO.Create(&dao.Indicator{
+	indicatorDAO.Create(&entity.Indicator{
 		Name:     "BollingerBands",
 		Filename: "bollinger_bands.so",
 		Version:  "0.0.1a"})
-	indicatorDAO.Create(&dao.Indicator{
+	indicatorDAO.Create(&entity.Indicator{
 		Name:     "MovingAverageConvergenceDivergence",
 		Filename: "macd.so",
 		Version:  "0.0.1a"})
 
 	strategyDAO := dao.NewStrategyDAO(ctx)
-	strategyEntity := &dao.Strategy{
+	strategyEntity := &entity.Strategy{
 		Name:     "DefaultTradingStrategy",
 		Filename: "default.so",
 		Version:  "0.0.1a"}
