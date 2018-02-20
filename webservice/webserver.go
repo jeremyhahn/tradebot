@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com-backup/gorilla/mux"
 	"github.com/codegangsta/negroni"
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/service"
@@ -26,16 +27,14 @@ type WebServer struct {
 	authService      service.AuthService
 	userService      service.UserService
 	portfolioService service.PortfolioService
+	orderService     service.OrderService
 	jwt              *JsonWebToken
-}
-
-type Response struct {
-	Data string `json:"data"`
 }
 
 func NewWebServer(ctx *common.Context, port int, marketcapService *service.MarketCapService,
 	exchangeService service.ExchangeService, authService service.AuthService,
-	userService service.UserService, portfolioService service.PortfolioService, jwt *JsonWebToken) *WebServer {
+	userService service.UserService, portfolioService service.PortfolioService,
+	orderService service.OrderService, jwt *JsonWebToken) *WebServer {
 	return &WebServer{
 		ctx:              ctx,
 		port:             port,
@@ -45,28 +44,39 @@ func NewWebServer(ctx *common.Context, port int, marketcapService *service.Marke
 		authService:      authService,
 		userService:      userService,
 		portfolioService: portfolioService,
+		orderService:     orderService,
 		jwt:              jwt}
 }
 
 func (ws *WebServer) Start() {
 
+	router := mux.NewRouter()
 	jsonWriter := NewJsonWriter()
 	fs := http.FileServer(http.Dir("webui/public"))
 
 	// REST Handlers - Public Access
 	reg := rest.NewRegisterRestService(ws.ctx, ws.authService, jsonWriter)
-	http.HandleFunc("/api/v1/register", reg.Register)
-	http.HandleFunc("/api/v1/login", ws.jwt.GenerateToken)
+	router.HandleFunc("/api/v1/register", reg.Register)
+	router.HandleFunc("/api/v1/login", ws.jwt.GenerateToken)
 
 	// REST Handlers - Authentication Required
-	ohrs := rest.NewOrderHistoryRestService(ws.ctx, ws.marketcapService, ws.exchangeService, ws.userService, jsonWriter)
-	http.Handle("/api/v1/orderhistory", negroni.New(
+	ohrs := rest.NewOrderHistoryRestService(ws.ctx, ws.orderService, jsonWriter)
+	ers := rest.NewExchangeRestService(ws.ctx, ws.exchangeService, ws.userService, jsonWriter)
+	router.Handle("/api/v1/orderhistory", negroni.New(
 		negroni.HandlerFunc(ws.jwt.MiddlewareValidator),
 		negroni.Wrap(http.HandlerFunc(ohrs.GetOrderHistory)),
 	))
+	router.Handle("/api/v1/import", negroni.New(
+		negroni.HandlerFunc(ws.jwt.MiddlewareValidator),
+		negroni.Wrap(http.HandlerFunc(ohrs.Import)),
+	))
+	router.Handle("/api/v1/exchanges", negroni.New(
+		negroni.HandlerFunc(ws.jwt.MiddlewareValidator),
+		negroni.Wrap(http.HandlerFunc(ers.GetExchanges)),
+	))
 
 	// Websocket Handlers
-	http.HandleFunc("/ws/portfolio", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/ws/portfolio", func(w http.ResponseWriter, r *http.Request) {
 		portfolioHub := websocket.NewPortfolioHub(ws.ctx.Logger)
 		go portfolioHub.Run()
 		ph := websocket.NewPortfolioHandler(ws.ctx, portfolioHub, ws.marketcapService, ws.userService, ws.portfolioService)
@@ -75,15 +85,15 @@ func (ws *WebServer) Start() {
 
 	// React Routes
 	routes := []string{"login", "register", "portfolio", "trades", "orders",
-		"exchanges", "settings", "logout"}
+		"exchanges", "settings", "logout", "scripts"}
 	for _, r := range routes {
 		route := fmt.Sprintf("/%s", r)
-		http.Handle(route, http.StripPrefix(route, fs))
+		router.Handle(route, http.StripPrefix(route, fs))
 	}
 
 	// Default route / static content
-	http.Handle("/static/", http.FileServer(http.Dir("webui/public/static/")))
-	http.Handle("/", fs)
+	router.PathPrefix("/").Handler(fs)
+	http.Handle("/", router)
 
 	sPort := fmt.Sprintf(":%d", ws.port)
 	if ws.ctx.SSL {
@@ -96,7 +106,7 @@ func (ws *WebServer) Start() {
 		}))
 
 		// Serve HTTPS Requests
-		err := http.ListenAndServeTLS(fmt.Sprintf(":%d", ws.port), "keys/cert.pem", "keys/key.pem", nil)
+		err := http.ListenAndServeTLS(fmt.Sprintf(":%d", ws.port), "keys/cert.pem", "keys/key.pem", router)
 		if err != nil {
 			ws.ctx.Logger.Fatalf("[WebServer] Unable to start TLS web server: %s", err.Error())
 		}
@@ -105,7 +115,7 @@ func (ws *WebServer) Start() {
 		ws.ctx.Logger.Debugf("Starting web services on port %d", ws.port)
 
 		// Serve HTTP Requests
-		err := http.ListenAndServe(sPort, nil)
+		err := http.ListenAndServe(sPort, router)
 		if err != nil {
 			ws.ctx.Logger.Fatalf("[WebServer] Unable to start web server: %s", err.Error())
 		}

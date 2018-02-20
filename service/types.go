@@ -67,11 +67,14 @@ type ProfitService interface {
 
 type ExchangeService interface {
 	CreateExchange(user common.User, exchangeName string) common.Exchange
+	GetDisplayNames(user common.User) []string
 	GetExchanges(common.User) []common.Exchange
 	GetExchange(user common.User, name string) common.Exchange
 	GetCurrencyPairs(user common.User, exchangeName string) ([]common.CurrencyPair, error)
 }
 
 type OrderService interface {
+	GetMapper() mapper.OrderMapper
 	GetOrderHistory() []common.Order
+	ImportCSV(file, exchange string) ([]common.Order, error)
 }

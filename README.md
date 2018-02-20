@@ -23,7 +23,7 @@ Ethereum powered automated cryptocurrency trading platform.
 
 ## Build
 
-Due to limitations of [Golang plugins](https://golang.org/pkg/plugin/), this software requires a Linux operating. [Debian](https://www.debian.org/) is a great choice. [Docker](https://www.docker.com/) support is also included.
+Due to limitations of [Golang plugins](https://golang.org/pkg/plugin/), this software requires a Linux or Mac operating system to run natively. [Debian](https://www.debian.org/) is a great choice. [Docker](https://www.docker.com/) support is included for Windows users.
 
 #### Dependencies
 
@@ -42,10 +42,10 @@ Windows Home Edition and versions prior to Windows 10 do not support native virt
 ## Tech Stack
 
 #### User Interface
-* ([React.js](https://reactjs.org/)
-* [Material-UI](https://material-ui-next.com/))
+* [React.js](https://reactjs.org/)
+* [Material-UI](https://material-ui-next.com/)
 
-#### backend
+#### Backend
 * [Golang](https://golang.org/)
 * [Ethereum](https://www.ethereum.org/)
 * [GORM](http://gorm.io/)

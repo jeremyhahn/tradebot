@@ -2,6 +2,19 @@ package entity
 
 import "time"
 
+type OrderEntity interface {
+	GetId() uint
+	GetUserId() uint
+	GetDate() time.Time
+	GetExchange() string
+	GetType() string
+	GetCurrency() string
+	GetQuantity() float64
+	GetPrice() float64
+	GetFee() float64
+	GetTotal() float64
+}
+
 type UserEntity interface {
 	GetId() uint
 	GetUsername() string

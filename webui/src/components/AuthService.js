@@ -1,4 +1,5 @@
 import decode from 'jwt-decode';
+import axios, { post } from 'axios';
 
 export default class AuthService {
 
@@ -42,6 +43,27 @@ export default class AuthService {
         }).then(res => {
             return Promise.resolve(res);
         })
+    }
+
+    importOrders(formData) {
+      const config = {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'multipart/form-data'
+          }
+      }
+      if(this.loggedIn()) {
+          config.headers['Authorization'] = 'Bearer ' + this.getToken()
+      }
+      return post(`${this.domain}/import`, formData, config)
+    }
+
+    getExchanges() {
+      return this.fetch(`${this.domain}/exchanges`, {
+          method: 'GET'
+      }).then(res => {
+          return Promise.resolve(res)
+      })
     }
 
     loggedIn() {
@@ -102,11 +124,9 @@ export default class AuthService {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         }
-
         if (this.loggedIn()) {
             headers['Authorization'] = 'Bearer ' + this.getToken()
         }
-
         return fetch(url, {
             headers,
             ...options
