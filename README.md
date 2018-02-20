@@ -2,16 +2,18 @@
 
 Ethereum powered automated cryptocurrency trading platform.
 
+
 ## Current Features
 
 * User friendly web interface
-* User friendly portfolio with integrated buying / selling
+* Portfolio, Order history reporting, Tax form 8
 * Exchange order / trade history reporting; Generate accounting reports
 * Plugin system supports financial indicators, trading strategies, exchanges and wallets
 * Add / remove functionality without interrupting underlying platform or current trades
 * Trading bot automatically executes trades based on configured trading strategies / indicators
 * Json Web Token (JWT) protected APIs
 * REST and WebSocket APIs
+
 
 ## Roadmap
 * Develop initial set of smart contracts to enable trading
@@ -21,9 +23,11 @@ Ethereum powered automated cryptocurrency trading platform.
 * Exchange features: distributed order book, buy / sell between network users, Atomic Swaps
 * Financial lending
 
+
 ## Build
 
 Due to limitations of [Golang plugins](https://golang.org/pkg/plugin/), this software requires a Linux or Mac operating system to run natively. [Debian](https://www.debian.org/) is a great choice. [Docker](https://www.docker.com/) support is included for Windows users.
+
 
 #### Dependencies
 
@@ -31,6 +35,21 @@ Due to limitations of [Golang plugins](https://golang.org/pkg/plugin/), this sof
 2. [Make](https://www.gnu.org/software/make/)
 3. [OpenSSL](https://www.openssl.org/)
 4. [Docker](https://www.docker.com/) (Optional)
+
+
+#### Linux / MacOS - Native
+
+After installing the dependencies listed above, simply run `make` to build the `tradebot` binary and then run the application.
+
+  make
+  ./tradebot --debug
+
+#### Linux / MacOS - Docker
+
+Simply install docker and run the `build-docker.sh` bash script in the project root. Run `docker-run.sh` to start a container with the resulting image.
+
+    ./docker-build.sh
+    ./docker-run.sh
 
 #### Windows
 
