@@ -66,7 +66,7 @@ clean:
 	cd plugins/strategies && rm -rf *.so
 	rm -rf tradebot
 
-builddebug: clean plugins
+debugbuild: clean plugins
 	go build -gcflags "-N -l"
 
 quickdebug:
