@@ -16,16 +16,16 @@ deps:
 	go get "github.com/jinzhu/gorm"
 	go get "github.com/jinzhu/gorm/dialects/sqlite"
 #	go get "github.com/jinzhu/gorm/dialects/mysql"
+  go get "golang.org/x/text/encoding/unicode"
 	go get "github.com/gorilla/websocket"
-	go get "github.com-backup/gorilla/mux"
+	go get "github.com/gorilla/mux"
 	go get "github.com/codegangsta/negroni"
 	go get "github.com/dgrijalva/jwt-go"
+	go get "github.com/ethereum/go-ethereum"
 	go get "github.com/preichenberger/go-gdax"
 	go get "github.com/toorop/go-bittrex"
 	go get "github.com/adshao/go-binance"
-	go get "github.com/ethereum/go-ethereum"
 	go get "github.com/joho/godotenv"
-	go get "golang.org/x/text/encoding/unicode"
 
 certs:
 	mkdir -p keys/
