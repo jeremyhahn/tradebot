@@ -137,13 +137,14 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.O
 					CurrencyPair: &common.CurrencyPair{
 						Base:  base,
 						Quote: quote},
-					Quantity:      order.FilledSize,
-					Fee:           util.TruncateFloat(order.FillFees, 2),
-					Price:         order.Price,
-					Total:         order.ExecutedValue,
-					PriceCurrency: quote,
-					FeeCurrency:   quote,
-					TotalCurrency: quote})
+					Quantity:         order.FilledSize,
+					QuantityCurrency: base,
+					Fee:              util.TruncateFloat(order.FillFees, 2),
+					Price:            order.Price,
+					Total:            order.ExecutedValue,
+					PriceCurrency:    quote,
+					FeeCurrency:      quote,
+					TotalCurrency:    quote})
 			}
 		}
 	}

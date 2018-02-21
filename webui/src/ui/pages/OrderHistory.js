@@ -251,7 +251,11 @@ class OrderHistory extends React.Component {
                     <TableCell numeric>
                       {n.currency_pair.base}-{n.currency_pair.quote}
                     </TableCell>
-                    <TableCell numeric>{n.quantity}</TableCell>
+                    <TableCell numeric>{n.quantity}
+                    <img className={classes.currencyIcon}
+                         src={this.currencyIcon(n.quantity_currency)}
+                         title={n.quantity_currency} />
+                    </TableCell>
                     <TableCell numeric>{n.price.formatCurrency(n.price_currency)}
                       <img className={classes.currencyIcon}
                          src={this.currencyIcon(n.price_currency)}
