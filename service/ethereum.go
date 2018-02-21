@@ -18,6 +18,7 @@ import (
 
 type EthereumService interface {
 	Authenticate(address, passphrase string) error
+	GetAccounts() ([]accounts.Account, error)
 	GetBalance(address string) (*big.Int, error)
 	CreateAccount(passphrase string) (accounts.Account, error)
 	DeleteAccount(passphrase string) error
@@ -64,6 +65,15 @@ func (eth *EthService) DeleteAccount(passphrase string) error {
 		Address: ethcommon.HexToAddress(eth.ctx.GetUser().GetEtherbase()),
 		URL:     accounts.URL{Path: eth.ctx.GetUser().GetKeystore()}}
 	return eth.keystore.Delete(acct, passphrase)
+}
+
+func (eth *EthService) GetAccounts() ([]accounts.Account, error) {
+	user := eth.ctx.GetUser()
+	if user == nil {
+		eth.ctx.Logger.Error("[EthereumService.GetAccounts] No user context")
+		return nil, errors.New("No user context")
+	}
+	return eth.keystore.Accounts(), nil
 }
 
 func (eth *EthService) GetBalance(address string) (*big.Int, error) {

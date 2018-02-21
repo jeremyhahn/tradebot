@@ -72,6 +72,11 @@ func main() {
 	//priceHistoryService := service.NewPriceHistoryService(ctx)
 	userService := service.NewUserService(ctx, userDAO, marketcapService, userMapper)
 
+	authService, err := service.NewEthereumService(ctx, *ipcFlag, *keystoreFlag, userDAO, userMapper)
+	if err != nil {
+		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
+	}
+
 	chartDAO := dao.NewChartDAO(ctx)
 	exchangeDAO := dao.NewExchangeDAO(ctx)
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
@@ -94,17 +99,12 @@ func main() {
 	chartService := service.NewChartService(ctx, chartDAO, exchangeService, indicatorService)
 	profitService := service.NewProfitService(ctx, profitDAO)
 	tradeService := service.NewTradeService(ctx, tradeDAO, tradeMapper)
-	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService)
+	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService, authService)
 	strategyService := service.NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
 	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService, profitService, tradeService, strategyService)
 	orderService := service.NewOrderService(ctx, orderDAO, orderMapper, exchangeService, userService)
 
 	err = autoTradeService.EndWorldHunger()
-	if err != nil {
-		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
-	}
-
-	authService, err := service.NewEthereumService(ctx, *ipcFlag, *keystoreFlag, userDAO, userMapper)
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}

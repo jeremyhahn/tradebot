@@ -6,7 +6,7 @@
       "eip158Block": 0,
       "byzantiumBlock": 0
    },
-   "difficulty": "400",
+   "difficulty": "1000000",
    "gasLimit": "2000000",
    "alloc": {
    }

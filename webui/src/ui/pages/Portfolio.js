@@ -187,8 +187,8 @@ class Portfolio extends React.Component {
 
 						<List>
 						<ListSubheader style={{ textTransform: 'uppercase' }}>Wallets</ListSubheader>
-						{ this.state.portfolio.wallets.map( wallet =>
-							<ListItem key={wallet.currency} button>
+						{ this.state.portfolio.wallets.map( (wallet, i) =>
+							<ListItem key={wallet.currency + "-" + i} button>
 								<Avatar src={"images/crypto/128/" + wallet.currency.toLowerCase() + ".png"} />
 								<ListItemText primary={wallet.currency} secondary={wallet.balance  + " (" + wallet.net_worth.formatMoney() +")" } />
 							</ListItem>
