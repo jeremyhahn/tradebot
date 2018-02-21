@@ -211,18 +211,19 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Or
 			b.ctx.Logger.Errorf("[Binance.GetOrderHistory] Failed to parse commission to float64: %s", err.Error())
 		}
 		_orders = append(_orders, &dto.OrderDTO{
-			Id:            strconv.FormatInt(int64(o.ID), 10),
-			Exchange:      "binance",
-			Type:          orderType,
-			CurrencyPair:  currencyPair,
-			Date:          time.Unix(o.Time/1000, 0),
-			Fee:           c,
-			Quantity:      qty,
-			Price:         p,
-			Total:         qty * p,
-			PriceCurrency: "BTC",
-			FeeCurrency:   currencyPair.Base,
-			TotalCurrency: currencyPair.Quote})
+			Id:               strconv.FormatInt(int64(o.ID), 10),
+			Exchange:         "binance",
+			Type:             orderType,
+			CurrencyPair:     currencyPair,
+			Date:             time.Unix(o.Time/1000, 0),
+			Fee:              c,
+			Quantity:         qty,
+			QuantityCurrency: currencyPair.Base,
+			Price:            p,
+			Total:            qty * p,
+			PriceCurrency:    "BTC",
+			FeeCurrency:      currencyPair.Base,
+			TotalCurrency:    currencyPair.Quote})
 	}
 	return _orders
 }

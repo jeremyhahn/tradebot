@@ -84,11 +84,12 @@ type Order interface {
 	GetType() string
 	GetCurrencyPair() *CurrencyPair
 	GetQuantity() float64
+	GetQuantityCurrency() string
 	GetPrice() float64
-	GetFee() float64
-	GetTotal() float64
 	GetPriceCurrency() string
+	GetFee() float64
 	GetFeeCurrency() string
+	GetTotal() float64
 	GetTotalCurrency() string
 	String() string
 }

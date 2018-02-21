@@ -22,9 +22,13 @@ type OrderEntity interface {
 	GetType() string
 	GetCurrency() string
 	GetQuantity() float64
+	GetQuantityCurrency() string
 	GetPrice() float64
+	GetPriceCurrency() string
 	GetFee() float64
+	GetFeeCurrency() string
 	GetTotal() float64
+	GetTotalCurrency() string
 }
 
 type UserEntity interface {

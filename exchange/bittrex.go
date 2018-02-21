@@ -90,17 +90,18 @@ func (b *Bittrex) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Or
 		q, _ := o.Quantity.Float64()
 		p, _ := o.Price.Float64()
 		orders = append(orders, &dto.OrderDTO{
-			Id:            o.OrderUuid,
-			Exchange:      "bittrex",
-			Date:          o.TimeStamp.Time,
-			Type:          o.OrderType,
-			CurrencyPair:  currencyPair,
-			Quantity:      q,
-			Price:         p,
-			Total:         q * p,
-			PriceCurrency: currencyPair.Base,
-			FeeCurrency:   currencyPair.Base,
-			TotalCurrency: currencyPair.Base})
+			Id:               o.OrderUuid,
+			Exchange:         "bittrex",
+			Date:             o.TimeStamp.Time,
+			Type:             o.OrderType,
+			CurrencyPair:     currencyPair,
+			Quantity:         q,
+			QuantityCurrency: currencyPair.Quote,
+			Price:            p,
+			PriceCurrency:    currencyPair.Base,
+			Total:            q * p,
+			TotalCurrency:    currencyPair.Base,
+			FeeCurrency:      currencyPair.Base})
 	}
 	return orders
 }
@@ -290,18 +291,19 @@ func (b *Bittrex) ParseImport(file string) ([]common.Order, error) {
 		}
 		currencyPair := common.NewCurrencyPair(values[1], b.ctx.GetUser().GetLocalCurrency())
 		order := &dto.OrderDTO{
-			Id:            fmt.Sprintf("%d", b.ctx.GetUser().GetId()),
-			Exchange:      b.name,
-			Date:          date,
-			Type:          orderType,
-			CurrencyPair:  currencyPair,
-			Quantity:      qty,
-			Price:         price,
-			Fee:           fee,
-			Total:         total,
-			PriceCurrency: currencyPair.Base,
-			FeeCurrency:   currencyPair.Base,
-			TotalCurrency: currencyPair.Base}
+			Id:               fmt.Sprintf("%d", b.ctx.GetUser().GetId()),
+			Exchange:         b.name,
+			Date:             date,
+			Type:             orderType,
+			CurrencyPair:     currencyPair,
+			Quantity:         qty,
+			QuantityCurrency: currencyPair.Quote,
+			Price:            price,
+			Fee:              fee,
+			Total:            total,
+			PriceCurrency:    currencyPair.Base,
+			FeeCurrency:      currencyPair.Base,
+			TotalCurrency:    currencyPair.Base}
 		orders = append(orders, order)
 	}
 	return orders, nil
