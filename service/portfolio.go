@@ -1,6 +1,9 @@
 package service
 
 import (
+	"math/big"
+	"strconv"
+
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dto"
 )
@@ -11,17 +14,19 @@ type PortfolioServiceImpl struct {
 	portfolios       map[uint]common.Portfolio
 	marketcapService *MarketCapService
 	userService      UserService
+	ethereumService  EthereumService
 	PortfolioService
 }
 
 func NewPortfolioService(ctx *common.Context, marketcapService *MarketCapService,
-	userService UserService) PortfolioService {
+	userService UserService, ethereumService EthereumService) PortfolioService {
 	return &PortfolioServiceImpl{
 		ctx:              ctx,
 		stopChans:        make(map[uint]chan bool),
 		portfolios:       make(map[uint]common.Portfolio),
 		marketcapService: marketcapService,
-		userService:      userService}
+		userService:      userService,
+		ethereumService:  ethereumService}
 }
 
 func (ps *PortfolioServiceImpl) Build(user common.User, currencyPair *common.CurrencyPair) common.Portfolio {
@@ -34,6 +39,29 @@ func (ps *PortfolioServiceImpl) Build(user common.User, currencyPair *common.Cur
 	}
 	for _, w := range walletList {
 		netWorth += w.GetNetWorth()
+	}
+	accounts, err := ps.ethereumService.GetAccounts()
+	if err != nil {
+		ps.ctx.Logger.Errorf("[PortfolioService.Build] Error getting local Ethereum accounts: %s", err.Error())
+	}
+	for _, acct := range accounts {
+		sAcct := acct.Address.String()
+		balance, err := ps.ethereumService.GetBalance(sAcct)
+		if err != nil {
+			ps.ctx.Logger.Errorf("[PortfolioService.Build] Error getting Ethereum account balance for address %s: %s", sAcct, err.Error())
+		}
+		floatBalance, _ := new(big.Float).SetInt(balance).Float64()
+		priceUSD, err := strconv.ParseFloat(ps.marketcapService.GetMarket("ETH").PriceUSD, 64)
+		if err != nil {
+			ps.ctx.Logger.Errorf("[PortfolioService.Build] Error parsing MarketCap ETH response to float for address %s: %s", sAcct, err.Error())
+		}
+		total := floatBalance * priceUSD
+		walletList = append(walletList, &dto.CryptoWalletDTO{
+			Address:  sAcct,
+			Balance:  floatBalance,
+			Currency: "ETH",
+			NetWorth: total})
+		netWorth += total
 	}
 	currentUser, err := ps.userService.GetCurrentUser()
 	if err != nil {
