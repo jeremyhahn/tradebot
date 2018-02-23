@@ -20,6 +20,16 @@ const (
 	TMP_DIR               = "/tmp"
 )
 
+type EthereumToken interface {
+	GetName() string
+	GetSymbol() string
+	GetDecimals() uint8
+	GetTokenBalance() string
+	GetEthBalance() string
+	GetWalletAddress() string
+	GetContractAddress() string
+}
+
 type Indicator interface {
 	GetName() string
 	GetFilename() string

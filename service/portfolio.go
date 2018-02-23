@@ -34,6 +34,7 @@ func (ps *PortfolioServiceImpl) Build(user common.User, currencyPair *common.Cur
 	var netWorth float64
 	exchangeList := ps.userService.GetExchanges(ps.ctx.GetUser(), currencyPair)
 	walletList := ps.userService.GetWallets(ps.ctx.GetUser())
+	var tokenList []common.EthereumToken
 	for _, ex := range exchangeList {
 		netWorth += ex.GetTotal()
 	}
@@ -61,8 +62,23 @@ func (ps *PortfolioServiceImpl) Build(user common.User, currencyPair *common.Cur
 			Balance:  floatBalance,
 			Currency: "ETH",
 			NetWorth: total})
+
 		netWorth += total
+
+		tokens, err := ps.userService.GetTokens(ps.ctx.GetUser(), sAcct)
+		if err != nil {
+			ps.ctx.Logger.Errorf("[PortfolioService.Build] Error getting current user: %s", err.Error())
+		}
+		for _, token := range tokens {
+			f, err := strconv.ParseFloat(token.GetEthBalance(), 64)
+			if err != nil {
+				ps.ctx.Logger.Errorf("[PortfolioService.Build] Error parsing token balance to float: %s", err.Error())
+			}
+			tokenList = append(tokenList, token)
+			netWorth += f * priceUSD
+		}
 	}
+
 	currentUser, err := ps.userService.GetCurrentUser()
 	if err != nil {
 		ps.ctx.Logger.Errorf("[PortfolioService.Build] Error getting current user: %s", err.Error())

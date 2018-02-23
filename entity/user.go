@@ -8,6 +8,7 @@ type User struct {
 	Keystore      string
 	Charts        []Chart
 	Wallets       []UserWallet
+	Tokens        []UserToken
 	Exchanges     []UserCryptoExchange
 	UserEntity
 }
@@ -38,6 +39,10 @@ func (entity *User) GetCharts() []Chart {
 
 func (entity *User) GetWallets() []UserWallet {
 	return entity.Wallets
+}
+
+func (entity *User) GetTokens() []UserToken {
+	return entity.Tokens
 }
 
 func (entity *User) GetExchanges() []UserCryptoExchange {

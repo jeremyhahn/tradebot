@@ -47,6 +47,13 @@ type UserWalletEntity interface {
 	GetAddress() string
 }
 
+type UserTokenEntity interface {
+	GetUserId() uint
+	GetSymbol() string
+	GetContract() string
+	GetWallet() string
+}
+
 type UserExchangeEntity interface {
 	GetUserId() uint
 	GetName() string

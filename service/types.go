@@ -28,6 +28,8 @@ type UserService interface {
 	GetExchanges(user common.User, currencyPair *common.CurrencyPair) []common.CryptoExchange
 	GetWallets(user common.User) []common.CryptoWallet
 	GetWallet(user common.User, currency string) common.CryptoWallet
+	GetTokens(user common.User, wallet string) ([]common.EthereumToken, error)
+	GetAllTokens(user common.User) ([]common.EthereumToken, error)
 }
 
 type AuthService interface {

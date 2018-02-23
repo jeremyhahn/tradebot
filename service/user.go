@@ -14,16 +14,19 @@ type DefaultUserService struct {
 	ctx              *common.Context
 	userDAO          dao.UserDAO
 	marketcapService *MarketCapService
+	ethereumService  EthereumService
 	userMapper       mapper.UserMapper
 	UserService
 }
 
 func NewUserService(ctx *common.Context, userDAO dao.UserDAO,
-	marketcapService *MarketCapService, userMapper mapper.UserMapper) UserService {
+	marketcapService *MarketCapService, ethereumService EthereumService,
+	userMapper mapper.UserMapper) UserService {
 	return &DefaultUserService{
 		ctx:              ctx,
 		userDAO:          userDAO,
 		marketcapService: marketcapService,
+		ethereumService:  ethereumService,
 		userMapper:       userMapper}
 }
 
@@ -116,6 +119,43 @@ func (service *DefaultUserService) GetWallets(user common.User) []common.CryptoW
 	return walletList
 }
 
+func (service *DefaultUserService) GetTokens(user common.User, wallet string) ([]common.EthereumToken, error) {
+	var walletTokens []common.EthereumToken
+	tokens, err := service.GetAllTokens(user)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range tokens {
+		if t.GetWalletAddress() == wallet {
+			walletTokens = append(walletTokens, t)
+		}
+	}
+	return walletTokens, nil
+}
+
+func (service *DefaultUserService) GetAllTokens(user common.User) ([]common.EthereumToken, error) {
+	var tokenList []common.EthereumToken
+	daoUser := &entity.User{Id: user.GetId()}
+	tokens := service.userDAO.GetTokens(daoUser)
+	var chans []chan common.EthereumToken
+	for _, token := range tokens {
+		_token := token
+		c := make(chan common.EthereumToken, 1)
+		chans = append(chans, c)
+		go func() {
+			tokenDTO, err := service.ethereumService.GetTokenBalance(_token.GetContract(), _token.GetWallet())
+			if err != nil {
+				service.ctx.Logger.Errorf("[UserService.GetTokens] Error: %s", err.Error())
+			}
+			c <- tokenDTO
+		}()
+	}
+	for i := 0; i < len(tokens); i++ {
+		tokenList = append(tokenList, <-chans[i])
+	}
+	return tokenList, nil
+}
+
 func (service *DefaultUserService) GetWallet(user common.User, currency string) common.CryptoWallet {
 	daoUser := &entity.User{Id: user.GetId()}
 	wallet := service.userDAO.GetWallet(daoUser, currency)
@@ -125,6 +165,12 @@ func (service *DefaultUserService) GetWallet(user common.User, currency string) 
 		Currency: wallet.GetCurrency(),
 		Balance:  balance,
 		NetWorth: service.getPrice(wallet.GetCurrency(), balance)}
+}
+
+func (service *DefaultUserService) GetToken(user common.User, symbol string) (common.EthereumToken, error) {
+	daoUser := &entity.User{Id: user.GetId()}
+	token := service.userDAO.GetToken(daoUser, symbol)
+	return service.ethereumService.GetTokenBalance(token.GetContract(), token.GetWallet())
 }
 
 func (service *DefaultUserService) getBalance(currency, address string) float64 {

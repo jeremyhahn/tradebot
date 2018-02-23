@@ -7,6 +7,7 @@ type PortfolioDTO struct {
 	NetWorth  float64                 `json:"net_worth"`
 	Exchanges []common.CryptoExchange `json:"exchanges"`
 	Wallets   []common.CryptoWallet   `json:"wallets"`
+	Tokens    []common.EthereumToken  `json:"tokens"`
 	common.Portfolio
 }
 
@@ -28,4 +29,8 @@ func (dto *PortfolioDTO) GetExchanges() []common.CryptoExchange {
 
 func (dto *PortfolioDTO) GetWallets() []common.CryptoWallet {
 	return dto.Wallets
+}
+
+func (dto *PortfolioDTO) GetTokens() []common.EthereumToken {
+	return dto.Tokens
 }

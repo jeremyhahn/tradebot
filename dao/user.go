@@ -15,6 +15,8 @@ type UserDAO interface {
 	Find() ([]entity.User, error)
 	GetWallets(user *entity.User) []entity.UserWallet
 	GetWallet(user *entity.User, currency string) entity.UserWalletEntity
+	GetTokens(user *entity.User) []entity.UserToken
+	GetToken(user *entity.User, symbol string) entity.UserTokenEntity
 	GetExchanges(user *entity.User) []entity.UserCryptoExchange
 	GetExchange(user *entity.User, name string) *entity.UserCryptoExchange
 }
@@ -98,6 +100,24 @@ func (dao *UserDAOImpl) GetWallet(user *entity.User, currency string) entity.Use
 		}
 	}
 	return &entity.UserWallet{}
+}
+
+func (dao *UserDAOImpl) GetTokens(user *entity.User) []entity.UserToken {
+	var tokens []entity.UserToken
+	if err := dao.ctx.CoreDB.Model(user).Related(&tokens).Error; err != nil {
+		dao.ctx.Logger.Errorf("[UserDAO.GetTokens] Error: %s", err.Error())
+	}
+	return tokens
+}
+
+func (dao *UserDAOImpl) GetToken(user *entity.User, symbol string) entity.UserTokenEntity {
+	tokens := dao.GetTokens(user)
+	for _, t := range tokens {
+		if t.Symbol == symbol {
+			return &t
+		}
+	}
+	return &entity.UserToken{}
 }
 
 func (dao *UserDAOImpl) GetExchanges(user *entity.User) []entity.UserCryptoExchange {

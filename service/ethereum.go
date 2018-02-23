@@ -12,8 +12,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/shopspring/decimal"
 )
 
 type EthereumService interface {
@@ -22,6 +24,7 @@ type EthereumService interface {
 	GetBalance(address string) (*big.Int, error)
 	CreateAccount(passphrase string) (accounts.Account, error)
 	DeleteAccount(passphrase string) error
+	GetTokenBalance(contract string, wallet string) (common.EthereumToken, error)
 	AuthService
 }
 
@@ -127,4 +130,64 @@ func (eth *EthService) Register(username, password string) error {
 		return errors.New("Unexpected error")
 	}
 	return err
+}
+
+func (eth *EthService) GetTokenBalance(contract string, wallet string) (common.EthereumToken, error) {
+	var err error
+
+	token, err := NewTokenCaller(ethcommon.HexToAddress(contract), eth.client)
+	if err != nil {
+		eth.ctx.Logger.Errorf("Failed to instantiate a Token contract: %v", err)
+		return nil, err
+	}
+
+	address := ethcommon.HexToAddress(wallet)
+	if err != nil {
+		eth.ctx.Logger.Errorf("Failed hex address: "+wallet, err)
+		return nil, err
+	}
+
+	ethAmount, err := eth.client.BalanceAt(context.Background(), address, nil)
+	if err != nil {
+		eth.ctx.Logger.Errorf("Failed to get ethereum balance from contract %s. Error: %s", address, err.Error())
+		return nil, err
+	}
+
+	balance, err := token.BalanceOf(nil, address)
+	if err != nil {
+		eth.ctx.Logger.Errorf("Failed to get balance from contract %s. Error: %s", contract, err.Error())
+		return nil, err
+	}
+	symbol, err := token.Symbol(nil)
+	if err != nil {
+		eth.ctx.Logger.Errorf("Failed to get symbol from contract %s. Error: %s", contract, err.Error())
+		return nil, err
+	}
+	tokenDecimals, err := token.Decimals(nil)
+	if err != nil {
+		eth.ctx.Logger.Errorf("Failed to get decimals from contract %s. Error: %s", contract, err.Error())
+		return nil, err
+	}
+	name, err := token.Name(nil)
+	if err != nil {
+		eth.ctx.Logger.Errorf("Failed to retrieve token name from contract %s. Error: %s", contract, err.Error())
+		return nil, err
+	}
+
+	ethBalance, _ := decimal.NewFromString(ethAmount.String())
+	ethFac, _ := decimal.NewFromString("0.000000000000000001")
+	ethCorrected := ethBalance.Mul(ethFac)
+
+	tokenBalance, _ := decimal.NewFromString(balance.String())
+	tokenMul := decimal.NewFromFloat(float64(0.1)).Pow(decimal.NewFromFloat(float64(tokenDecimals)))
+	tokenCorrected := tokenBalance.Mul(tokenMul)
+
+	return &dto.EthereumTokenDTO{
+		Name:            name,
+		Symbol:          symbol,
+		Balance:         tokenCorrected.String(),
+		Decimals:        tokenDecimals,
+		EthBalance:      ethCorrected.String(),
+		ContractAddress: contract,
+		WalletAddress:   wallet}, nil
 }

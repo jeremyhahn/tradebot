@@ -70,12 +70,13 @@ func main() {
 	userMapper := mapper.NewUserMapper()
 	marketcapService := service.NewMarketCapService(logger)
 	//priceHistoryService := service.NewPriceHistoryService(ctx)
-	userService := service.NewUserService(ctx, userDAO, marketcapService, userMapper)
 
-	authService, err := service.NewEthereumService(ctx, *ipcFlag, *keystoreFlag, userDAO, userMapper)
+	ethereumService, err := service.NewEthereumService(ctx, *ipcFlag, *keystoreFlag, userDAO, userMapper)
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
+
+	userService := service.NewUserService(ctx, userDAO, marketcapService, ethereumService, userMapper)
 
 	chartDAO := dao.NewChartDAO(ctx)
 	exchangeDAO := dao.NewExchangeDAO(ctx)
@@ -99,7 +100,7 @@ func main() {
 	chartService := service.NewChartService(ctx, chartDAO, exchangeService, indicatorService)
 	profitService := service.NewProfitService(ctx, profitDAO)
 	tradeService := service.NewTradeService(ctx, tradeDAO, tradeMapper)
-	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService, authService)
+	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 	strategyService := service.NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
 	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService, profitService, tradeService, strategyService)
 	orderService := service.NewOrderService(ctx, orderDAO, orderMapper, exchangeService, userService)
@@ -109,13 +110,13 @@ func main() {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
-	jwt, err := webservice.NewJsonWebToken(ctx, authService, webservice.NewJsonWriter())
+	jwt, err := webservice.NewJsonWebToken(ctx, ethereumService, webservice.NewJsonWriter())
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
 	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService,
-		exchangeService, authService, userService, portfolioService,
+		exchangeService, ethereumService, userService, portfolioService,
 		orderService, jwt)
 
 	go ws.Start()
@@ -128,8 +129,6 @@ func InitCoreDB(logMode bool) *gorm.DB {
 	db.AutoMigrate(&entity.ChartIndicator{})
 	db.AutoMigrate(&entity.ChartStrategy{})
 	db.AutoMigrate(&entity.Chart{})
-	db.AutoMigrate(&entity.ChartStrategy{})
-	db.AutoMigrate(&entity.ChartIndicator{})
 	db.AutoMigrate(&entity.Trade{})
 	db.AutoMigrate(&entity.CryptoExchange{})
 	db.AutoMigrate(&entity.Indicator{})
@@ -140,6 +139,7 @@ func InitCoreDB(logMode bool) *gorm.DB {
 	db.AutoMigrate(&entity.Trade{})
 	db.AutoMigrate(&entity.User{})
 	db.AutoMigrate(&entity.UserWallet{})
+	db.AutoMigrate(&entity.UserToken{})
 	db.AutoMigrate(&entity.UserCryptoExchange{})
 	return db
 }
