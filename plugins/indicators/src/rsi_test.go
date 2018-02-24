@@ -64,28 +64,28 @@ func TestRelativeStrengthIndexWithSMA(t *testing.T) {
 
 	bparams := rsi.IsOverBought(71)
 	if !bparams {
-		t.Errorf("[RelativeStrengthIndex] Got incorrect over bought signal[0]: %t, expected: %t", params[0], true)
+		t.Errorf("[RelativeStrengthIndex] Got incorrect over bought signal[0]: %t, expected: %t", bparams, true)
 	}
 	bparams = rsi.IsOverBought(69)
 	if bparams {
-		t.Errorf("[RelativeStrengthIndex] Got incorrect over bought signal[0]: %t, expected: %t", params[0], false)
+		t.Errorf("[RelativeStrengthIndex] Got incorrect over bought signal[0]: %t, expected: %t", bparams, false)
 	}
 	bparams = rsi.IsOverBought(70)
 	if bparams {
-		t.Errorf("[RelativeStrengthIndex] Got incorrect over bought signal[0]: %t, expected: %t", params[0], false)
+		t.Errorf("[RelativeStrengthIndex] Got incorrect over bought signal[0]: %t, expected: %t", bparams, false)
 	}
 
 	bparams = rsi.IsOverSold(29)
 	if !bparams {
-		t.Errorf("[RelativeStrengthIndex] Got incorrect over sold signal[0]: %t, expected: %t", params[0], true)
+		t.Errorf("[RelativeStrengthIndex] Got incorrect over sold signal[0]: %t, expected: %t", bparams, true)
 	}
 	bparams = rsi.IsOverSold(30)
 	if bparams {
-		t.Errorf("[RelativeStrengthIndex] Got incorrect over sold signal[0]: %t, expected: %t", params[0], false)
+		t.Errorf("[RelativeStrengthIndex] Got incorrect over sold signal[0]: %t, expected: %t", bparams, false)
 	}
 	bparams = rsi.IsOverSold(31)
 	if bparams {
-		t.Errorf("[RelativeStrengthIndex] Got incorrect over sold signal[0]: %t, expected: %t", params[0], false)
+		t.Errorf("[RelativeStrengthIndex] Got incorrect over sold signal[0]: %t, expected: %t", bparams, false)
 	}
 
 	// Make sure we can calcuate live prices without impacting RelativeStrengthIndex period state

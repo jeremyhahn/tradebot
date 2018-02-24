@@ -2,6 +2,12 @@ package entity
 
 import "time"
 
+type PluginEntity interface {
+	GetName() string
+	GetFilename() string
+	GetVersion() string
+}
+
 type StrategyEntity interface {
 	GetName() string
 	GetFilename() string

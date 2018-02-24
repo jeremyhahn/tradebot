@@ -70,9 +70,13 @@ func (ws *WebServer) Start() {
 		negroni.HandlerFunc(ws.jwt.MiddlewareValidator),
 		negroni.Wrap(http.HandlerFunc(ohrs.Import)),
 	))
-	router.Handle("/api/v1/exchanges", negroni.New(
+	router.Handle("/api/v1/exchanges/names", negroni.New(
 		negroni.HandlerFunc(ws.jwt.MiddlewareValidator),
-		negroni.Wrap(http.HandlerFunc(ers.GetExchanges)),
+		negroni.Wrap(http.HandlerFunc(ers.GetDisplayNames)),
+	))
+	router.Handle("/api/v1/user/exchanges", negroni.New(
+		negroni.HandlerFunc(ws.jwt.MiddlewareValidator),
+		negroni.Wrap(http.HandlerFunc(ers.GetUserExchanges)),
 	))
 
 	// Websocket Handlers

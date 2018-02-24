@@ -5,6 +5,7 @@ import (
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/jeremyhahn/tradebot/viewmodel"
 )
 
 type PriceHistoryService interface {
@@ -70,6 +71,7 @@ type ProfitService interface {
 type ExchangeService interface {
 	CreateExchange(user common.User, exchangeName string) common.Exchange
 	GetDisplayNames(user common.User) []string
+	GetUserExchanges(user common.User) []viewmodel.UserCryptoExchange
 	GetExchanges(common.User) []common.Exchange
 	GetExchange(user common.User, name string) common.Exchange
 	GetCurrencyPairs(user common.User, exchangeName string) ([]common.CurrencyPair, error)

@@ -29,7 +29,7 @@ const styles = theme => ({
   },
 });
 
-class ImportDialog extends React.Component {
+class NewExchangeDialog extends React.Component {
 
   constructor(props) {
     super(props);
@@ -85,7 +85,7 @@ class ImportDialog extends React.Component {
           open={this.props.open}
           onClose={this.props.onClose}
           aria-labelledby="form-dialog-title">
-          <DialogTitle id="form-dialog-title">Import CSV</DialogTitle>
+          <DialogTitle id="form-dialog-title">Add Exchange</DialogTitle>
           <form onSubmit={this.onFormSubmit}>
             <DialogContent>
                 <FormControl className={classes.formControl} fullWidth={true}>
@@ -104,12 +104,49 @@ class ImportDialog extends React.Component {
                   </Select>
                 </FormControl>
                 <FormControl className={classes.formControl} fullWidth={true}>
-                  <input type="file" name="csv" onChange={this.onChange} />
+                  <TextField
+                    required
+                    id="key"
+                    label="Required"
+                    defaultValue="API Key"
+                    className={classes.textField}
+                    margin="normal"
+                  />
+                </FormControl>
+                <FormControl className={classes.formControl} fullWidth={true}>
+                  <TextField
+                    required
+                    id="url"
+                    label="Required"
+                    defaultValue="URL"
+                    className={classes.textField}
+                    margin="normal"
+                  />
+                </FormControl>
+                <FormControl className={classes.formControl} fullWidth={true}>
+                  <TextField
+                    required
+                    id="secret"
+                    label="Required"
+                    defaultValue="API Secret"
+                    className={classes.textField}
+                    margin="normal"
+                  />
+                </FormControl>
+                <FormControl className={classes.formControl} fullWidth={true}>
+                  <TextField
+                    required
+                    id="extra"
+                    label="Required"
+                    defaultValue="Extra"
+                    className={classes.textField}
+                    margin="normal"
+                  />
                 </FormControl>
             </DialogContent>
             <DialogActions>
               <Button onClick={this.props.onClose} color="primary">Cancel</Button>
-              <Button type="submit" label="submit" color="primary">Upload</Button>
+              <Button type="submit" label="submit" color="primary">Add</Button>
             </DialogActions>
           </form>
         </Dialog>
@@ -117,4 +154,4 @@ class ImportDialog extends React.Component {
   }
 }
 
-export default withStyles(styles)(ImportDialog);
+export default withStyles(styles)(NewExchangeDialog);

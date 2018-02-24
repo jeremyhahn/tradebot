@@ -15,11 +15,15 @@ import (
 func TestPortfolioService_Build(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 	marketcapService := NewMarketCapService(ctx.Logger)
-	userService := NewUserService(ctx,
-		dao.NewUserDAO(ctx),
-		marketcapService,
-		mapper.NewUserMapper())
-	service := NewPortfolioService(ctx, marketcapService, userService)
+
+	userDAO := dao.NewUserDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	exchangeMapper := mapper.NewExchangeMapper()
+	ethereumService, err := NewEthereumService(ctx, ETHEREUM_IPC, ETHEREUM_KEYSTORE, userDAO, userMapper)
+	assert.Nil(t, err)
+	userService := NewUserService(ctx, userDAO, marketcapService, ethereumService, userMapper, exchangeMapper)
+
+	service := NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 	currencyPair := &common.CurrencyPair{
 		Base:          "BTC",
 		Quote:         "USD",
@@ -35,11 +39,15 @@ func TestPortfolioService_Build(t *testing.T) {
 func TestPortfolioService_Stream(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 	marketcapService := NewMarketCapService(ctx.Logger)
-	userService := NewUserService(ctx,
-		dao.NewUserDAO(ctx),
-		marketcapService,
-		mapper.NewUserMapper())
-	service := NewPortfolioService(ctx, marketcapService, userService)
+
+	userDAO := dao.NewUserDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	exchangeMapper := mapper.NewExchangeMapper()
+	ethereumService, err := NewEthereumService(ctx, ETHEREUM_IPC, ETHEREUM_KEYSTORE, userDAO, userMapper)
+	assert.Nil(t, err)
+	userService := NewUserService(ctx, userDAO, marketcapService, ethereumService, userMapper, exchangeMapper)
+
+	service := NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 	currencyPair := &common.CurrencyPair{
 		Base:          "BTC",
 		Quote:         "USD",

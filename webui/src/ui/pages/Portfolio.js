@@ -14,6 +14,25 @@ import Avatar from 'material-ui/Avatar';
 import Typography from 'material-ui/Typography';
 import withAuth from 'app/components/withAuth';
 
+const currencies = [
+  {
+    value: 'USD',
+    label: '$',
+  },
+  {
+    value: 'EUR',
+    label: '€',
+  },
+  {
+    value: 'BTC',
+    label: '฿',
+  },
+  {
+    value: 'JPY',
+    label: '¥',
+  },
+];
+
 class Portfolio extends React.Component {
 
 	constructor(props) {
@@ -38,20 +57,20 @@ class Portfolio extends React.Component {
 		this.handleBuySellModalOpen = this.handleBuySellModalOpen.bind(this);
 		this.handleBuySellModalClose = this.handleBuySellModalClose.bind(this);
 		this.handleBuySellModalUpdate = this.handleBuySellModalUpdate.bind(this);
-		this.loadExchanges = this.loadExchanges.bind(this);
+		this.loadPortfolio = this.loadPortfolio.bind(this);
 		this.handleMenuClick = this.handleMenuClick.bind(this);
 		this.handleMenuClose = this.handleMenuClose.bind(this);
 	}
 
 	componentDidMount() {
-		this.loadExchanges();
+		this.loadPortfolio();
 	}
 
 	componentWillUnmount() {
 	 this.ws.close();
   }
 
-	loadExchanges() {
+	loadPortfolio() {
 		var loc = window.location, new_uri;
 		var protocol = (loc.protocol === "https:") ? "wss" : "ws";
 		if(this.ws == null) {
@@ -181,7 +200,6 @@ class Portfolio extends React.Component {
 							)}
 					  </List>
 					)}
-
 
 					{ this.state.portfolio.wallets &&
 

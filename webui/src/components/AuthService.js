@@ -58,8 +58,16 @@ export default class AuthService {
       return post(`${this.domain}/import`, formData, config)
     }
 
-    getExchanges() {
-      return this.fetch(`${this.domain}/exchanges`, {
+    getExchangeNames() {
+      return this.fetch(`${this.domain}/exchanges/names`, {
+          method: 'GET'
+      }).then(res => {
+          return Promise.resolve(res)
+      })
+    }
+
+    getUserExchanges() {
+      return this.fetch(`${this.domain}/user/exchanges`, {
           method: 'GET'
       }).then(res => {
           return Promise.resolve(res)

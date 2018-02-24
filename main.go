@@ -68,6 +68,7 @@ func main() {
 	userDAO := dao.NewUserDAO(ctx)
 
 	userMapper := mapper.NewUserMapper()
+	exchangeMapper := mapper.NewExchangeMapper()
 	marketcapService := service.NewMarketCapService(logger)
 	//priceHistoryService := service.NewPriceHistoryService(ctx)
 
@@ -76,7 +77,7 @@ func main() {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
-	userService := service.NewUserService(ctx, userDAO, marketcapService, ethereumService, userMapper)
+	userService := service.NewUserService(ctx, userDAO, marketcapService, ethereumService, userMapper, exchangeMapper)
 
 	chartDAO := dao.NewChartDAO(ctx)
 	exchangeDAO := dao.NewExchangeDAO(ctx)
@@ -94,7 +95,7 @@ func main() {
 	tradeMapper := mapper.NewTradeMapper()
 	orderMapper := mapper.NewOrderMapper(ctx)
 
-	exchangeService := service.NewExchangeService(ctx, exchangeDAO, userDAO, userMapper)
+	exchangeService := service.NewExchangeService(ctx, exchangeDAO, userDAO, userMapper, exchangeMapper)
 	pluginService := service.NewPluginService(ctx)
 	indicatorService := service.NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
 	chartService := service.NewChartService(ctx, chartDAO, exchangeService, indicatorService)
@@ -141,6 +142,7 @@ func InitCoreDB(logMode bool) *gorm.DB {
 	db.AutoMigrate(&entity.UserWallet{})
 	db.AutoMigrate(&entity.UserToken{})
 	db.AutoMigrate(&entity.UserCryptoExchange{})
+	db.AutoMigrate(&entity.CryptoExchange{})
 	return db
 }
 

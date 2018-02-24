@@ -8,7 +8,8 @@ import (
 )
 
 type ExchangeRestService interface {
-	GetExchanges(w http.ResponseWriter, r *http.Request)
+	GetDisplayNames(w http.ResponseWriter, r *http.Request)
+	GetUserExchanges(w http.ResponseWriter, r *http.Request)
 }
 
 type ExchangeRestServiceImpl struct {
@@ -26,9 +27,17 @@ func NewExchangeRestService(ctx *common.Context, exchangeService service.Exchang
 		jsonWriter:      jsonWriter}
 }
 
-func (irs *ExchangeRestServiceImpl) GetExchanges(w http.ResponseWriter, r *http.Request) {
-	irs.ctx.Logger.Debugf("[ExchangeRestService.GetExchanges]")
+func (irs *ExchangeRestServiceImpl) GetDisplayNames(w http.ResponseWriter, r *http.Request) {
+	irs.ctx.Logger.Debugf("[ExchangeRestService.GetExchangeNames]")
 	exchanges := irs.exchangeService.GetDisplayNames(irs.ctx.GetUser())
+	irs.jsonWriter.Write(w, http.StatusOK, RestResponse{
+		Success: true,
+		Payload: exchanges})
+}
+
+func (irs *ExchangeRestServiceImpl) GetUserExchanges(w http.ResponseWriter, r *http.Request) {
+	irs.ctx.Logger.Debugf("[ExchangeRestService.GetExchanges]")
+	exchanges := irs.exchangeService.GetUserExchanges(irs.ctx.GetUser())
 	irs.jsonWriter.Write(w, http.StatusOK, RestResponse{
 		Success: true,
 		Payload: exchanges})

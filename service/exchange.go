@@ -8,24 +8,27 @@ import (
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/exchange"
 	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/jeremyhahn/tradebot/viewmodel"
 )
 
 type DefaultExchangeService struct {
-	ctx         *common.Context
-	exchangeDAO dao.ExchangeDAO
-	userDAO     dao.UserDAO
-	userMapper  mapper.UserMapper
-	exchangeMap map[string]func(*common.Context, entity.UserExchangeEntity) common.Exchange
+	ctx            *common.Context
+	exchangeDAO    dao.ExchangeDAO
+	userDAO        dao.UserDAO
+	userMapper     mapper.UserMapper
+	exchangeMapper mapper.UserExchangeMapper
+	exchangeMap    map[string]func(*common.Context, entity.UserExchangeEntity) common.Exchange
 	ExchangeService
 }
 
 func NewExchangeService(ctx *common.Context, exchangeDAO dao.ExchangeDAO, userDAO dao.UserDAO,
-	userMapper mapper.UserMapper) ExchangeService {
+	userMapper mapper.UserMapper, exchangeMapper mapper.UserExchangeMapper) ExchangeService {
 	return &DefaultExchangeService{
-		ctx:         ctx,
-		exchangeDAO: exchangeDAO,
-		userDAO:     userDAO,
-		userMapper:  userMapper,
+		ctx:            ctx,
+		exchangeDAO:    exchangeDAO,
+		userDAO:        userDAO,
+		userMapper:     userMapper,
+		exchangeMapper: exchangeMapper,
 		exchangeMap: map[string]func(ctx *common.Context, exchange entity.UserExchangeEntity) common.Exchange{
 			"gdax":    exchange.NewGDAX,
 			"bittrex": exchange.NewBittrex,
@@ -44,6 +47,17 @@ func (service *DefaultExchangeService) GetDisplayNames(user common.User) []strin
 	userExchanges := service.userDAO.GetExchanges(userEntity)
 	for _, ex := range userExchanges {
 		exchanges = append(exchanges, ex.Name)
+	}
+	return exchanges
+}
+
+func (service *DefaultExchangeService) GetUserExchanges(user common.User) []viewmodel.UserCryptoExchange {
+	var exchanges []viewmodel.UserCryptoExchange
+	userEntity := &entity.User{Id: user.GetId()}
+	userExchanges := service.userDAO.GetExchanges(userEntity)
+	for _, ex := range userExchanges {
+		viewmodel := service.exchangeMapper.MapEntityToViewModel(&ex)
+		exchanges = append(exchanges, *viewmodel)
 	}
 	return exchanges
 }

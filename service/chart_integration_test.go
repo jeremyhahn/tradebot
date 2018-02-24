@@ -12,6 +12,7 @@ import (
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/exchange"
 	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/jeremyhahn/tradebot/viewmodel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -299,6 +300,10 @@ func (mes *MockExchangeService_Chart) GetCurrencyPairs(user common.User, exchang
 
 func (mes *MockExchangeService_Chart) GetExchange(user common.User, exchangeName string) common.Exchange {
 	return new(MockExchange_Chart)
+}
+
+func (mes *MockExchangeService_Chart) GetUserExchanges(user common.User) []viewmodel.UserCryptoExchange {
+	return nil
 }
 
 func (mes *MockExchangeService_Chart) GetDisplayNames(user common.User) []string {

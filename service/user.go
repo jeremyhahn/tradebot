@@ -16,18 +16,20 @@ type DefaultUserService struct {
 	marketcapService *MarketCapService
 	ethereumService  EthereumService
 	userMapper       mapper.UserMapper
+	exchangeMapper   mapper.UserExchangeMapper
 	UserService
 }
 
 func NewUserService(ctx *common.Context, userDAO dao.UserDAO,
 	marketcapService *MarketCapService, ethereumService EthereumService,
-	userMapper mapper.UserMapper) UserService {
+	userMapper mapper.UserMapper, exchangeMapper mapper.UserExchangeMapper) UserService {
 	return &DefaultUserService{
 		ctx:              ctx,
 		userDAO:          userDAO,
 		marketcapService: marketcapService,
 		ethereumService:  ethereumService,
-		userMapper:       userMapper}
+		userMapper:       userMapper,
+		exchangeMapper:   exchangeMapper}
 }
 
 func (service *DefaultUserService) CreateUser(user common.User) {
@@ -65,7 +67,7 @@ func (service *DefaultUserService) GetExchange(user common.User, name string, cu
 	for _, ex := range exchanges {
 		if ex.Name == name {
 			exchangeDAO := dao.NewExchangeDAO(service.ctx)
-			return NewExchangeService(service.ctx, exchangeDAO, service.userDAO, service.userMapper).
+			return NewExchangeService(service.ctx, exchangeDAO, service.userDAO, service.userMapper, service.exchangeMapper).
 				CreateExchange(user, ex.Name)
 		}
 	}
@@ -84,7 +86,7 @@ func (service *DefaultUserService) GetExchanges(user common.User, currencyPair *
 		c := make(chan common.CryptoExchange, 1)
 		chans = append(chans, c)
 		exchangeDAO := dao.NewExchangeDAO(service.ctx)
-		exchangeService := NewExchangeService(service.ctx, exchangeDAO, service.userDAO, service.userMapper)
+		exchangeService := NewExchangeService(service.ctx, exchangeDAO, service.userDAO, service.userMapper, service.exchangeMapper)
 		exchange := exchangeService.CreateExchange(user, ex.Name)
 		go func() { c <- exchange.GetExchange() }()
 	}

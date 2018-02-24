@@ -41,7 +41,7 @@ func NewJsonWebToken(ctx *common.Context, authService service.AuthService,
 	if err != nil {
 		return nil, err
 	}
-	return CreateJsonWebToken(ctx, authService, jsonWriter, 10, keypair), nil
+	return CreateJsonWebToken(ctx, authService, jsonWriter, 60, keypair), nil
 }
 
 func CreateJsonWebToken(ctx *common.Context, authService service.AuthService,

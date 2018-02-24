@@ -9,24 +9,31 @@ Ethereum powered automated cryptocurrency trading platform.
 * Portfolio, Order history & accounting / tax reporting; Form 8949 statement
 * Exchange order / trade history reporting; Generate accounting reports
 * Plugin system supports financial indicators, trading strategies, exchanges and wallets
-* Add / remove functionality without interrupting underlying platform or current trades
 * Trading bot automatically executes trades based on configured trading strategies / indicators
 * Json Web Token (JWT) protected APIs
 * REST and WebSocket APIs
 
 
 ## Roadmap
-* Develop initial set of smart contracts to enable trading
-* Live Charts
+* Develop initial set of trading contracts
+* Feature bounties
 * Marketplace for custom plugins
+* Live Charts
 * Distributed trading protocol
-* Exchange features: distributed order book, buy / sell between network users, Atomic Swaps
+* Exchange features: distributed order book, buy / sell between network users, atomic swaps
 * Financial lending
 
 
 ## Build
 
 Due to limitations of [Golang plugins](https://golang.org/pkg/plugin/), this software requires a Linux or Mac operating system to run natively. [Debian](https://www.debian.org/) is a great choice. [Docker](https://www.docker.com/) support is included for Windows users.
+
+
+    git clone git@github.com:jeremyhahn/tradebot.git $GOPATH/src/github.com/jeremyhahn/tradebot
+    cd $GOPATH/src/github.com/jeremyhahn/tradebot
+    make deps
+    make
+    make test
 
 
 #### Dependencies
@@ -37,7 +44,7 @@ Due to limitations of [Golang plugins](https://golang.org/pkg/plugin/), this sof
 4. [Docker](https://www.docker.com/) (Optional)
 
 
-#### Linux / MacOS - Native
+#### Linux / Mac OS - Native
 
 After installing the dependencies listed above, simply run `make` to build the `tradebot` binary and then run the application.
 
@@ -45,7 +52,7 @@ After installing the dependencies listed above, simply run `make` to build the `
     ./tradebot --debug
 
 
-#### Linux / MacOS - Docker
+#### Linux / Mac OS - Docker
 
 Simply install docker and run the `build-docker.sh` bash script in the project root. Run `docker-run.sh` to start a container with the resulting image.
 

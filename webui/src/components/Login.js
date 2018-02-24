@@ -44,7 +44,7 @@ class Login extends Component {
 
     componentWillMount(){
       if(this.Auth.loggedIn())
-          this.props.history.replace('/orders');
+          this.props.history.replace('/exchanges');
     }
 
     handleFormSubmit(e){
@@ -55,7 +55,7 @@ class Login extends Component {
           if(res.token.length) {
 console.log('navigating to /orders')
             //this.props.history.replace('/orders');
-            location.href = '/orders'
+            location.href = '/exchanges'
 
           } else {
             this.setState({errors : res.error})

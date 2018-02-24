@@ -52,10 +52,9 @@ render(
 	<BrowserRouter history={browserHistory}>
 	<MuiThemeProvider theme={muiTheme}>
 		<DefaultLayout>
-			<Route exact path="/" component={ OrderHistory } />
+			<Route exact path="/" component={ Exchanges } />
 			<Switch>
 				<Route exact path="/portfolio" component={ Portfolio } />
-        <Route exact path="/trades" component={ Chart } />
 				<Route exact path="/orders" component={ OrderHistory } />
 				<Route exact path="/exchanges" component={ Exchanges } />
 				<Route exact path="/settings" component={ Settings } />

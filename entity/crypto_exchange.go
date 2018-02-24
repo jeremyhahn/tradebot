@@ -1,10 +1,19 @@
 package entity
 
 type CryptoExchange struct {
-	UserID uint
-	Name   string `gorm:"primary_key" sql:"type:varchar(255)"`
-	URL    string `gorm:"not null" sql:"type:varchar(255)"`
-	Key    string `gorm:"not null" sql:"type:varchar(255)"`
-	Secret string `gorm:"not null" sql:"type:text"`
-	Extra  string `gorm:"not null" sql:"type:varchar(255)"`
+	Name     string `gorm:"primary_key"`
+	Filename string `gorm:"not null"`
+	Version  string `gorm:"not null"`
+}
+
+func (entity *CryptoExchange) GetName() string {
+	return entity.Name
+}
+
+func (entity *CryptoExchange) GetFilename() string {
+	return entity.Filename
+}
+
+func (entity *CryptoExchange) GetVersion() string {
+	return entity.Version
 }
