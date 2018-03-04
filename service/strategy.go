@@ -7,38 +7,34 @@ import (
 )
 
 type StrategyService interface {
-	GetStrategy(name string) (common.Strategy, error)
+	GetStrategy(name string) (common.Plugin, error)
 	GetChartStrategy(chart common.Chart, name string, candles []common.Candlestick) (common.TradingStrategy, error)
 	GetChartStrategies(chart common.Chart, params *common.TradingStrategyParams, candles []common.Candlestick) ([]common.TradingStrategy, error)
 }
 
 type DefaultStrategyService struct {
-	ctx              *common.Context
-	strategyDAO      dao.StrategyDAO
+	ctx              common.Context
+	pluginDAO        dao.PluginDAO
 	chartStrategyDAO dao.ChartStrategyDAO
 	pluginService    PluginService
 	indicatorService IndicatorService
 	chartMapper      mapper.ChartMapper
-	strategyMapper   mapper.StrategyMapper
+	pluginMapper     mapper.PluginMapper
 	StrategyService
 }
 
-func NewStrategyService(ctx *common.Context, strategyDAO dao.StrategyDAO,
-	chartStrategyDAO dao.ChartStrategyDAO, pluginService PluginService,
-	indicatorService IndicatorService, chartMapper mapper.ChartMapper,
-	strategyMapper mapper.StrategyMapper) StrategyService {
+func NewStrategyService(ctx common.Context, chartStrategyDAO dao.ChartStrategyDAO, pluginService PluginService,
+	indicatorService IndicatorService, chartMapper mapper.ChartMapper) StrategyService {
 	return &DefaultStrategyService{
 		ctx:              ctx,
-		strategyDAO:      strategyDAO,
 		chartStrategyDAO: chartStrategyDAO,
 		pluginService:    pluginService,
 		indicatorService: indicatorService,
-		chartMapper:      chartMapper,
-		strategyMapper:   strategyMapper}
+		chartMapper:      chartMapper}
 }
 
-func (service *DefaultStrategyService) GetStrategy(name string) (common.Strategy, error) {
-	entity, err := service.strategyDAO.Get(name)
+func (service *DefaultStrategyService) GetStrategy(name string) (common.Plugin, error) {
+	entity, err := service.pluginDAO.Get(name, "strategy")
 	if err != nil {
 		return nil, err
 	}

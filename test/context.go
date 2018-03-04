@@ -14,17 +14,17 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-var TEST_CONTEXT *common.Context
+var TEST_CONTEXT common.Context
 var TEST_LOCK sync.Mutex
 var TEST_USERNAME = "test"
 var TEST_COREDBPATH = "/tmp/tradebot-coredb-testing.db"
 var TEST_PRICEDBPATH = "/tmp/tradebot-pricedb-testing.db"
 
-func NewUnitTestContext() *common.Context {
+func NewUnitTestContext() common.Context {
 	backend, _ := logging.NewSyslogBackend(common.APPNAME)
 	logging.SetBackend(backend)
 	logger := logging.MustGetLogger(common.APPNAME)
-	return &common.Context{
+	return &common.Ctx{
 		Logger: logger,
 		User: &dto.UserDTO{
 			Id:            1,
@@ -32,7 +32,7 @@ func NewUnitTestContext() *common.Context {
 			LocalCurrency: "USD"}}
 }
 
-func NewIntegrationTestContext() *common.Context {
+func NewIntegrationTestContext() common.Context {
 
 	TEST_LOCK.Lock()
 
@@ -61,14 +61,15 @@ func NewIntegrationTestContext() *common.Context {
 		panic("Unable to load BTC_ADDRESS environment variable")
 	}
 
-	TEST_CONTEXT = &common.Context{
-		CoreDB:  coreDB,
-		PriceDB: priceDB,
-		Logger:  logger,
+	TEST_CONTEXT = &common.Ctx{
+		Logger: logger,
 		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,
 			LocalCurrency: "USD"}}
+
+	dao.NewMigrator(TEST_CONTEXT).MigrateCoreDB()
+	dao.NewMigrator(TEST_CONTEXT).MigratePriceDB()
 
 	var wallets []entity.UserWallet
 	wallets = append(wallets, entity.UserWallet{
@@ -146,8 +147,8 @@ func NewIntegrationTestContext() *common.Context {
 
 func CleanupIntegrationTest() {
 	if TEST_CONTEXT != nil {
-		TEST_CONTEXT.CoreDB.Close()
-		TEST_CONTEXT.PriceDB.Close()
+		TEST_CONTEXT.GetCoreDB().Close()
+		TEST_CONTEXT.GetPriceDB().Close()
 		os.Remove(TEST_COREDBPATH)
 		os.Remove(TEST_PRICEDBPATH)
 		TEST_LOCK.Unlock()

@@ -9,7 +9,7 @@ import (
 )
 
 type DefaultOrderService struct {
-	ctx             *common.Context
+	ctx             common.Context
 	orderDAO        dao.OrderDAO
 	orderMapper     mapper.OrderMapper
 	exchangeService ExchangeService
@@ -17,7 +17,7 @@ type DefaultOrderService struct {
 	OrderService
 }
 
-func NewOrderService(ctx *common.Context, orderDAO dao.OrderDAO, orderMapper mapper.OrderMapper,
+func NewOrderService(ctx common.Context, orderDAO dao.OrderDAO, orderMapper mapper.OrderMapper,
 	exchangeService ExchangeService, userService UserService) OrderService {
 	return &DefaultOrderService{
 		ctx:             ctx,
@@ -33,7 +33,7 @@ func (os *DefaultOrderService) GetMapper() mapper.OrderMapper {
 
 func (os *DefaultOrderService) GetOrderHistory() []common.Order {
 	var orders []common.Order
-	exchanges := os.exchangeService.GetExchanges(os.ctx.User)
+	exchanges := os.exchangeService.GetExchanges(os.ctx.GetUser())
 	for _, ex := range exchanges {
 		if ex.GetName() == "gdax" {
 			balances, _ := ex.GetBalances()
@@ -48,7 +48,7 @@ func (os *DefaultOrderService) GetOrderHistory() []common.Order {
 		}
 		currencyPairs, err := os.exchangeService.GetCurrencyPairs(os.ctx.GetUser(), ex.GetName())
 		if err != nil {
-			os.ctx.Logger.Errorf("[OrderService.GetOrderHistory] %s", err.Error())
+			os.ctx.GetLogger().Errorf("[OrderService.GetOrderHistory] %s", err.Error())
 			return orders
 		}
 		for _, currencyPair := range currencyPairs {
@@ -61,7 +61,7 @@ func (os *DefaultOrderService) GetOrderHistory() []common.Order {
 	}
 	orderEntities, err := os.orderDAO.Find()
 	if err != nil {
-		os.ctx.Logger.Errorf("[OrderService.GetOrderHistory] %s", err.Error())
+		os.ctx.GetLogger().Errorf("[OrderService.GetOrderHistory] %s", err.Error())
 	} else {
 		for _, entity := range orderEntities {
 			orders = append(orders, os.orderMapper.MapOrderEntityToDto(&entity))
@@ -74,7 +74,7 @@ func (os *DefaultOrderService) GetOrderHistory() []common.Order {
 }
 
 func (dos *DefaultOrderService) ImportCSV(file, exchangeName string) ([]common.Order, error) {
-	dos.ctx.Logger.Debugf("[OrderService.ImportCSV] Creating %s exchange service", exchangeName)
+	dos.ctx.GetLogger().Debugf("[OrderService.ImportCSV] Creating %s exchange service", exchangeName)
 	exchange := dos.exchangeService.GetExchange(dos.ctx.GetUser(), exchangeName)
 	orderDTOs, err := exchange.ParseImport(file)
 	if err != nil {

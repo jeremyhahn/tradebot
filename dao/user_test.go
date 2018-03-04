@@ -1,11 +1,10 @@
-// +build integration
-
 package dao
 
 import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/entity"
+	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -69,6 +68,35 @@ func TestUserDAO_Update(t *testing.T) {
 	assert.Equal(t, user.GetLocalCurrency(), persistedUser2.GetLocalCurrency())
 	assert.Equal(t, user.GetEtherbase(), persistedUser2.GetEtherbase())
 	assert.Equal(t, user.GetKeystore(), persistedUser2.GetKeystore())
+
+	CleanupIntegrationTest()
+}
+
+func TestUserDAO_CreateGetUserExchange(t *testing.T) {
+	ctx := NewIntegrationTestContext()
+	userDAO := NewUserDAO(ctx)
+	mapper := mapper.NewUserMapper()
+
+	userExchange := &entity.UserCryptoExchange{
+		UserId: ctx.GetUser().GetId(),
+		Name:   "Test Exchange",
+		Key:    "ABC123",
+		Secret: "$ecret!",
+		URL:    "https://www.example.com",
+		Extra:  "Anything specific to this exchange can be stored here"}
+
+	err := userDAO.CreateExchange(userExchange)
+	assert.Equal(t, nil, err)
+
+	userContext := mapper.MapUserDtoToEntity(ctx.GetUser())
+	persisted, exErr := userDAO.GetExchange(userContext, "Test Exchange")
+	assert.Equal(t, nil, exErr)
+	assert.Equal(t, userExchange.UserId, persisted.GetUserId())
+	assert.Equal(t, userExchange.Name, persisted.GetName())
+	assert.Equal(t, userExchange.URL, persisted.GetURL())
+	assert.Equal(t, userExchange.Key, persisted.GetKey())
+	assert.Equal(t, userExchange.Secret, persisted.GetSecret())
+	assert.Equal(t, userExchange.Extra, persisted.GetExtra())
 
 	CleanupIntegrationTest()
 }

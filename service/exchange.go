@@ -12,36 +12,40 @@ import (
 )
 
 type DefaultExchangeService struct {
-	ctx            *common.Context
-	exchangeDAO    dao.ExchangeDAO
+	ctx            common.Context
+	pluginDAO      dao.PluginDAO
 	userDAO        dao.UserDAO
 	userMapper     mapper.UserMapper
 	exchangeMapper mapper.UserExchangeMapper
-	exchangeMap    map[string]func(*common.Context, entity.UserExchangeEntity) common.Exchange
+	exchangeMap    map[string]func(common.Context, entity.UserExchangeEntity) common.Exchange
 	ExchangeService
 }
 
-func NewExchangeService(ctx *common.Context, exchangeDAO dao.ExchangeDAO, userDAO dao.UserDAO,
+func NewExchangeService(ctx common.Context, pluginDAO dao.PluginDAO, userDAO dao.UserDAO,
 	userMapper mapper.UserMapper, exchangeMapper mapper.UserExchangeMapper) ExchangeService {
 	return &DefaultExchangeService{
 		ctx:            ctx,
-		exchangeDAO:    exchangeDAO,
+		pluginDAO:      pluginDAO,
 		userDAO:        userDAO,
 		userMapper:     userMapper,
 		exchangeMapper: exchangeMapper,
-		exchangeMap: map[string]func(ctx *common.Context, exchange entity.UserExchangeEntity) common.Exchange{
+		exchangeMap: map[string]func(ctx common.Context, exchange entity.UserExchangeEntity) common.Exchange{
 			"gdax":    exchange.NewGDAX,
 			"bittrex": exchange.NewBittrex,
 			"binance": exchange.NewBinance}}
 }
 
-func (service *DefaultExchangeService) CreateExchange(user common.User, exchangeName string) common.Exchange {
+func (service *DefaultExchangeService) CreateExchange(user common.UserContext, exchangeName string) (common.Exchange, error) {
 	userEntity := &entity.User{Id: user.GetId()}
-	exchange := service.userDAO.GetExchange(userEntity, exchangeName)
-	return service.exchangeMap[exchangeName](service.ctx, exchange)
+	exchange, err := service.userDAO.GetExchange(userEntity, exchangeName)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[ExchangeService.CreateExchange] Error: %s", err.Error())
+		return nil, err
+	}
+	return service.exchangeMap[exchangeName](service.ctx, exchange), nil
 }
 
-func (service *DefaultExchangeService) GetDisplayNames(user common.User) []string {
+func (service *DefaultExchangeService) GetDisplayNames(user common.UserContext) []string {
 	var exchanges []string
 	userEntity := &entity.User{Id: user.GetId()}
 	userExchanges := service.userDAO.GetExchanges(userEntity)
@@ -51,7 +55,7 @@ func (service *DefaultExchangeService) GetDisplayNames(user common.User) []strin
 	return exchanges
 }
 
-func (service *DefaultExchangeService) GetUserExchanges(user common.User) []viewmodel.UserCryptoExchange {
+func (service *DefaultExchangeService) GetUserExchanges(user common.UserContext) []viewmodel.UserCryptoExchange {
 	var exchanges []viewmodel.UserCryptoExchange
 	userEntity := &entity.User{Id: user.GetId()}
 	userExchanges := service.userDAO.GetExchanges(userEntity)
@@ -62,7 +66,7 @@ func (service *DefaultExchangeService) GetUserExchanges(user common.User) []view
 	return exchanges
 }
 
-func (service *DefaultExchangeService) GetExchanges(user common.User) []common.Exchange {
+func (service *DefaultExchangeService) GetExchanges(user common.UserContext) []common.Exchange {
 	var exchanges []common.Exchange
 	userEntity := &entity.User{Id: user.GetId()}
 	userExchanges := service.userDAO.GetExchanges(userEntity)
@@ -72,7 +76,7 @@ func (service *DefaultExchangeService) GetExchanges(user common.User) []common.E
 	return exchanges
 }
 
-func (service *DefaultExchangeService) GetExchange(user common.User, exchangeName string) common.Exchange {
+func (service *DefaultExchangeService) GetExchange(user common.UserContext, exchangeName string) common.Exchange {
 	for _, ex := range service.GetExchanges(user) {
 		if ex.GetName() == exchangeName {
 			return ex
@@ -81,9 +85,12 @@ func (service *DefaultExchangeService) GetExchange(user common.User, exchangeNam
 	return nil
 }
 
-func (service *DefaultExchangeService) GetCurrencyPairs(user common.User, exchangeName string) ([]common.CurrencyPair, error) {
+func (service *DefaultExchangeService) GetCurrencyPairs(user common.UserContext, exchangeName string) ([]common.CurrencyPair, error) {
 	userEntity := service.userMapper.MapUserDtoToEntity(user)
-	userCryptoExchange := service.userDAO.GetExchange(userEntity.(*entity.User), exchangeName)
+	userCryptoExchange, err := service.userDAO.GetExchange(userEntity.(*entity.User), exchangeName)
+	if err != nil {
+		return nil, err
+	}
 	return service.parseCurrencyPairs(userCryptoExchange.GetExtra(), exchangeName), nil
 }
 
@@ -93,7 +100,7 @@ func (service *DefaultExchangeService) parseCurrencyPairs(configuredPairs, excha
 	for _, pair := range pairs {
 		pieces := strings.Split(pair, "-")
 		if len(pieces) != 2 {
-			service.ctx.Logger.Errorf("[DefaultExchangeService.parseCurrencyPairs] Invalid currency pair configured for %s: %+v", exchangeName, pair)
+			service.ctx.GetLogger().Errorf("[DefaultExchangeService.parseCurrencyPairs] Invalid currency pair configured for %s: %+v", exchangeName, pair)
 			continue
 		}
 		currencyPairs = append(currencyPairs, common.CurrencyPair{

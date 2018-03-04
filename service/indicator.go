@@ -6,35 +6,31 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/entity"
-	"github.com/jeremyhahn/tradebot/mapper"
 )
 
 type IndicatorService interface {
-	GetIndicator(name string) (common.Indicator, error)
+	GetIndicator(name string) (common.Plugin, error)
 	GetChartIndicator(chart common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error)
 	GetChartIndicators(chart common.Chart, candles []common.Candlestick) (map[string]common.FinancialIndicator, error)
 }
 
 type DefaultIndicatorService struct {
-	ctx               *common.Context
-	indicatorDAO      dao.IndicatorDAO
+	ctx               common.Context
+	pluginDAO         dao.PluginDAO
 	chartIndicatorDAO dao.ChartIndicatorDAO
 	pluginService     PluginService
-	indicatorMapper   mapper.IndicatorMapper
 	IndicatorService
 }
 
-func NewIndicatorService(ctx *common.Context, indicatorDAO dao.IndicatorDAO,
-	chartIndicatorDAO dao.ChartIndicatorDAO, pluginService PluginService, indicatorMapper mapper.IndicatorMapper) IndicatorService {
+func NewIndicatorService(ctx common.Context, chartIndicatorDAO dao.ChartIndicatorDAO,
+	pluginService PluginService) IndicatorService {
 	return &DefaultIndicatorService{
 		ctx:               ctx,
-		indicatorDAO:      indicatorDAO,
 		chartIndicatorDAO: chartIndicatorDAO,
-		pluginService:     pluginService,
-		indicatorMapper:   indicatorMapper}
+		pluginService:     pluginService}
 }
 
-func (service *DefaultIndicatorService) GetIndicator(name string) (common.Indicator, error) {
+func (service *DefaultIndicatorService) GetIndicator(name string) (common.Plugin, error) {
 	entity, err := service.indicatorDAO.Get(name)
 	if err != nil {
 		return nil, err
@@ -42,7 +38,8 @@ func (service *DefaultIndicatorService) GetIndicator(name string) (common.Indica
 	return service.indicatorMapper.MapIndicatorEntityToDto(entity), nil
 }
 
-func (service *DefaultIndicatorService) GetChartIndicator(chart common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {
+func (service *DefaultIndicatorService) GetChartIndicator(chart common.Chart, name string,
+	candles []common.Candlestick) (common.FinancialIndicator, error) {
 	daoChart := &entity.Chart{Id: chart.GetId()}
 	chartIndicator, err := service.chartIndicatorDAO.Get(daoChart, name)
 	if err != nil {

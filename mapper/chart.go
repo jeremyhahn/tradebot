@@ -18,10 +18,10 @@ type ChartMapper interface {
 }
 
 type DefaultChartMapper struct {
-	ctx *common.Context
+	ctx common.Context
 }
 
-func NewChartMapper(ctx *common.Context) ChartMapper {
+func NewChartMapper(ctx common.Context) ChartMapper {
 	return &DefaultChartMapper{ctx: ctx}
 }
 
@@ -43,7 +43,7 @@ func (mapper *DefaultChartMapper) MapTradeEntityToDto(entity entity.TradeEntity)
 func (mapper *DefaultChartMapper) MapTradeDtoToEntity(trade common.Trade) entity.Trade {
 	return entity.Trade{
 		Id:        trade.GetId(),
-		UserId:    mapper.ctx.User.GetId(),
+		UserId:    mapper.ctx.GetUser().GetId(),
 		ChartId:   trade.GetChartId(),
 		Date:      trade.GetDate(),
 		Exchange:  trade.GetExchange(),
@@ -102,7 +102,7 @@ func (mapper *DefaultChartMapper) MapChartDtoToEntity(dto common.Chart) entity.C
 	}
 	return &entity.Chart{
 		Id:         dto.GetId(),
-		UserId:     mapper.ctx.User.GetId(),
+		UserId:     mapper.ctx.GetUser().GetId(),
 		Base:       dto.GetBase(),
 		Quote:      dto.GetQuote(),
 		Exchange:   dto.GetExchange(),

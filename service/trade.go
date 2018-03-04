@@ -9,13 +9,13 @@ import (
 )
 
 type DefaultTradeService struct {
-	ctx         *common.Context
+	ctx         common.Context
 	tradeDAO    dao.TradeDAO
 	tradeMapper mapper.TradeMapper
 	TradeService
 }
 
-func NewTradeService(ctx *common.Context, tradeDAO dao.TradeDAO, tradeMapper mapper.TradeMapper) TradeService {
+func NewTradeService(ctx common.Context, tradeDAO dao.TradeDAO, tradeMapper mapper.TradeMapper) TradeService {
 	return &DefaultTradeService{
 		ctx:         ctx,
 		tradeDAO:    tradeDAO,
@@ -23,11 +23,11 @@ func NewTradeService(ctx *common.Context, tradeDAO dao.TradeDAO, tradeMapper map
 }
 
 func (ts *DefaultTradeService) Buy(exchange common.Exchange, trade common.Trade) {
-	ts.ctx.Logger.Debugf("[DefaultTradeService.Buy] %+v\n", trade)
+	ts.ctx.GetLogger().Debugf("[DefaultTradeService.Buy] %+v\n", trade)
 }
 
 func (ts *DefaultTradeService) Sell(exchange common.Exchange, trade common.Trade) {
-	ts.ctx.Logger.Debugf("[DefaultTradeService.Sell] %+v\n", trade)
+	ts.ctx.GetLogger().Debugf("[DefaultTradeService.Sell] %+v\n", trade)
 }
 
 func (ts *DefaultTradeService) Save(dto common.Trade) {
@@ -39,7 +39,7 @@ func (ts *DefaultTradeService) GetLastTrade(chart common.Chart) common.Trade {
 	entity := ts.tradeDAO.GetLastTrade(daoChart)
 	return &dto.TradeDTO{
 		Id:        entity.GetId(),
-		UserId:    ts.ctx.User.GetId(),
+		UserId:    ts.ctx.GetUser().GetId(),
 		ChartId:   entity.GetChartId(),
 		Date:      entity.GetDate(),
 		Exchange:  entity.GetExchangeName(),

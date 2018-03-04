@@ -20,11 +20,11 @@ type UserCredentials struct {
 }
 
 type JsonWebToken struct {
-	ctx         *common.Context
+	ctx         common.Context
 	expiration  time.Duration
 	token       *jwt.Token
 	authService service.AuthService
-	rsaKeyPair  *common.RsaKeyPair
+	rsaKeyPair  common.KeyPair
 	jsonWriter  common.HttpWriter
 	common.JsonWebToken
 }
@@ -36,7 +36,6 @@ type JsonWebTokenDTO struct {
 
 func NewJsonWebToken(ctx *common.Context, authService service.AuthService,
 	jsonWriter common.HttpWriter) (*JsonWebToken, error) {
-
 	keypair, err := common.NewRsaKeyPair(ctx)
 	if err != nil {
 		return nil, err
@@ -44,9 +43,8 @@ func NewJsonWebToken(ctx *common.Context, authService service.AuthService,
 	return CreateJsonWebToken(ctx, authService, jsonWriter, 60, keypair), nil
 }
 
-func CreateJsonWebToken(ctx *common.Context, authService service.AuthService,
+func CreateJsonWebToken(ctx common.Context, authService service.AuthService,
 	jsonWriter common.HttpWriter, expiration int64, rsaKeyPair *common.RsaKeyPair) *JsonWebToken {
-
 	return &JsonWebToken{
 		ctx:         ctx,
 		authService: authService,
@@ -169,6 +167,14 @@ func (_jwt *JsonWebToken) setApplicationStateFromToken() error {
 		LocalCurrency: claims["local_currency"].(string),
 		Etherbase:     claims["etherbase"].(string),
 		Keystore:      claims["keystore"].(string)}
-	_jwt.ctx.SetUser(userDTO)
+
+	newContext := &common.AppContext{
+		Logger: *_jwt.ctx.GetLogger(),
+		CoreDB: *_jwt.ctx.GetCoreDB(),
+		PriceDB: *_jwt.ctx.GetPriceDB(),
+		Debug: *_jwt.ctx.GetDebug().
+		SSL: *_jwt.ctx.GetSSL()}
+
+	_jwt.ctx = newContext
 	return nil
 }

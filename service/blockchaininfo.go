@@ -33,13 +33,13 @@ type BlockchainInfo struct {
 	items      BlockchainTickerItem
 	lastPrice  float64
 	lastLookup time.Time
-	common.Wallet
+	WalletService
 }
 
-func NewBlockchainInfo(ctx *common.Context) *BlockchainInfo {
+func NewBlockchainInfo(ctx common.Context) *BlockchainInfo {
 	client := http.Client{Timeout: common.HTTP_CLIENT_TIMEOUT}
 	return &BlockchainInfo{
-		logger:     ctx.Logger,
+		logger:     ctx.GetLogger(),
 		client:     client,
 		lastPrice:  0.0,
 		lastLookup: time.Now().Add(-20 * time.Minute)}
@@ -64,7 +64,7 @@ func (b *BlockchainInfo) GetPrice() float64 {
 	return b.lastPrice
 }
 
-func (b *BlockchainInfo) GetBalance(address string) common.CryptoWallet {
+func (b *BlockchainInfo) GetBalance(address string) common.UserCryptoWallet {
 
 	url := fmt.Sprintf("https://blockchain.info/address/%s?format=json", address)
 
@@ -90,7 +90,7 @@ func (b *BlockchainInfo) GetBalance(address string) common.CryptoWallet {
 	if jsonErr != nil {
 		b.logger.Errorf("[BlockchainInfo.GetBalance] %s", jsonErr.Error())
 	}
-	return &dto.CryptoWalletDTO{
+	return &dto.UserCryptoWalletDTO{
 		Address:  address,
 		Balance:  wallet.Balance / 100000000,
 		Currency: "BTC"}

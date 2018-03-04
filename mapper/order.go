@@ -16,11 +16,11 @@ type OrderMapper interface {
 }
 
 type DefaultOrderMapper struct {
-	ctx *common.Context
+	ctx common.Context
 	OrderMapper
 }
 
-func NewOrderMapper(ctx *common.Context) OrderMapper {
+func NewOrderMapper(ctx common.Context) OrderMapper {
 	return &DefaultOrderMapper{
 		ctx: ctx}
 }

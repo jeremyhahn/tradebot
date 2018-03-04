@@ -6,18 +6,7 @@ type PluginEntity interface {
 	GetName() string
 	GetFilename() string
 	GetVersion() string
-}
-
-type StrategyEntity interface {
-	GetName() string
-	GetFilename() string
-	GetVersion() string
-}
-
-type IndicatorEntity interface {
-	GetName() string
-	GetFilename() string
-	GetVersion() string
+	GetType() string
 }
 
 type OrderEntity interface {

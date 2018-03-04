@@ -14,31 +14,32 @@ type RsaKeyPair struct {
 	PrivateBytes []byte
 	PublicKey    *rsa.PublicKey
 	PublicBytes  []byte
+	KeyPair
 }
 
-func NewRsaKeyPair(ctx *Context) (*RsaKeyPair, error) {
+func NewRsaKeyPair(ctx Context) (KeyPair, error) {
 	return CreateRsaKeyPair(ctx, "./keys")
 }
 
-func CreateRsaKeyPair(ctx *Context, directory string) (*RsaKeyPair, error) {
+func CreateRsaKeyPair(ctx Context, directory string) (KeyPair, error) {
 	privateKeyBytes, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", directory, "rsa.key"))
 	if err != nil {
-		ctx.Logger.Errorf("[RsaKeyPair] %s", err.Error())
+		ctx.GetLogger().Errorf("[RsaKeyPair] %s", err.Error())
 		return nil, err
 	}
 	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(privateKeyBytes)
 	if err != nil {
-		ctx.Logger.Errorf("[RsaKeyPair] %s", err.Error())
+		ctx.GetLogger().Errorf("[RsaKeyPair] %s", err.Error())
 		return nil, err
 	}
 	publicKeyBytes, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", directory, "rsa.pub"))
 	if err != nil {
-		ctx.Logger.Errorf("[RsaKeyPair] %s", err.Error())
+		ctx.GetLogger().Errorf("[RsaKeyPair] %s", err.Error())
 		return nil, err
 	}
 	publicKey, err := jwt.ParseRSAPublicKeyFromPEM(publicKeyBytes)
 	if err != nil {
-		ctx.Logger.Errorf("[RsaKeyPair] %s", err.Error())
+		ctx.GetLogger().Errorf("[RsaKeyPair] %s", err.Error())
 		return nil, err
 	}
 	return &RsaKeyPair{
@@ -47,4 +48,24 @@ func CreateRsaKeyPair(ctx *Context, directory string) (*RsaKeyPair, error) {
 		PrivateBytes: privateKeyBytes,
 		PublicKey:    publicKey,
 		PublicBytes:  publicKeyBytes}, nil
+}
+
+func (keypair *RsaKeyPair) GetDirectory() string {
+	return keypair.Directory
+}
+
+func (keypair *RsaKeyPair) GetPrivateKey() *rsa.PrivateKey {
+	return keypair.PrivateKey
+}
+
+func (keypair *RsaKeyPair) GetPrivateBytes() []byte {
+	return keypair.PrivateBytes
+}
+
+func (keypair *RsaKeyPair) GetPublicKey() *rsa.PublicKey {
+	return keypair.PublicKey
+}
+
+func (keypair *RsaKeyPair) GetPublicBytes() []byte {
+	return keypair.PublicBytes
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
-	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/webservice"
@@ -66,6 +65,7 @@ func main() {
 		SSL:     *sslFlag}
 
 	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
 
 	userMapper := mapper.NewUserMapper()
 	exchangeMapper := mapper.NewExchangeMapper()
@@ -77,10 +77,9 @@ func main() {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
-	userService := service.NewUserService(ctx, userDAO, marketcapService, ethereumService, userMapper, exchangeMapper)
+	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, exchangeMapper)
 
 	chartDAO := dao.NewChartDAO(ctx)
-	exchangeDAO := dao.NewExchangeDAO(ctx)
 	indicatorDAO := dao.NewIndicatorDAO(ctx)
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
 	profitDAO := dao.NewProfitDAO(ctx)
@@ -95,7 +94,7 @@ func main() {
 	tradeMapper := mapper.NewTradeMapper()
 	orderMapper := mapper.NewOrderMapper(ctx)
 
-	exchangeService := service.NewExchangeService(ctx, exchangeDAO, userDAO, userMapper, exchangeMapper)
+	exchangeService := service.NewExchangeService(ctx, pluginDAO, userDAO, userMapper, exchangeMapper)
 	pluginService := service.NewPluginService(ctx)
 	indicatorService := service.NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
 	chartService := service.NewChartService(ctx, chartDAO, exchangeService, indicatorService)
@@ -111,14 +110,9 @@ func main() {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
-	jwt, err := webservice.NewJsonWebToken(ctx, ethereumService, webservice.NewJsonWriter())
-	if err != nil {
-		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
-	}
-
 	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService,
 		exchangeService, ethereumService, userService, portfolioService,
-		orderService, jwt)
+		orderService)
 
 	go ws.Start()
 	ws.Run()
@@ -127,29 +121,14 @@ func main() {
 func InitCoreDB(logMode bool) *gorm.DB {
 	database := fmt.Sprintf("%s/%s.db", common.DB_DIR, common.APPNAME)
 	db := NewSQLite(database, logMode)
-	db.AutoMigrate(&entity.ChartIndicator{})
-	db.AutoMigrate(&entity.ChartStrategy{})
-	db.AutoMigrate(&entity.Chart{})
-	db.AutoMigrate(&entity.Trade{})
-	db.AutoMigrate(&entity.CryptoExchange{})
-	db.AutoMigrate(&entity.Indicator{})
-	db.AutoMigrate(&entity.MarketCap{})
-	db.AutoMigrate(&entity.GlobalMarketCap{})
-	db.AutoMigrate(&entity.Order{})
-	db.AutoMigrate(&entity.Strategy{})
-	db.AutoMigrate(&entity.Trade{})
-	db.AutoMigrate(&entity.User{})
-	db.AutoMigrate(&entity.UserWallet{})
-	db.AutoMigrate(&entity.UserToken{})
-	db.AutoMigrate(&entity.UserCryptoExchange{})
-	db.AutoMigrate(&entity.CryptoExchange{})
+	dao.NewMigrator(db).MigrateCoreDB()
 	return db
 }
 
 func InitPriceDB(logMode bool) *gorm.DB {
 	database := fmt.Sprintf("%s/prices.db", common.DB_DIR)
 	db := NewSQLite(database, logMode)
-	db.AutoMigrate(&entity.PriceHistory{})
+	dao.NewMigrator(db).MigratePriceDB()
 	return db
 }
 

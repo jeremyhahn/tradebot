@@ -11,13 +11,13 @@ import (
 )
 
 type SlickCharts struct {
-	ctx      *common.Context
+	ctx      common.Context
 	endpoint string
 	prices   map[string][]dto.PriceHistoryDTO
 	PriceHistoryService
 }
 
-func NewPriceHistoryService(ctx *common.Context) PriceHistoryService {
+func NewPriceHistoryService(ctx common.Context) PriceHistoryService {
 	return &SlickCharts{
 		ctx:      ctx,
 		endpoint: "https://www.slickcharts.com/api/v1/currency",
@@ -27,26 +27,26 @@ func NewPriceHistoryService(ctx *common.Context) PriceHistoryService {
 func (sc *SlickCharts) GetPriceHistory(currency string) []dto.PriceHistoryDTO {
 
 	if _, ok := sc.prices[currency]; ok {
-		sc.ctx.Logger.Debugf("[PriceHistoryService.GetPriceHistory] Returning cached %s price history", currency)
+		sc.ctx.GetLogger().Debugf("[PriceHistoryService.GetPriceHistory] Returning cached %s price history", currency)
 		return sc.prices[currency]
 	}
 
-	sc.ctx.Logger.Debugf("[PriceHistoryService.GetPriceHistory] Getting %s price history", currency)
+	sc.ctx.GetLogger().Debugf("[PriceHistoryService.GetPriceHistory] Getting %s price history", currency)
 
 	url := fmt.Sprintf("%s/%s/history", sc.endpoint, currency)
 	body, err := util.HttpRequest(url)
 
-	sc.ctx.Logger.Debugf("[PriceHistoryService.GetPriceHistory] Getting %s price history at endpoint %s - Response: ",
+	sc.ctx.GetLogger().Debugf("[PriceHistoryService.GetPriceHistory] Getting %s price history at endpoint %s - Response: ",
 		currency, url, string(body))
 
 	if err != nil {
-		sc.ctx.Logger.Errorf("[PriceHistoryService.GetPriceHistory] Error: %s", err.Error())
+		sc.ctx.GetLogger().Errorf("[PriceHistoryService.GetPriceHistory] Error: %s", err.Error())
 	}
 
 	var history []dto.PriceHistoryDTO
 	jsonErr := json.Unmarshal(body, &history)
 	if jsonErr != nil {
-		sc.ctx.Logger.Errorf("[PriceHistoryService.GetPriceHistory] Error: %s", jsonErr.Error())
+		sc.ctx.GetLogger().Errorf("[PriceHistoryService.GetPriceHistory] Error: %s", jsonErr.Error())
 	}
 
 	sc.prices[currency] = history
@@ -55,7 +55,7 @@ func (sc *SlickCharts) GetPriceHistory(currency string) []dto.PriceHistoryDTO {
 }
 
 func (sc *SlickCharts) GetPrice(symbol string, date time.Time) float64 {
-	if symbol == sc.ctx.User.GetLocalCurrency() {
+	if symbol == sc.ctx.GetUser().GetLocalCurrency() {
 		return 1.0
 	}
 	prices := sc.GetPriceHistory(symbol)
@@ -64,7 +64,7 @@ func (sc *SlickCharts) GetPrice(symbol string, date time.Time) float64 {
 		ts := time.Date(timestamp.Year(), timestamp.Month(), timestamp.Day(), 0, 0, 0, 0, timestamp.Location())
 		d := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 		if ts.Equal(d) {
-			sc.ctx.Logger.Debugf("[PriceHistoryService.GetPrice] Price: %f", price.GetClose())
+			sc.ctx.GetLogger().Debugf("[PriceHistoryService.GetPrice] Price: %f", price.GetClose())
 			return price.GetClose()
 		}
 	}

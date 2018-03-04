@@ -9,23 +9,22 @@ type PriceHistoryDAO interface {
 }
 
 type PriceHistoryDAOImpl struct {
-	ctx *common.Context
+	ctx common.Context
 }
 
-func NewPriceHistoryDAO(ctx *common.Context) PriceHistoryDAO {
-	ctx.PriceDB.AutoMigrate(&entity.PriceHistory{})
+func NewPriceHistoryDAO(ctx common.Context) PriceHistoryDAO {
 	return &PriceHistoryDAOImpl{
 		ctx: ctx}
 }
 
 func (phDAO *PriceHistoryDAOImpl) Create(priceHistory entity.PriceHistoryEntity) error {
-	return phDAO.ctx.PriceDB.Create(priceHistory).Error
+	return phDAO.ctx.GetPriceDB().Create(priceHistory).Error
 }
 
 func (phDAO *PriceHistoryDAOImpl) Save(priceHistory entity.PriceHistoryEntity) error {
-	return phDAO.ctx.PriceDB.Save(priceHistory).Error
+	return phDAO.ctx.GetPriceDB().Save(priceHistory).Error
 }
 
 func (phDAO *PriceHistoryDAOImpl) Update(priceHistory entity.PriceHistoryEntity) error {
-	return phDAO.ctx.PriceDB.Update(priceHistory).Error
+	return phDAO.ctx.GetPriceDB().Update(priceHistory).Error
 }

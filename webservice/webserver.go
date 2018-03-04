@@ -35,6 +35,10 @@ func NewWebServer(ctx *common.Context, port int, marketcapService *service.Marke
 	exchangeService service.ExchangeService, authService service.AuthService,
 	userService service.UserService, portfolioService service.PortfolioService,
 	orderService service.OrderService, jwt *JsonWebToken) *WebServer {
+	jwt, err := NewJsonWebToken(ctx, ethereumService, NewJsonWriter())
+	if err != nil {
+		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
+	}
 	return &WebServer{
 		ctx:              ctx,
 		port:             port,
