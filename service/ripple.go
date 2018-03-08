@@ -13,10 +13,10 @@ import (
 )
 
 type Ripple struct {
-	ctx              *common.Context
+	ctx              common.Context
 	client           http.Client
 	marketcapService *MarketCapService
-	common.Wallet
+	WalletService
 }
 
 type RippleWallet struct {
@@ -31,7 +31,7 @@ type RippleBalance struct {
 	Balances    []RippleWallet `json:"balances"`
 }
 
-func NewRipple(ctx *common.Context, marketcapService *MarketCapService) *Ripple {
+func NewRipple(ctx common.Context, marketcapService *MarketCapService) *Ripple {
 	client := http.Client{Timeout: time.Second * 2}
 	return &Ripple{
 		ctx:              ctx,
@@ -39,33 +39,33 @@ func NewRipple(ctx *common.Context, marketcapService *MarketCapService) *Ripple 
 		marketcapService: marketcapService}
 }
 
-func (r *Ripple) GetBalance(address string) common.CryptoWallet {
+func (r *Ripple) GetBalance(address string) common.UserCryptoWallet {
 
-	r.ctx.Logger.Debugf("[Ripple.GetBalance] Address: %s", address)
+	r.ctx.GetLogger().Debugf("[Ripple.GetBalance] Address: %s", address)
 
 	var balance float64
 	url := fmt.Sprintf("https://data.ripple.com/v2/accounts/%s/balances", address)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		r.ctx.Logger.Errorf("[Ripple.GetBalance] %s", err.Error())
+		r.ctx.GetLogger().Errorf("[Ripple.GetBalance] %s", err.Error())
 	}
 
 	req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
 
 	res, getErr := r.client.Do(req)
 	if getErr != nil {
-		r.ctx.Logger.Errorf("[Ripple.GetBalance] %s", getErr.Error())
+		r.ctx.GetLogger().Errorf("[Ripple.GetBalance] %s", getErr.Error())
 	}
 
 	body, readErr := ioutil.ReadAll(res.Body)
 	if readErr != nil {
-		r.ctx.Logger.Errorf("[Ripple.GetBalance] %s", readErr.Error())
+		r.ctx.GetLogger().Errorf("[Ripple.GetBalance] %s", readErr.Error())
 	}
 
 	rb := RippleBalance{}
 	jsonErr := json.Unmarshal(body, &rb)
 	if jsonErr != nil {
-		r.ctx.Logger.Errorf("[Ripple.GetBalance] %s", jsonErr.Error())
+		r.ctx.GetLogger().Errorf("[Ripple.GetBalance] %s", jsonErr.Error())
 	}
 	if len(rb.Balances) <= 0 {
 		balance = 0.0
@@ -77,9 +77,9 @@ func (r *Ripple) GetBalance(address string) common.CryptoWallet {
 	marketcap := r.marketcapService.GetMarket("XRP")
 	f2, _ := strconv.ParseFloat(marketcap.PriceUSD, 64)
 
-	return &dto.CryptoWalletDTO{
+	return &dto.UserCryptoWalletDTO{
 		Address:  address,
 		Balance:  balance,
 		Currency: "XRP",
-		NetWorth: f2 * balance}
+		Value:    f2 * balance}
 }

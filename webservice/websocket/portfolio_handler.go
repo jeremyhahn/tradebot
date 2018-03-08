@@ -5,30 +5,28 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
+	logging "github.com/op/go-logging"
 )
 
 type PortfolioHandler struct {
-	ctx              *common.Context
-	hub              *PortfolioHub
-	marketcapService *service.MarketCapService
-	userService      service.UserService
-	portfolioService service.PortfolioService
+	logger            *logging.Logger
+	hub               *PortfolioHub
+	middlewareService service.Middleware
 }
 
-func NewPortfolioHandler(ctx *common.Context, hub *PortfolioHub,
-	marketcapService *service.MarketCapService, userService service.UserService,
-	portfolioService service.PortfolioService) *PortfolioHandler {
+func NewPortfolioHandler(logger *logging.Logger, hub *PortfolioHub, middlewareService service.Middleware) *PortfolioHandler {
 	return &PortfolioHandler{
-		ctx:              ctx,
-		hub:              hub,
-		marketcapService: marketcapService,
-		portfolioService: portfolioService}
+		logger:            logger,
+		hub:               hub,
+		middlewareService: middlewareService}
 }
 
 func (ph *PortfolioHandler) OnConnect(w http.ResponseWriter, r *http.Request) {
-	var user dto.UserDTO
+	var user dto.UserContextDTO
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -37,32 +35,50 @@ func (ph *PortfolioHandler) OnConnect(w http.ResponseWriter, r *http.Request) {
 		}}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		ph.ctx.Logger.Error(err)
+		ph.logger.Error(err)
 	}
 	if conn == nil {
-		ph.ctx.Logger.Error("[PortfolioHandler.onConnect] Unable to establish webservice connection")
+		ph.logger.Error("[PortfolioHandler.onConnect] Unable to establish webservice connection")
 		return
 	}
 	err = conn.ReadJSON(&user)
 	if err != nil {
-		ph.ctx.Logger.Errorf("[PortfolioHandler.onConnect] webservice Read Error: %v", err)
+		ph.logger.Errorf("[PortfolioHandler.onConnect] webservice Read Error: %v", err)
 		conn.Close()
 		return
 	}
-	ph.ctx.Logger.Debug("[PortfolioHandler.onConnect] Accepting connection from ", conn.RemoteAddr())
-	ph.stream(conn, &user)
-}
+	ph.logger.Debug("[PortfolioHandler.onConnect] Accepting connection from ", conn.RemoteAddr())
 
-func (ph *PortfolioHandler) stream(conn *websocket.Conn, user common.User) {
-	ph.ctx.SetUser(user) // TODO: REPLACE THIS WITH "ETHEREUM SESSION USER"
+	ctx := ph.middlewareService.GetContext(user.GetId())
+	if ctx == nil {
+		ctx.GetLogger().Errorf("[PortfolioHandler.stream] Error: Unable to retrieve context from JsonWebTokenService")
+		return
+	}
+
+	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
+
+	userMapper := mapper.NewUserMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+
+	marketcapService := service.NewMarketCapService(ctx.GetLogger())
+	ethereumService, err := service.NewEthereumService(ctx, userDAO, userMapper)
+	if err != nil {
+		ctx.GetLogger().Errorf("[PortfolioHandler.stream] Error: %s", err.Error())
+		return
+	}
+
+	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
+	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService, ethereumService)
+
 	client := &PortfolioClient{
 		hub:              ph.hub,
 		conn:             conn,
 		send:             make(chan common.Portfolio, common.BUFFERED_CHANNEL_SIZE),
-		ctx:              ph.ctx,
-		marketcapService: ph.marketcapService,
-		userService:      ph.userService,
-		portfolioService: ph.portfolioService}
+		ctx:              ctx,
+		marketcapService: marketcapService,
+		userService:      userService,
+		portfolioService: portfolioService}
 	client.hub.register <- client
 	go client.writePump()
 	go client.readPump()

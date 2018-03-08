@@ -13,12 +13,12 @@ type RegisterRestService interface {
 }
 
 type RegisterRestServiceImpl struct {
-	ctx         *common.Context
+	ctx         common.Context
 	authService service.AuthService
 	jsonWriter  common.HttpWriter
 }
 
-func NewRegisterRestService(ctx *common.Context, authService service.AuthService, jsonWriter common.HttpWriter) RegisterRestService {
+func NewRegisterRestService(ctx common.Context, authService service.AuthService, jsonWriter common.HttpWriter) RegisterRestService {
 	return &RegisterRestServiceImpl{
 		ctx:         ctx,
 		authService: authService,
@@ -26,12 +26,12 @@ func NewRegisterRestService(ctx *common.Context, authService service.AuthService
 }
 
 func (service *RegisterRestServiceImpl) Register(w http.ResponseWriter, r *http.Request) {
-	service.ctx.Logger.Debugf("[RegisterRestService.Register]")
+	service.ctx.GetLogger().Debugf("[RegisterRestService.Register]")
 	var response RegisterResponse
 	var request RegisterRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&request); err != nil {
-		service.jsonWriter.Write(w, http.StatusBadRequest, RestResponse{
+		service.jsonWriter.Write(w, http.StatusBadRequest, common.JsonResponse{
 			Success: false,
 			Error:   err.Error()})
 		return

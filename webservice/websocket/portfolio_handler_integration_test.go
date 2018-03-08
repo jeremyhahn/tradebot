@@ -1,12 +1,13 @@
-// +build integration`
-
 package websocket
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/jeremyhahn/tradebot/common"
@@ -19,15 +20,29 @@ import (
 )
 
 func TestPortfolioHandler_Stream(t *testing.T) {
-	ctx := test.NewIntegrationTestContext()
 
+	fmt.Println(os.Getwd())
+
+	ctx := test.CreateIntegrationTestContext("../../.env", "../../")
+	databaseManager := common.CreateDatabase("../../", "test-", ctx.GetDebug())
+
+	pluginDAO := dao.NewPluginDAO(ctx)
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
-	hub := NewPortfolioHub(ctx.Logger)
-	marketcapService := service.NewMarketCapService(ctx.Logger)
-	userService := service.NewUserService(ctx, userDAO, marketcapService, userMapper)
-	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService)
-	portfolioHandler := NewPortfolioHandler(ctx, hub, marketcapService, userService, portfolioService)
+	hub := NewPortfolioHub(ctx.GetLogger())
+	marketcapService := service.NewMarketCapService(ctx.GetLogger())
+
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	ethereumService, err := service.NewEthereumService(ctx, userDAO, userMapper)
+	assert.Nil(t, err)
+
+	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
+
+	jsonWebTokenService, err := service.NewJsonWebTokenService(ctx, databaseManager, ethereumService, common.NewJsonWriter())
+	assert.Nil(t, err)
+
+	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService, ethereumService)
+	portfolioHandler := NewPortfolioHandler(ctx.GetLogger(), hub, jsonWebTokenService)
 
 	s := httptest.NewServer(http.HandlerFunc(portfolioHandler.OnConnect))
 	defer s.Close()
@@ -48,7 +63,8 @@ func TestPortfolioHandler_Stream(t *testing.T) {
 		Quote:         "USD",
 		LocalCurrency: "USD"}
 
-	portfolio := <-portfolioService.Stream(user, currencyPair)
+	portfolioChan, err := portfolioService.Stream(user, currencyPair)
+	portfolio := <-portfolioChan
 
 	portfolioUser := portfolio.GetUser()
 	assert.Equal(t, uint(1), portfolioUser.GetId())
@@ -61,6 +77,8 @@ func TestPortfolioHandler_Stream(t *testing.T) {
 	assert.Equal(t, true, portfolioService.IsStreaming(user))
 
 	portfolioService.Stop(ctx.GetUser())
+	time.Sleep(3 * time.Second)
+
 	assert.Equal(t, false, portfolioService.IsStreaming(user))
 
 	test.CleanupIntegrationTest()

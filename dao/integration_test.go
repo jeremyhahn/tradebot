@@ -3,25 +3,23 @@
 package dao
 
 import (
-	"os"
 	"sync"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
-	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	logging "github.com/op/go-logging"
 )
 
-var TEST_CONTEXT *common.Context
+var TEST_CONTEXT common.Context
 var TEST_LOCK sync.Mutex
 var TEST_USERNAME = "test"
-var TEST_COREDB_PATH = "/tmp/tradebot-integration-dao-testing.db"
-var TEST_PRICEDB_PATH = "/tmp/tradebot-pricehistory.db"
 
-func NewIntegrationTestContext() *common.Context {
+var database = common.CreateDatabase("/tmp", "dao-", true)
+
+func NewIntegrationTestContext() common.Context {
 
 	TEST_LOCK.Lock()
 
@@ -29,20 +27,13 @@ func NewIntegrationTestContext() *common.Context {
 	logging.SetBackend(backend)
 	logger := logging.MustGetLogger(common.APPNAME)
 
-	coredb, err := gorm.Open("sqlite3", TEST_COREDB_PATH)
-	coredb.LogMode(true)
-	if err != nil {
-		panic(err)
-	}
-	pricedb, err := gorm.Open("sqlite3", TEST_COREDB_PATH)
-	pricedb.LogMode(true)
-	if err != nil {
-		panic(err)
-	}
+	database.MigrateCoreDB()
+	database.MigratePriceDB()
 
-	TEST_CONTEXT = &common.Context{
-		CoreDB:  coredb,
-		PriceDB: pricedb,
+	TEST_CONTEXT = &common.Ctx{
+		AppRoot: "../",
+		CoreDB:  database.ConnectCoreDB(),
+		PriceDB: database.ConnectPriceDB(),
 		Logger:  logger,
 		User: &dto.UserDTO{
 			Id:            1,
@@ -57,16 +48,15 @@ func NewIntegrationTestContext() *common.Context {
 
 func CleanupIntegrationTest() {
 	if TEST_CONTEXT != nil {
-		TEST_CONTEXT.CoreDB.Close()
-		TEST_CONTEXT.PriceDB.Close()
-		os.Remove(TEST_COREDB_PATH)
-		os.Remove(TEST_PRICEDB_PATH)
+		database.Close(TEST_CONTEXT.GetCoreDB())
+		database.Close(TEST_CONTEXT.GetPriceDB())
+		database.DropCoreDB()
+		database.DropPriceDB()
 		TEST_LOCK.Unlock()
-		TEST_CONTEXT = nil
 	}
 }
 
-func createIntegrationTestChart(ctx *common.Context) entity.ChartEntity {
+func createIntegrationTestChart(ctx common.Context) entity.ChartEntity {
 	userIndicators := []entity.ChartIndicator{
 		entity.ChartIndicator{
 			Name:       "RelativeStrengthIndex",
@@ -86,7 +76,7 @@ func createIntegrationTestChart(ctx *common.Context) entity.ChartEntity {
 
 	trades := []entity.Trade{
 		entity.Trade{
-			UserId:    ctx.User.GetId(),
+			UserId:    ctx.GetUser().GetId(),
 			Base:      "BTC",
 			Quote:     "USD",
 			Exchange:  "Test",
@@ -96,7 +86,7 @@ func createIntegrationTestChart(ctx *common.Context) entity.ChartEntity {
 			Price:     10000,
 			ChartData: "test-trade-1"},
 		entity.Trade{
-			UserId:    ctx.User.GetId(),
+			UserId:    ctx.GetUser().GetId(),
 			Base:      "BTC",
 			Quote:     "USD",
 			Exchange:  "Test",
@@ -107,7 +97,7 @@ func createIntegrationTestChart(ctx *common.Context) entity.ChartEntity {
 			ChartData: "test-trade-2"}}
 
 	chart := &entity.Chart{
-		UserId:     ctx.User.GetId(),
+		UserId:     ctx.GetUser().GetId(),
 		Base:       "BTC",
 		Quote:      "USD",
 		Exchange:   "gdax",

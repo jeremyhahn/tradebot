@@ -44,7 +44,7 @@ func TestChartDAO(t *testing.T) {
 	chart := createChart(ctx)
 	chartDAO.Create(chart)
 
-	charts, err := chartDAO.Find(ctx.User, false)
+	charts, err := chartDAO.Find(ctx.GetUser(), false)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
@@ -79,7 +79,7 @@ func TestChartDAO_GetIndicators(t *testing.T) {
 	chart.SetIndicators(nil)
 	chartDAO.Create(chart)
 
-	charts, err := chartDAO.Find(ctx.User, false)
+	charts, err := chartDAO.Find(ctx.GetUser(), false)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
@@ -108,7 +108,7 @@ func TestChartDAO_GetTrades(t *testing.T) {
 	chart.SetIndicators(nil)
 	chartDAO.Create(chart)
 
-	charts, err := chartDAO.Find(ctx.User, false)
+	charts, err := chartDAO.Find(ctx.GetUser(), false)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
@@ -147,11 +147,12 @@ func TestChartDAO_GetTrades(t *testing.T) {
 
 func TestChartService_GetIndicators(t *testing.T) {
 	ctx := NewIntegrationTestContext()
+	userDAO := dao.NewUserDAO(ctx)
 	chartDAO := dao.NewChartDAO(ctx)
 	chart := createChart(ctx)
 	chartDAO.Create(chart)
 
-	charts, err := chartDAO.Find(ctx.User, false)
+	charts, err := chartDAO.Find(ctx.GetUser(), false)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
@@ -171,7 +172,7 @@ func TestChartService_GetIndicators(t *testing.T) {
 	assert.Equal(t, "14,70,30", indicators[2].Parameters)
 
 	mapper := mapper.NewChartMapper(ctx)
-	service := NewChartService(ctx, chartDAO, new(MockExchangeService_Chart), new(MockIndicatorService_Chart))
+	service := NewChartService(ctx, userDAO, chartDAO, new(MockExchangeService_Chart), new(MockIndicatorService_Chart))
 
 	commonChart := mapper.MapChartEntityToDto(&charts[0])
 	Indicators, err := service.GetIndicators(commonChart, createIntegrationTestCandles())
@@ -188,7 +189,7 @@ func TestChartService_Stream(t *testing.T) {
 	chart := createChart(ctx)
 	chartDAO.Create(chart)
 
-	charts, err := chartDAO.Find(ctx.User)
+	charts, err := chartDAO.Find(ctx.GetUser())
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(charts))
 	assert.Equal(t, "BTC", charts[0].GetBase())
@@ -249,9 +250,9 @@ func createChartTrades() []entity.Trade {
 	return trades
 }
 
-func createChart(ctx *common.Context) entity.ChartEntity {
+func createChart(ctx common.Context) entity.ChartEntity {
 	return &entity.Chart{
-		UserId:     ctx.User.GetId(),
+		UserId:     ctx.GetUser().GetId(),
 		Base:       "BTC",
 		Quote:      "USD",
 		Exchange:   "gdax",
@@ -286,11 +287,11 @@ func (mcs *MockExchange_Chart) SubscribeToLiveFeed(currencyPair *common.Currency
 		Satoshis: 0.12345678}
 }
 
-func (mes *MockExchangeService_Chart) CreateExchange(user common.User, exchangeName string) common.Exchange {
-	return new(MockExchange_Chart)
+func (mes *MockExchangeService_Chart) CreateExchange(exchangeName string) (common.Exchange, error) {
+	return new(MockExchange_Chart), nil
 }
 
-func (mes *MockExchangeService_Chart) GetCurrencyPairs(user common.User, exchangeName string) ([]common.CurrencyPair, error) {
+func (mes *MockExchangeService_Chart) GetCurrencyPairs(exchangeName string) ([]common.CurrencyPair, error) {
 	return []common.CurrencyPair{
 		common.CurrencyPair{
 			Base:          "BTC",
@@ -298,20 +299,20 @@ func (mes *MockExchangeService_Chart) GetCurrencyPairs(user common.User, exchang
 			LocalCurrency: "USD"}}, nil
 }
 
-func (mes *MockExchangeService_Chart) GetExchange(user common.User, exchangeName string) common.Exchange {
+func (mes *MockExchangeService_Chart) GetExchange(exchangeName string) common.Exchange {
 	return new(MockExchange_Chart)
 }
 
-func (mes *MockExchangeService_Chart) GetUserExchanges(user common.User) []viewmodel.UserCryptoExchange {
+func (mes *MockExchangeService_Chart) GetUserExchanges() []viewmodel.UserCryptoExchange {
 	return nil
 }
 
-func (mes *MockExchangeService_Chart) GetDisplayNames(user common.User) []string {
+func (mes *MockExchangeService_Chart) GetDisplayNames() []string {
 	return []string{"Exchange 1", "Exchange 2", "Exchange 3"}
 }
 
-func (mes *MockExchangeService_Chart) GetExchanges(user common.User) []common.Exchange {
-	ctx := &common.Context{
+func (mes *MockExchangeService_Chart) GetExchanges() []common.Exchange {
+	ctx := &common.Ctx{
 		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,

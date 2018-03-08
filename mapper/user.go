@@ -7,20 +7,20 @@ import (
 )
 
 type UserMapper interface {
-	MapUserEntityToDto(entity entity.UserEntity) common.User
-	MapUserDtoToEntity(dto common.User) entity.UserEntity
+	MapUserEntityToDto(entity entity.UserEntity) common.UserContext
+	MapUserDtoToEntity(dto common.UserContext) entity.UserEntity
 }
 
 type DefaultUserMapper struct {
-	ctx *common.Context
+	ctx common.Context
 }
 
 func NewUserMapper() UserMapper {
 	return &DefaultUserMapper{}
 }
 
-func (mapper *DefaultUserMapper) MapUserEntityToDto(entity entity.UserEntity) common.User {
-	return &dto.UserDTO{
+func (mapper *DefaultUserMapper) MapUserEntityToDto(entity entity.UserEntity) common.UserContext {
+	return &dto.UserContextDTO{
 		Id:            entity.GetId(),
 		Username:      entity.GetUsername(),
 		LocalCurrency: entity.GetLocalCurrency(),
@@ -28,7 +28,7 @@ func (mapper *DefaultUserMapper) MapUserEntityToDto(entity entity.UserEntity) co
 		Keystore:      entity.GetKeystore()}
 }
 
-func (mapper *DefaultUserMapper) MapUserDtoToEntity(dto common.User) entity.UserEntity {
+func (mapper *DefaultUserMapper) MapUserDtoToEntity(dto common.UserContext) entity.UserEntity {
 	return &entity.User{
 		Id:            dto.GetId(),
 		Username:      dto.GetUsername(),

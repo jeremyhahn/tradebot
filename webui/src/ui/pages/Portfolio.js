@@ -208,7 +208,7 @@ class Portfolio extends React.Component {
 						{ this.state.portfolio.wallets.map( (wallet, i) =>
 							<ListItem key={wallet.currency + "-" + i} button>
 								<Avatar src={"images/crypto/128/" + wallet.currency.toLowerCase() + ".png"} />
-								<ListItemText primary={wallet.currency} secondary={wallet.balance  + " (" + wallet.net_worth.formatMoney() +")" } />
+								<ListItemText primary={wallet.currency} secondary={wallet.balance  + " (" + wallet.value.formatMoney() +")" } />
 							</ListItem>
 						)}
 						</List>

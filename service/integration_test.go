@@ -3,6 +3,7 @@
 package service
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -11,19 +12,18 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
-	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/joho/godotenv"
 	logging "github.com/op/go-logging"
 )
 
-var TEST_CONTEXT *common.Context
+var TEST_CONTEXT common.Context
 var TEST_LOCK sync.Mutex
 var TEST_USERNAME = "test"
-var TEST_COREDBPATH = "/tmp/tradebot-coredb-service-testing.db"
-var TEST_PRICEDBPATH = "/tmp/tradebot-pricedb-service-testing.db"
 
-func NewIntegrationTestContext() *common.Context {
+var database = common.CreateDatabase("/tmp", "service-", true)
+
+func NewIntegrationTestContext() common.Context {
 
 	TEST_LOCK.Lock()
 
@@ -31,49 +31,71 @@ func NewIntegrationTestContext() *common.Context {
 	logging.SetBackend(backend)
 	logger := logging.MustGetLogger(common.APPNAME)
 
-	coreDB, err := gorm.Open("sqlite3", TEST_COREDBPATH)
-	coreDB.LogMode(true)
-	if err != nil {
-		panic(err)
-	}
-
-	priceDB, err := gorm.Open("sqlite3", TEST_PRICEDBPATH)
-	priceDB.LogMode(true)
-	if err != nil {
-		panic(err)
-	}
-
-	err = godotenv.Load("../.env")
+	err := godotenv.Load("../.env")
 	if err != nil {
 		panic("Error loading test environment from .env")
 	}
 
-	TEST_CONTEXT = &common.Context{
-		CoreDB:  coreDB,
-		PriceDB: priceDB,
+	appRoot := "../"
+	database.MigrateCoreDB()
+	database.MigratePriceDB()
+
+	TEST_CONTEXT = &common.Ctx{
+		AppRoot: appRoot,
+		CoreDB:  database.ConnectCoreDB(),
+		PriceDB: database.ConnectPriceDB(),
 		Logger:  logger,
+		Debug:   true,
+		SSL:     true,
 		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,
-			LocalCurrency: "USD"}}
+			LocalCurrency: "USD"},
+		IPC:      fmt.Sprintf("%stest/ethereum/blockchain/geth.ipc", appRoot),
+		Keystore: fmt.Sprintf("%stest/ethereum/blockchain/keystore", appRoot)}
+
+	var wallets []entity.UserWallet
+	wallets = append(wallets, entity.UserWallet{
+		Currency: "BTC",
+		Address:  os.Getenv("BTC_ADDRESS")})
+	wallets = append(wallets, entity.UserWallet{
+		Currency: "XRP",
+		Address:  os.Getenv("XRP_ADDRESS")})
+
+	var exchanges []entity.UserCryptoExchange
+	exchanges = append(exchanges, entity.UserCryptoExchange{
+		Name:   "gdax",
+		Key:    os.Getenv("GDAX_APIKEY"),
+		Secret: os.Getenv("GDAX_SECRET"),
+		Extra:  os.Getenv("GDAX_PASSPHRASE")})
+	exchanges = append(exchanges, entity.UserCryptoExchange{
+		Name:   "bittrex",
+		Key:    os.Getenv("BITTREX_APIKEY"),
+		Secret: os.Getenv("BITTREX_SECRET"),
+		Extra:  os.Getenv("BITTREX_EXTRA")})
+	exchanges = append(exchanges, entity.UserCryptoExchange{
+		Name:   "binance",
+		Key:    os.Getenv("BINANCE_APIKEY"),
+		Secret: os.Getenv("BINANCE_SECRET"),
+		Extra:  os.Getenv("BINANCE_EXTRA")})
 
 	userDAO := dao.NewUserDAO(TEST_CONTEXT)
-	userDAO.Save(&entity.User{Username: TEST_USERNAME, LocalCurrency: "USD"})
+	userDAO.Save(&entity.User{Username: TEST_USERNAME, LocalCurrency: "USD", Exchanges: exchanges, Wallets: wallets})
 
 	return TEST_CONTEXT
 }
 
 func CleanupIntegrationTest() {
 	if TEST_CONTEXT != nil {
-		TEST_CONTEXT.CoreDB.Close()
-		TEST_CONTEXT.PriceDB.Close()
-		os.Remove(TEST_COREDBPATH)
-		os.Remove(TEST_PRICEDBPATH)
+		database.Close(TEST_CONTEXT.GetCoreDB())
+		database.Close(TEST_CONTEXT.GetPriceDB())
+		database.DropCoreDB()
+		database.DropPriceDB()
 		TEST_LOCK.Unlock()
 	}
 }
 
-func createIntegrationTestChart(ctx *common.Context) entity.ChartEntity {
+func createIntegrationTestChart(ctx common.Context) entity.ChartEntity {
 	userIndicators := []entity.ChartIndicator{
 		entity.ChartIndicator{
 			Name:       "RelativeStrengthIndex",
@@ -93,7 +115,7 @@ func createIntegrationTestChart(ctx *common.Context) entity.ChartEntity {
 
 	trades := []entity.Trade{
 		entity.Trade{
-			UserId:    ctx.User.GetId(),
+			UserId:    ctx.GetUser().GetId(),
 			Base:      "BTC",
 			Quote:     "USD",
 			Exchange:  "Test",
@@ -103,7 +125,7 @@ func createIntegrationTestChart(ctx *common.Context) entity.ChartEntity {
 			Price:     10000,
 			ChartData: "test-trade-1"},
 		entity.Trade{
-			UserId:    ctx.User.GetId(),
+			UserId:    ctx.GetUser().GetId(),
 			Base:      "BTC",
 			Quote:     "USD",
 			Exchange:  "Test",
@@ -114,7 +136,7 @@ func createIntegrationTestChart(ctx *common.Context) entity.ChartEntity {
 			ChartData: "test-trade-2"}}
 
 	chart := &entity.Chart{
-		UserId:     ctx.User.GetId(),
+		UserId:     ctx.GetUser().GetId(),
 		Base:       "BTC",
 		Quote:      "USD",
 		Exchange:   "gdax",

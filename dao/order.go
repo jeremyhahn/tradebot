@@ -13,28 +13,26 @@ type OrderDAO interface {
 }
 
 type OrderDAOImpl struct {
-	ctx   *common.Context
-	Items []entity.Order
+	ctx common.Context
 	OrderDAO
 }
 
-func NewOrderDAO(ctx *common.Context) OrderDAO {
-	ctx.CoreDB.AutoMigrate(&entity.Order{})
+func NewOrderDAO(ctx common.Context) OrderDAO {
 	return &OrderDAOImpl{ctx: ctx}
 }
 
 func (dao *OrderDAOImpl) Create(Order entity.OrderEntity) error {
-	return dao.ctx.CoreDB.Create(Order).Error
+	return dao.ctx.GetCoreDB().Create(Order).Error
 }
 
 func (dao *OrderDAOImpl) Save(Order entity.OrderEntity) error {
-	return dao.ctx.CoreDB.Save(Order).Error
+	return dao.ctx.GetCoreDB().Save(Order).Error
 }
 
 func (dao *OrderDAOImpl) Find() ([]entity.Order, error) {
 	var Orders []entity.Order
-	daoUser := &entity.User{Id: dao.ctx.User.GetId()}
-	if err := dao.ctx.CoreDB.Model(daoUser).Related(&Orders).Error; err != nil {
+	daoUser := &entity.User{Id: dao.ctx.GetUser().GetId()}
+	if err := dao.ctx.GetCoreDB().Model(daoUser).Related(&Orders).Error; err != nil {
 		return nil, err
 	}
 	return Orders, nil

@@ -12,12 +12,10 @@ type MarketCapDAO struct {
 	logger *logging.Logger
 }
 
-func NewMarketCapDAO(ctx *common.Context) *MarketCapDAO {
-	ctx.CoreDB.AutoMigrate(&entity.MarketCap{})
-	ctx.CoreDB.AutoMigrate(&entity.GlobalMarketCap{})
+func NewMarketCapDAO(ctx common.Context) *MarketCapDAO {
 	return &MarketCapDAO{
-		db:     ctx.CoreDB,
-		logger: ctx.Logger}
+		db:     ctx.GetCoreDB(),
+		logger: ctx.GetLogger()}
 }
 
 func (dao *MarketCapDAO) Get(symbol string) (*common.MarketCap, error) {

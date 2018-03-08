@@ -18,72 +18,61 @@ type WebRequest struct {
 }
 
 type WebServer struct {
-	ctx              *common.Context
-	port             int
-	closeChan        chan bool
-	portfolioHandler *websocket.PortfolioHandler
-	marketcapService *service.MarketCapService
-	exchangeService  service.ExchangeService
-	authService      service.AuthService
-	userService      service.UserService
-	portfolioService service.PortfolioService
-	orderService     service.OrderService
-	jwt              *JsonWebToken
+	ctx                 common.Context
+	port                int
+	closeChan           chan bool
+	portfolioHandler    *websocket.PortfolioHandler
+	authService         service.AuthService
+	jsonWebTokenService service.JsonWebTokenService
 }
 
-func NewWebServer(ctx *common.Context, port int, marketcapService *service.MarketCapService,
-	exchangeService service.ExchangeService, authService service.AuthService,
-	userService service.UserService, portfolioService service.PortfolioService,
-	orderService service.OrderService, jwt *JsonWebToken) *WebServer {
+func NewWebServer(ctx common.Context, port int, authService service.AuthService,
+	jsonWebTokenService service.JsonWebTokenService) *WebServer {
 	return &WebServer{
-		ctx:              ctx,
-		port:             port,
-		closeChan:        make(chan bool, 1),
-		marketcapService: marketcapService,
-		exchangeService:  exchangeService,
-		authService:      authService,
-		userService:      userService,
-		portfolioService: portfolioService,
-		orderService:     orderService,
-		jwt:              jwt}
+		ctx:                 ctx,
+		port:                port,
+		closeChan:           make(chan bool, 1),
+		authService:         authService,
+		jsonWebTokenService: jsonWebTokenService}
 }
 
 func (ws *WebServer) Start() {
 
 	router := mux.NewRouter()
-	jsonWriter := NewJsonWriter()
+	jsonWriter := common.NewJsonWriter()
 	fs := http.FileServer(http.Dir("webui/public"))
 
 	// REST Handlers - Public Access
-	reg := rest.NewRegisterRestService(ws.ctx, ws.authService, jsonWriter)
-	router.HandleFunc("/api/v1/register", reg.Register)
-	router.HandleFunc("/api/v1/login", ws.jwt.GenerateToken)
+	registrationService := rest.NewRegisterRestService(ws.ctx, ws.authService, jsonWriter)
+	router.HandleFunc("/api/v1/register", registrationService.Register)
+	router.HandleFunc("/api/v1/login", ws.jsonWebTokenService.GenerateToken)
 
 	// REST Handlers - Authentication Required
-	ohrs := rest.NewOrderHistoryRestService(ws.ctx, ws.orderService, jsonWriter)
-	ers := rest.NewExchangeRestService(ws.ctx, ws.exchangeService, ws.userService, jsonWriter)
+	orderHistoryRestService := rest.NewOrderHistoryRestService(ws.jsonWebTokenService, jsonWriter)
+	exchangeRestService := rest.NewExchangeRestService(ws.jsonWebTokenService, jsonWriter)
+	userRestService := rest.NewUserRestService(ws.jsonWebTokenService, jsonWriter)
 	router.Handle("/api/v1/orderhistory", negroni.New(
-		negroni.HandlerFunc(ws.jwt.MiddlewareValidator),
-		negroni.Wrap(http.HandlerFunc(ohrs.GetOrderHistory)),
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(orderHistoryRestService.GetOrderHistory)),
 	))
 	router.Handle("/api/v1/import", negroni.New(
-		negroni.HandlerFunc(ws.jwt.MiddlewareValidator),
-		negroni.Wrap(http.HandlerFunc(ohrs.Import)),
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(orderHistoryRestService.Import)),
 	))
 	router.Handle("/api/v1/exchanges/names", negroni.New(
-		negroni.HandlerFunc(ws.jwt.MiddlewareValidator),
-		negroni.Wrap(http.HandlerFunc(ers.GetDisplayNames)),
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(exchangeRestService.GetDisplayNames)),
 	))
 	router.Handle("/api/v1/user/exchanges", negroni.New(
-		negroni.HandlerFunc(ws.jwt.MiddlewareValidator),
-		negroni.Wrap(http.HandlerFunc(ers.GetUserExchanges)),
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(userRestService.GetExchanges)),
 	))
 
 	// Websocket Handlers
 	router.HandleFunc("/ws/portfolio", func(w http.ResponseWriter, r *http.Request) {
-		portfolioHub := websocket.NewPortfolioHub(ws.ctx.Logger)
+		portfolioHub := websocket.NewPortfolioHub(ws.ctx.GetLogger())
 		go portfolioHub.Run()
-		ph := websocket.NewPortfolioHandler(ws.ctx, portfolioHub, ws.marketcapService, ws.userService, ws.portfolioService)
+		ph := websocket.NewPortfolioHandler(ws.ctx.GetLogger(), portfolioHub, ws.jsonWebTokenService)
 		ph.OnConnect(w, r)
 	})
 
@@ -100,9 +89,9 @@ func (ws *WebServer) Start() {
 	http.Handle("/", router)
 
 	sPort := fmt.Sprintf(":%d", ws.port)
-	if ws.ctx.SSL {
+	if ws.ctx.GetSSL() {
 
-		ws.ctx.Logger.Debugf("Starting web services on TLS port %d", ws.port)
+		ws.ctx.GetLogger().Debugf("Starting web services on TLS port %d", ws.port)
 
 		// Redirect HTTP -> HTTPS
 		go http.ListenAndServe(sPort, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -112,16 +101,16 @@ func (ws *WebServer) Start() {
 		// Serve HTTPS Requests
 		err := http.ListenAndServeTLS(fmt.Sprintf(":%d", ws.port), "keys/cert.pem", "keys/key.pem", router)
 		if err != nil {
-			ws.ctx.Logger.Fatalf("[WebServer] Unable to start TLS web server: %s", err.Error())
+			ws.ctx.GetLogger().Fatalf("[WebServer] Unable to start TLS web server: %s", err.Error())
 		}
 	} else {
 
-		ws.ctx.Logger.Debugf("Starting web services on port %d", ws.port)
+		ws.ctx.GetLogger().Debugf("Starting web services on port %d", ws.port)
 
 		// Serve HTTP Requests
 		err := http.ListenAndServe(sPort, router)
 		if err != nil {
-			ws.ctx.Logger.Fatalf("[WebServer] Unable to start web server: %s", err.Error())
+			ws.ctx.GetLogger().Fatalf("[WebServer] Unable to start web server: %s", err.Error())
 		}
 	}
 }
@@ -130,13 +119,13 @@ func (ws *WebServer) Run() {
 	for {
 		select {
 		case <-ws.closeChan:
-			ws.ctx.Logger.Debug("[WebServer.run] Stopping Web server")
+			ws.ctx.GetLogger().Debug("[WebServer.run] Stopping Web server")
 			break
 		}
 	}
 }
 
 func (ws *WebServer) Stop() {
-	ws.ctx.Logger.Info("Stopping web server")
+	ws.ctx.GetLogger().Info("Stopping web server")
 	ws.closeChan <- true
 }

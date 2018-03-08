@@ -23,7 +23,7 @@ var GDAX_MUTEX sync.Mutex
 
 type GDAX struct {
 	gdax            *gdax.Client
-	ctx             *common.Context
+	ctx             common.Context
 	logger          *logging.Logger
 	name            string
 	lastApiCall     int64
@@ -35,11 +35,11 @@ type GDAX struct {
 	common.Exchange
 }
 
-func NewGDAX(ctx *common.Context, _gdax entity.UserExchangeEntity) common.Exchange {
+func NewGDAX(ctx common.Context, _gdax entity.UserExchangeEntity) common.Exchange {
 	return &GDAX{
 		ctx:          ctx,
 		gdax:         gdax.NewClient(_gdax.GetSecret(), _gdax.GetKey(), _gdax.GetExtra()),
-		logger:       ctx.Logger,
+		logger:       ctx.GetLogger(),
 		name:         "gdax",
 		apiCallCount: 0,
 		netWorth:     0.0,
@@ -124,7 +124,7 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.O
 				orderIds[e.Details.OrderId] = true
 				order, err := _gdax.gdax.GetOrder(e.Details.OrderId)
 				if err != nil {
-					_gdax.ctx.Logger.Errorf("[GDAX.GetOrderHistory] Error retrieving order: %s", err.Error())
+					_gdax.ctx.GetLogger().Errorf("[GDAX.GetOrderHistory] Error retrieving order: %s", err.Error())
 					return orders
 				}
 				pieces := strings.Split(e.Details.ProductId, "-")
@@ -169,8 +169,8 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
 	}
 	for _, a := range accounts {
 		price := 1.0
-		if a.Currency != _gdax.ctx.User.GetLocalCurrency() {
-			currency := fmt.Sprintf("%s-%s", a.Currency, _gdax.ctx.User.GetLocalCurrency())
+		if a.Currency != _gdax.ctx.GetUser().GetLocalCurrency() {
+			currency := fmt.Sprintf("%s-%s", a.Currency, _gdax.ctx.GetUser().GetLocalCurrency())
 			_gdax.logger.Debugf("[GDAX.GetBalances] Getting balances for %s", currency)
 			ticker, err := _gdax.gdax.GetTicker(currency)
 			if err != nil {
@@ -245,12 +245,12 @@ func (_gdax *GDAX) SubscribeToLiveFeed(currencyPair *common.CurrencyPair,
 	_gdax.SubscribeToLiveFeed(currencyPair, priceChannel)
 }
 
-func (_gdax *GDAX) GetExchange() common.CryptoExchange {
+func (_gdax *GDAX) GetSummary() common.CryptoExchangeSummary {
 	total := 0.0
 	satoshis := 0.0
 	balances, _ := _gdax.GetBalances()
 	for _, c := range balances {
-		if c.GetCurrency() == _gdax.ctx.User.GetLocalCurrency() {
+		if c.GetCurrency() == _gdax.ctx.GetUser().GetLocalCurrency() {
 			total += c.GetTotal()
 		} else if c.IsBitcoin() {
 			satoshis += c.GetBalance()
@@ -269,7 +269,7 @@ func (_gdax *GDAX) GetExchange() common.CryptoExchange {
 	}
 	s, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
 	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-	exchange := &dto.CryptoExchangeDTO{
+	exchange := &dto.CryptoExchangeSummaryDTO{
 		Name:     _gdax.name,
 		URL:      "https://www.gdax.com",
 		Total:    t,
@@ -280,7 +280,7 @@ func (_gdax *GDAX) GetExchange() common.CryptoExchange {
 
 func (_gdax *GDAX) ParseImport(file string) ([]common.Order, error) {
 	var orders []common.Order
-	_gdax.ctx.Logger.Error("[GDAX.ParseImport] Unsupported!")
+	_gdax.ctx.GetLogger().Error("[GDAX.ParseImport] Unsupported!")
 	return orders, errors.New("GDAX.ParseImport Unsupported")
 }
 

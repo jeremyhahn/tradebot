@@ -5,6 +5,7 @@ package service
 import (
 	"testing"
 
+	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
@@ -13,94 +14,101 @@ import (
 
 func TestGetIndicator_Success(t *testing.T) {
 	ctx := NewIntegrationTestContext()
-	indicatorDAO := dao.NewIndicatorDAO(ctx)
-	indicatorDAO.Create(&entity.Indicator{
+	pluginDAO := dao.NewPluginDAO(ctx)
+	pluginDAO.Create(&entity.Plugin{
 		Name:     "RelativeStrengthIndex",
 		Filename: "rsi.so",
-		Version:  "0.0.1a"})
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
 
+	pluginMapper := mapper.NewPluginMapper()
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
-	pluginService := NewPluginService(ctx)
-	indicatorMapper := mapper.NewIndicatorMapper()
-	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
+	pluginService := NewPluginService(ctx, pluginDAO, pluginMapper)
 
+	indicatorService := NewIndicatorService(ctx, chartIndicatorDAO, pluginService)
 	rsi, err := indicatorService.GetIndicator("RelativeStrengthIndex")
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "RelativeStrengthIndex", rsi.GetName())
 	assert.Equal(t, "rsi.so", rsi.GetFilename())
 	assert.Equal(t, "0.0.1a", rsi.GetVersion())
+	assert.Equal(t, common.INDICATOR_PLUGIN_TYPE, rsi.GetType())
 
 	CleanupIntegrationTest()
 }
 
 func TestGetIndicator_SuccessfulLoadingTwice(t *testing.T) {
 	ctx := NewIntegrationTestContext()
-	indicatorDAO := dao.NewIndicatorDAO(ctx)
-	assert.NotNil(t, indicatorDAO)
-	indicatorDAO.Find()
 
-	indicatorDAO.Create(&entity.Indicator{
+	pluginDAO := dao.NewPluginDAO(ctx)
+	assert.NotNil(t, pluginDAO)
+	pluginDAO.Find(common.INDICATOR_PLUGIN_TYPE)
+
+	pluginDAO.Create(&entity.Plugin{
 		Name:     "RelativeStrengthIndex",
 		Filename: "rsi.so",
-		Version:  "0.0.1a"})
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
 
+	pluginMapper := mapper.NewPluginMapper()
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
-	pluginService := NewPluginService(ctx)
-	indicatorMapper := mapper.NewIndicatorMapper()
-	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
+	pluginService := NewPluginService(ctx, pluginDAO, pluginMapper)
+
+	indicatorService := NewIndicatorService(ctx, chartIndicatorDAO, pluginService)
 
 	rsi, err := indicatorService.GetIndicator("RelativeStrengthIndex")
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "RelativeStrengthIndex", rsi.GetName())
 	assert.Equal(t, "rsi.so", rsi.GetFilename())
 	assert.Equal(t, "0.0.1a", rsi.GetVersion())
+	assert.Equal(t, common.INDICATOR_PLUGIN_TYPE, rsi.GetType())
 
 	rsi2, err2 := indicatorService.GetIndicator("RelativeStrengthIndex")
 	assert.Equal(t, nil, err2)
 	assert.Equal(t, "RelativeStrengthIndex", rsi2.GetName())
 	assert.Equal(t, "rsi.so", rsi2.GetFilename())
 	assert.Equal(t, "0.0.1a", rsi2.GetVersion())
+	assert.Equal(t, common.INDICATOR_PLUGIN_TYPE, rsi2.GetType())
 
 	CleanupIntegrationTest()
 }
 
 func TestGetIndicator_IndicatorDoesntExistInDatabase(t *testing.T) {
 	ctx := NewIntegrationTestContext()
-	indicatorDAO := dao.NewIndicatorDAO(ctx)
-
+	pluginDAO := dao.NewPluginDAO(ctx)
+	pluginMapper := mapper.NewPluginMapper()
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
-	pluginService := NewPluginService(ctx)
-	indicatorMapper := mapper.NewIndicatorMapper()
-	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
-
+	pluginService := NewPluginService(ctx, pluginDAO, pluginMapper)
+	indicatorService := NewIndicatorService(ctx, chartIndicatorDAO, pluginService)
 	doesntExistIndicator, err := indicatorService.GetIndicator("IndicatorDoesntExist")
 	assert.NotNil(t, err)
 	assert.Equal(t, nil, doesntExistIndicator)
-	assert.Equal(t, "Failed to get platform indicator: IndicatorDoesntExist", err.Error())
-
+	assert.Equal(t, "IndicatorDoesntExist (indicator) plugin not found in database", err.Error())
 	CleanupIntegrationTest()
 }
 
-func TestGetIndicator_IndicatorDoesntExist(t *testing.T) {
+func TestGetIndicator_IndicatorExists(t *testing.T) {
 	ctx := NewIntegrationTestContext()
-	indicatorDAO := dao.NewIndicatorDAO(ctx)
-	indicator := &entity.Indicator{
-		Name:     "IndicatorDoesntExist",
-		Filename: "fake.so",
-		Version:  "0.0.1a"}
-	indicatorDAO.Create(indicator)
 
+	pluginDAO := dao.NewPluginDAO(ctx)
+	pluginMapper := mapper.NewPluginMapper()
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
-	pluginService := NewPluginService(ctx)
-	indicatorMapper := mapper.NewIndicatorMapper()
-	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
+	pluginService := NewPluginService(ctx, pluginDAO, pluginMapper)
+	indicatorService := NewIndicatorService(ctx, chartIndicatorDAO, pluginService)
 
-	doesntExistIndicator, err := indicatorService.GetIndicator("IndicatorDoesntExist")
+	indicator := &entity.Plugin{
+		Name:     "IndicatorExists",
+		Filename: "fake.so",
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE}
+	pluginDAO.Create(indicator)
+
+	doesntExistIndicator, err := indicatorService.GetIndicator("IndicatorExists")
 	assert.Nil(t, err)
 	assert.NotNil(t, doesntExistIndicator)
 	assert.Equal(t, indicator.GetName(), doesntExistIndicator.GetName())
 	assert.Equal(t, indicator.GetFilename(), doesntExistIndicator.GetFilename())
 	assert.Equal(t, indicator.GetVersion(), doesntExistIndicator.GetVersion())
+	assert.Equal(t, indicator.GetType(), doesntExistIndicator.GetType())
 
 	CleanupIntegrationTest()
 }
@@ -109,21 +117,22 @@ func TestGetChartIndicator_GetIndicator(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 
 	chartDAO := dao.NewChartDAO(ctx)
-	indicatorDAO := dao.NewIndicatorDAO(ctx)
-	indicatorDAO.Create(&entity.Indicator{
+	pluginDAO := dao.NewPluginDAO(ctx)
+	pluginMapper := mapper.NewPluginMapper()
+	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
+	pluginService := CreatePluginService(ctx, "../plugins", pluginDAO, pluginMapper)
+	indicatorService := NewIndicatorService(ctx, chartIndicatorDAO, pluginService)
+
+	pluginDAO.Create(&entity.Plugin{
 		Name:     "RelativeStrengthIndex",
 		Filename: "rsi.so",
-		Version:  "0.0.1a"})
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
 
-	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
 	chartEntity := createIntegrationTestChart(ctx)
 	chartDAO.Create(chartEntity)
 
 	indicators := chartEntity.GetIndicators()
-
-	pluginService := CreatePluginService(ctx, "../plugins")
-	indicatorMapper := mapper.NewIndicatorMapper()
-	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
 
 	chartMapper := mapper.NewChartMapper(ctx)
 	chartDTO := chartMapper.MapChartEntityToDto(chartEntity)
@@ -143,40 +152,44 @@ func TestGetChartIndicator_GetIndicator(t *testing.T) {
 func TestGetChartIndicator_GetIndicators(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 
-	indicatorDAO := dao.NewIndicatorDAO(ctx)
-	indicatorDAO.Create(&entity.Indicator{
+	pluginDAO := dao.NewPluginDAO(ctx)
+	pluginMapper := mapper.NewPluginMapper()
+
+	pluginDAO.Create(&entity.Plugin{
 		Name:     "RelativeStrengthIndex",
 		Filename: "rsi.so",
-		Version:  "0.0.1a"})
-	indicatorDAO.Create(&entity.Indicator{
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
 		Name:     "BollingerBands",
 		Filename: "bollinger_bands.so",
-		Version:  "0.0.1a"})
-	indicatorDAO.Create(&entity.Indicator{
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
 		Name:     "MovingAverageConvergenceDivergence",
 		Filename: "macd.so",
-		Version:  "0.0.1a"})
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
 
-	strategyDAO := dao.NewStrategyDAO(ctx)
-	strategyEntity := &entity.Strategy{
+	strategyEntity := &entity.Plugin{
 		Name:     "DefaultTradingStrategy",
 		Filename: "default.so",
-		Version:  "0.0.1a"}
-	strategyDAO.Create(strategyEntity)
+		Version:  "0.0.1a",
+		Type:     common.STRATEGY_PLUGIN_TYPE}
+	pluginDAO.Create(strategyEntity)
 
 	chartDAO := dao.NewChartDAO(ctx)
 	chartEntity := createIntegrationTestChart(ctx)
 	chartDAO.Create(chartEntity)
 
-	pluginService := CreatePluginService(ctx, "../plugins")
+	pluginService := CreatePluginService(ctx, "../plugins", pluginDAO, pluginMapper)
 	candles := createIntegrationTestCandles()
 
 	chartMapper := mapper.NewChartMapper(ctx)
 	chartDTO := chartMapper.MapChartEntityToDto(chartEntity)
 
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
-	indicatorMapper := mapper.NewIndicatorMapper()
-	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
+	indicatorService := NewIndicatorService(ctx, chartIndicatorDAO, pluginService)
 
 	financialIndicators, err := indicatorService.GetChartIndicators(chartDTO, candles)
 	assert.Equal(t, err, nil)

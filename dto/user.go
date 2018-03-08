@@ -3,15 +3,19 @@ package dto
 import "github.com/jeremyhahn/tradebot/common"
 
 type UserDTO struct {
-	Id            uint   `json:"id"`
-	Username      string `json:"username"`
-	LocalCurrency string `json:"local_currency"`
-	Etherbase     string `json:"etherbase"`
-	Keystore      string `json:"keystore"`
-	common.User
+	Id            uint                        `json:"id"`
+	Username      string                      `json:"username"`
+	LocalCurrency string                      `json:"local_currency"`
+	Etherbase     string                      `json:"etherbase"`
+	Keystore      string                      `json:"keystore"`
+	Charts        []common.Chart              `json:"charts"`
+	Exchanges     []common.UserCryptoExchange `json:"exchanges"`
+	Wallets       []common.UserCryptoWallet   `json:"wallets"`
+	Tokens        []common.EthereumToken      `json:"tokens"`
+	common.UserContext
 }
 
-func NewUserDTO() common.User {
+func NewUserDTO() common.UserContext {
 	return &UserDTO{}
 }
 
@@ -35,10 +39,18 @@ func (dto *UserDTO) GetKeystore() string {
 	return dto.Keystore
 }
 
-func (dto *UserDTO) SetEtherbase(etherbase string) {
-	dto.Etherbase = etherbase
+func (dto *UserDTO) GetCharts() []common.Chart {
+	return dto.Charts
 }
 
-func (dto *UserDTO) SetKeystore(keystore string) {
-	dto.Keystore = keystore
+func (dto *UserDTO) GetExchanges() []common.UserCryptoExchange {
+	return dto.Exchanges
+}
+
+func (dto *UserDTO) GetWallets() []common.UserCryptoWallet {
+	return dto.Wallets
+}
+
+func (dto *UserDTO) GetTokens() []common.EthereumToken {
+	return dto.Tokens
 }

@@ -16,7 +16,7 @@ import (
 )
 
 type Bittrex struct {
-	ctx        *common.Context
+	ctx        common.Context
 	client     *bittrex.Bittrex
 	logger     *logging.Logger
 	price      float64
@@ -27,11 +27,11 @@ type Bittrex struct {
 	common.Exchange
 }
 
-func NewBittrex(ctx *common.Context, btx entity.UserExchangeEntity) common.Exchange {
+func NewBittrex(ctx common.Context, btx entity.UserExchangeEntity) common.Exchange {
 	return &Bittrex{
 		ctx:        ctx,
 		client:     bittrex.New(btx.GetKey(), btx.GetSecret()),
-		logger:     ctx.Logger,
+		logger:     ctx.GetLogger(),
 		name:       "bittrex",
 		tradingFee: .025}
 }
@@ -115,8 +115,8 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 	}
 	btcCurrencyPair := &common.CurrencyPair{
 		Base:          "BTC",
-		Quote:         b.ctx.User.GetLocalCurrency(),
-		LocalCurrency: b.ctx.User.GetLocalCurrency()}
+		Quote:         b.ctx.GetUser().GetLocalCurrency(),
+		LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
 	localizedBtcCurrencyPair := b.localizedCurrencyPair(btcCurrencyPair)
 	for _, bal := range balances {
 		var currency string
@@ -191,8 +191,8 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 func (b *Bittrex) getBitcoinPrice() float64 {
 	currencyPair := &common.CurrencyPair{
 		Base:          "BTC",
-		Quote:         b.ctx.User.GetLocalCurrency(),
-		LocalCurrency: b.ctx.User.GetLocalCurrency()}
+		Quote:         b.ctx.GetUser().GetLocalCurrency(),
+		LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
 	localizedCurrencyPair := b.localizedCurrencyPair(currencyPair)
 	symbol := fmt.Sprintf("%s-%s", localizedCurrencyPair.Base, localizedCurrencyPair.Quote)
 	summary, err := b.client.GetMarketSummary(symbol)
@@ -210,7 +210,7 @@ func (b *Bittrex) getBitcoinPrice() float64 {
 	return price
 }
 
-func (b *Bittrex) GetExchange() common.CryptoExchange {
+func (b *Bittrex) GetSummary() common.CryptoExchangeSummary {
 	total := 0.0
 	satoshis := 0.0
 	balances, _ := b.GetBalances()
@@ -224,7 +224,7 @@ func (b *Bittrex) GetExchange() common.CryptoExchange {
 	}
 	f, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
 	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-	exchange := &dto.CryptoExchangeDTO{
+	exchange := &dto.CryptoExchangeSummaryDTO{
 		Name:     b.name,
 		URL:      "https://www.bittrex.com",
 		Total:    t,
@@ -260,27 +260,27 @@ func (b *Bittrex) ParseImport(file string) ([]common.Order, error) {
 		}
 		qty, err := strconv.ParseFloat(values[3], 64)
 		if err != nil {
-			b.ctx.Logger.Errorf("[Bittrex.ParseImport] Error parsing quantity: %s", err.Error())
+			b.ctx.GetLogger().Errorf("[Bittrex.ParseImport] Error parsing quantity: %s", err.Error())
 			return orders, err
 		}
 		price, err := strconv.ParseFloat(values[4], 64)
 		if err != nil {
-			b.ctx.Logger.Errorf("[Bittrex.ParseImport] Error parsing price: %s", err.Error())
+			b.ctx.GetLogger().Errorf("[Bittrex.ParseImport] Error parsing price: %s", err.Error())
 			return orders, err
 		}
 		fee, err := strconv.ParseFloat(values[5], 64)
 		if err != nil {
-			b.ctx.Logger.Errorf("[Bittrex.ParseImport] Error parsing fee: %s", err.Error())
+			b.ctx.GetLogger().Errorf("[Bittrex.ParseImport] Error parsing fee: %s", err.Error())
 			return orders, err
 		}
 		total, err := strconv.ParseFloat(values[6], 64)
 		if err != nil {
-			b.ctx.Logger.Errorf("[Bittrex.ParseImport] Error parsing totalt: %s", err.Error())
+			b.ctx.GetLogger().Errorf("[Bittrex.ParseImport] Error parsing totalt: %s", err.Error())
 			return orders, err
 		}
 		date, err := time.Parse("1/2/2006 15:04:05 PM", values[8])
 		if err != nil {
-			b.ctx.Logger.Errorf("[Bittrex.ParseImport] Error parsing float: %s", err.Error())
+			b.ctx.GetLogger().Errorf("[Bittrex.ParseImport] Error parsing float: %s", err.Error())
 			return orders, err
 		}
 		var orderType string

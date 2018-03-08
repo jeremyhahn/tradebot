@@ -4,34 +4,38 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/entity"
+	"github.com/jeremyhahn/tradebot/mapper"
 )
 
 type DefaultAutoTradeService struct {
-	ctx             *common.Context
+	ctx             common.Context
 	exchangeService ExchangeService
 	chartService    ChartService
 	tradeService    TradeService
 	profitService   ProfitService
 	strategyService StrategyService
+	userMapper      mapper.UserMapper
 	AutoTradeService
 }
 
-func NewAutoTradeService(ctx *common.Context, exchangeService ExchangeService, chartService ChartService,
-	profitService ProfitService, tradeService TradeService, strategyService StrategyService) AutoTradeService {
+func NewAutoTradeService(ctx common.Context, exchangeService ExchangeService, chartService ChartService,
+	profitService ProfitService, tradeService TradeService, strategyService StrategyService,
+	userMapper mapper.UserMapper) AutoTradeService {
 	return &DefaultAutoTradeService{
 		ctx:             ctx,
 		exchangeService: exchangeService,
 		chartService:    chartService,
 		tradeService:    tradeService,
 		profitService:   profitService,
-		strategyService: strategyService}
+		strategyService: strategyService,
+		userMapper:      userMapper}
 }
 
 func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 	if ats.ctx.GetUser() == nil {
-		ats.ctx.Logger.Warningf("[DefaultAutoTradeService.EndWorldHunger] No users configured")
+		ats.ctx.GetLogger().Warningf("[DefaultAutoTradeService.EndWorldHunger] No users configured")
 		return nil
 	}
 	charts, err := ats.chartService.GetCharts(true)
@@ -39,16 +43,21 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 		return err
 	}
 	for _, autoTradeChart := range charts {
-		ats.ctx.Logger.Debugf("[AutoTradeService.EndWorldHunger] Loading chart %s-%s\n",
+		ats.ctx.GetLogger().Debugf("[AutoTradeService.EndWorldHunger] Loading chart %s-%s\n",
 			autoTradeChart.GetBase(), autoTradeChart.GetQuote())
 
-		exchange := ats.exchangeService.CreateExchange(ats.ctx.User, autoTradeChart.GetExchange())
+		//userEntity := ats.userMapper.MapUserDtoToEntity(ats.ctx.GetUser())
+		exchange, err := ats.exchangeService.CreateExchange(autoTradeChart.GetExchange())
+		if err != nil {
+			return err
+		}
+
 		candlesticks := ats.chartService.LoadCandlesticks(autoTradeChart, exchange)
 
 		currencyPair := &common.CurrencyPair{
 			Base:          autoTradeChart.GetBase(),
 			Quote:         autoTradeChart.GetQuote(),
-			LocalCurrency: ats.ctx.User.GetLocalCurrency()}
+			LocalCurrency: ats.ctx.GetUser().GetLocalCurrency()}
 
 		indicators, err := ats.chartService.GetIndicators(autoTradeChart, candlesticks)
 		if err != nil {
@@ -80,7 +89,7 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 				for _, strategy := range strategies {
 
 					buy, sell, data, err := strategy.Analyze()
-					ats.ctx.Logger.Debugf("[DefaultAutoTradeService.EndWorldHunger] Indicator data: %+v\n", data)
+					ats.ctx.GetLogger().Debugf("[DefaultAutoTradeService.EndWorldHunger] Indicator data: %+v\n", data)
 					if err != nil {
 						return err
 					}
@@ -88,10 +97,10 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 					if buy || sell {
 						var tradeType string
 						if buy {
-							ats.ctx.Logger.Debug("[DefaultAutoTradeService.EndWorldHunger] $$$ BUY SIGNAL $$$")
+							ats.ctx.GetLogger().Debug("[DefaultAutoTradeService.EndWorldHunger] $$$ BUY SIGNAL $$$")
 							tradeType = "buy"
 						} else if sell {
-							ats.ctx.Logger.Debug("[DefaultAutoTradeService.EndWorldHunger] $$$ SELL SIGNAL $$$")
+							ats.ctx.GetLogger().Debug("[DefaultAutoTradeService.EndWorldHunger] $$$ SELL SIGNAL $$$")
 							tradeType = "sell"
 						}
 						_, quoteAmount := strategy.GetTradeAmounts()
@@ -101,7 +110,7 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 							return err
 						}
 						thisTrade := &dto.TradeDTO{
-							UserId:    ats.ctx.User.GetId(),
+							UserId:    ats.ctx.GetUser().GetId(),
 							Exchange:  exchange.GetName(),
 							Base:      chart.GetBase(),
 							Quote:     chart.GetQuote(),
@@ -110,8 +119,8 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 							Price:     currentPrice,
 							Amount:    quoteAmount,
 							ChartData: chartJSON}
-						thisProfit := &dao.Profit{
-							UserId:   ats.ctx.User.GetId(),
+						thisProfit := &entity.Profit{
+							UserId:   ats.ctx.GetUser().GetId(),
 							TradeId:  thisTrade.GetId(),
 							Quantity: quoteAmount,
 							Bought:   lastTrade.GetPrice(),
@@ -126,7 +135,7 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 				return nil
 			})
 			if streamErr != nil {
-				ats.ctx.Logger.Error(streamErr.Error())
+				ats.ctx.GetLogger().Error(streamErr.Error())
 			}
 		}(autoTradeChart)
 

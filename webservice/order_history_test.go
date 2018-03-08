@@ -1,6 +1,6 @@
 // +build broken_integration
 
-package webservic
+package webservice
 
 import (
 	"bytes"

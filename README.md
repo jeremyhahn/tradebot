@@ -40,8 +40,9 @@ Due to limitations of [Golang plugins](https://golang.org/pkg/plugin/), this sof
 
 1. [Golang](https://golang.org/)
 2. [Make](https://www.gnu.org/software/make/)
-3. [OpenSSL](https://www.openssl.org/)
-4. [Docker](https://www.docker.com/) (Optional)
+3. [Yarn](https://yarnpkg.com/lang/en/docs/install/)
+4. [OpenSSL](https://www.openssl.org/)
+5. [Docker](https://www.docker.com/) (Optional)
 
 
 #### Linux / Mac OS - Native

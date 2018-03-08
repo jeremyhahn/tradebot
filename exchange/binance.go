@@ -58,18 +58,18 @@ type SymbolTicker struct {
 
 type Binance struct {
 	client     *binance.Client
-	ctx        *common.Context
+	ctx        common.Context
 	logger     *logging.Logger
 	name       string
 	tradingFee float64
 	common.Exchange
 }
 
-func NewBinance(ctx *common.Context, exchange entity.UserExchangeEntity) common.Exchange {
+func NewBinance(ctx common.Context, exchange entity.UserExchangeEntity) common.Exchange {
 	return &Binance{
 		ctx:        ctx,
 		client:     binance.NewClient(exchange.GetKey(), exchange.GetSecret()),
-		logger:     ctx.Logger,
+		logger:     ctx.GetLogger(),
 		name:       "binance",
 		tradingFee: .01}
 }
@@ -117,8 +117,8 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 
 			currencyPair := &common.CurrencyPair{
 				Base:          balance.Asset,
-				Quote:         b.ctx.User.GetLocalCurrency(),
-				LocalCurrency: b.ctx.User.GetLocalCurrency()}
+				Quote:         b.ctx.GetUser().GetLocalCurrency(),
+				LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
 			localizedCurrencyPair := b.localizedCurrencyPair(currencyPair)
 			symbol := fmt.Sprintf("%s%s", localizedCurrencyPair.Base, "BTC")
 
@@ -200,15 +200,15 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Or
 		}
 		qty, err := strconv.ParseFloat(o.Quantity, 64)
 		if err != nil {
-			b.ctx.Logger.Errorf("[Binance.GetOrderHistory] Failed to parse quantity to float64: %s", err.Error())
+			b.ctx.GetLogger().Errorf("[Binance.GetOrderHistory] Failed to parse quantity to float64: %s", err.Error())
 		}
 		p, err := strconv.ParseFloat(o.Price, 64)
 		if err != nil {
-			b.ctx.Logger.Errorf("[Binance.GetOrderHistory] Failed to parse price to float64: %s", err.Error())
+			b.ctx.GetLogger().Errorf("[Binance.GetOrderHistory] Failed to parse price to float64: %s", err.Error())
 		}
 		c, err := strconv.ParseFloat(o.Commission, 64)
 		if err != nil {
-			b.ctx.Logger.Errorf("[Binance.GetOrderHistory] Failed to parse commission to float64: %s", err.Error())
+			b.ctx.GetLogger().Errorf("[Binance.GetOrderHistory] Failed to parse commission to float64: %s", err.Error())
 		}
 		_orders = append(_orders, &dto.OrderDTO{
 			Id:               strconv.FormatInt(int64(o.ID), 10),
@@ -276,15 +276,15 @@ func (b *Binance) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceCh
 
 func (b *Binance) ParseImport(file string) ([]common.Order, error) {
 	var orders []common.Order
-	b.ctx.Logger.Error("[Binance.ParseImport] Unsupported!")
+	b.ctx.GetLogger().Error("[Binance.ParseImport] Unsupported!")
 	return orders, errors.New("Binance.ParseImport Unsupported")
 }
 
 func (b *Binance) getBitcoin() *binance.PriceChangeStats {
 	currencyPair := &common.CurrencyPair{
 		Base:          "BTC",
-		Quote:         b.ctx.User.GetLocalCurrency(),
-		LocalCurrency: b.ctx.User.GetLocalCurrency()}
+		Quote:         b.ctx.GetUser().GetLocalCurrency(),
+		LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
 	localizedCurrencyPair := b.localizedCurrencyPair(currencyPair)
 	symbol := fmt.Sprintf("%s%s", localizedCurrencyPair.Base, localizedCurrencyPair.Quote)
 	stats, err := b.client.NewPriceChangeStatsService().Symbol(symbol).Do(context.Background())
@@ -315,7 +315,7 @@ func (b *Binance) parseBitcoinPrice(bitcoin *binance.PriceChangeStats) float64 {
 	return f
 }
 
-func (b *Binance) GetExchange() common.CryptoExchange {
+func (b *Binance) GetSummary() common.CryptoExchangeSummary {
 	total := 0.0
 	satoshis := 0.0
 	balances, _ := b.GetBalances()
@@ -329,7 +329,7 @@ func (b *Binance) GetExchange() common.CryptoExchange {
 	}
 	f, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
 	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-	exchange := &dto.CryptoExchangeDTO{
+	exchange := &dto.CryptoExchangeSummaryDTO{
 		Name:     b.name,
 		URL:      "https://www.binance.com",
 		Total:    t,

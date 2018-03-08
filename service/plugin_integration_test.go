@@ -6,17 +6,27 @@ import (
 	"testing"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/entity"
+	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/example"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
-	"github.com/jeremyhahn/tradebot/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPluginService_Indicator_ExampleIndicator(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	pluginService := CreatePluginService(ctx, "../plugins")
-	constructor, err := pluginService.GetIndicator("example.so", "ExampleIndicator")
+	ctx := NewIntegrationTestContext()
+	dao := dao.NewPluginDAO(ctx)
+	dao.Create(&entity.Plugin{
+		Name:     "ExampleIndicator",
+		Filename: "example.so",
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", dao, mapper)
+	constructor, err := pluginService.CreateIndicator("ExampleIndicator")
 	assert.Equal(t, nil, err)
+	assert.NotNil(t, constructor)
 	indicator, err := constructor(createIntegrationTestCandles(), []string{"4", "5", "6"})
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "ExampleIndicator", indicator.GetName())
@@ -25,12 +35,20 @@ func TestPluginService_Indicator_ExampleIndicator(t *testing.T) {
 	assert.Equal(t, []string{"1", "2", "3"}, indicator.GetDefaultParameters())
 	example := indicator.(example.ExampleIndicator)
 	assert.Equal(t, 6.0, example.Calculate(5))
+	CleanupIntegrationTest()
 }
 
 func TestPluginService_Indicator_SimpleMovingAverage(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	pluginService := CreatePluginService(ctx, "../plugins")
-	constructor, err := pluginService.GetIndicator("sma.so", "SimpleMovingAverage")
+	ctx := NewIntegrationTestContext()
+	dao := dao.NewPluginDAO(ctx)
+	dao.Create(&entity.Plugin{
+		Name:     "SimpleMovingAverage",
+		Filename: "sma.so",
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", dao, mapper)
+	constructor, err := pluginService.CreateIndicator("SimpleMovingAverage")
 	assert.Equal(t, nil, err)
 	indicator, err := constructor(createIntegrationTestCandles(), []string{"5"})
 	assert.Equal(t, nil, err)
@@ -40,12 +58,20 @@ func TestPluginService_Indicator_SimpleMovingAverage(t *testing.T) {
 	assert.Equal(t, []string{"20"}, indicator.GetDefaultParameters())
 	sma := indicator.(indicators.SimpleMovingAverage)
 	assert.Equal(t, 15780.0, sma.GetAverage())
+	CleanupIntegrationTest()
 }
 
 func TestPluginService_Indicator_ExponentialMovingAverage(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	pluginService := CreatePluginService(ctx, "../plugins")
-	constructor, err := pluginService.GetIndicator("ema.so", "ExponentialMovingAverage")
+	ctx := NewIntegrationTestContext()
+	dao := dao.NewPluginDAO(ctx)
+	dao.Create(&entity.Plugin{
+		Name:     "ExponentialMovingAverage",
+		Filename: "ema.so",
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", dao, mapper)
+	constructor, err := pluginService.CreateIndicator("ExponentialMovingAverage")
 	assert.Equal(t, nil, err)
 	indicator, err := constructor(createIntegrationTestCandles(), []string{"5"})
 	assert.Equal(t, nil, err)
@@ -55,12 +81,20 @@ func TestPluginService_Indicator_ExponentialMovingAverage(t *testing.T) {
 	assert.Equal(t, []string{"20"}, indicator.GetDefaultParameters())
 	ema := indicator.(indicators.ExponentialMovingAverage)
 	assert.Equal(t, 15780.0, ema.GetAverage())
+	CleanupIntegrationTest()
 }
 
 func TestPluginService_Indicator_RelativeStrengthIndex(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	pluginService := CreatePluginService(ctx, "../plugins")
-	constructor, err := pluginService.GetIndicator("rsi.so", "RelativeStrengthIndex")
+	ctx := NewIntegrationTestContext()
+	dao := dao.NewPluginDAO(ctx)
+	dao.Create(&entity.Plugin{
+		Name:     "RelativeStrengthIndex",
+		Filename: "rsi.so",
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", dao, mapper)
+	constructor, err := pluginService.CreateIndicator("RelativeStrengthIndex")
 	assert.Equal(t, nil, err)
 	indicator, err := constructor(createIntegrationTestCandles(), []string{"14", "80", "20"})
 	assert.Equal(t, nil, err)
@@ -70,12 +104,20 @@ func TestPluginService_Indicator_RelativeStrengthIndex(t *testing.T) {
 	assert.Equal(t, []string{"14", "70", "30"}, indicator.GetDefaultParameters())
 	rsi := indicator.(indicators.RelativeStrengthIndex)
 	assert.Equal(t, 35.830474730988755, rsi.Calculate(2000))
+	CleanupIntegrationTest()
 }
 
 func TestPluginService_Indicator_BollingerBands(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	pluginService := CreatePluginService(ctx, "../plugins")
-	constructor, err := pluginService.GetIndicator("bollinger_bands.so", "BollingerBands")
+	ctx := NewIntegrationTestContext()
+	dao := dao.NewPluginDAO(ctx)
+	dao.Create(&entity.Plugin{
+		Name:     "BollingerBands",
+		Filename: "bollinger_bands.so",
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", dao, mapper)
+	constructor, err := pluginService.CreateIndicator("BollingerBands")
 	assert.Equal(t, nil, err)
 	indicator, err := constructor(createIntegrationTestCandles(), []string{"15", "2"})
 	assert.Equal(t, nil, err)
@@ -88,12 +130,20 @@ func TestPluginService_Indicator_BollingerBands(t *testing.T) {
 	assert.Equal(t, 4588.21, upper)
 	assert.Equal(t, 3113.33, middle)
 	assert.Equal(t, 1638.45, lower)
+	CleanupIntegrationTest()
 }
 
 func TestPluginService_Indicator_MACD(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	pluginService := CreatePluginService(ctx, "../plugins")
-	constructor, err := pluginService.GetIndicator("macd.so", "MovingAverageConvergenceDivergence")
+	ctx := NewIntegrationTestContext()
+	dao := dao.NewPluginDAO(ctx)
+	dao.Create(&entity.Plugin{
+		Name:     "MovingAverageConvergenceDivergence",
+		Filename: "macd.so",
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", dao, mapper)
+	constructor, err := pluginService.CreateIndicator("MovingAverageConvergenceDivergence")
 	assert.Equal(t, nil, err)
 	indicator, err := constructor(createIntegrationTestCandles(), []string{"10", "24", "9"})
 	assert.Equal(t, nil, err)
@@ -106,12 +156,20 @@ func TestPluginService_Indicator_MACD(t *testing.T) {
 	assert.Equal(t, 730.7857256592952, macdValue)
 	assert.Equal(t, 828.5704569933756, signal)
 	assert.Equal(t, -97.78473133408045, histogram)
+	CleanupIntegrationTest()
 }
 
 func TestPluginService_Indicator_OnBalanceVolume(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	pluginService := CreatePluginService(ctx, "../plugins")
-	constructor, err := pluginService.GetIndicator("obv.so", "OnBalanceVolume")
+	ctx := NewIntegrationTestContext()
+	dao := dao.NewPluginDAO(ctx)
+	dao.Create(&entity.Plugin{
+		Name:     "OnBalanceVolume",
+		Filename: "obv.so",
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", dao, mapper)
+	constructor, err := pluginService.CreateIndicator("OnBalanceVolume")
 	assert.Equal(t, nil, err)
 	indicator, err := constructor(createIntegrationTestCandles(), []string{"5"})
 	assert.Equal(t, nil, err)
@@ -121,27 +179,55 @@ func TestPluginService_Indicator_OnBalanceVolume(t *testing.T) {
 	assert.Equal(t, []string{}, indicator.GetDefaultParameters())
 	obv := indicator.(indicators.OnBalanceVolume)
 	assert.Equal(t, 1.0, obv.Calculate(12000))
+	CleanupIntegrationTest()
 }
 
 func TestPluginService_Strategy_DefaultTradingStrategy(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	pluginService := CreatePluginService(ctx, "../plugins")
-	constructor, err := pluginService.GetStrategy("default.so", "DefaultTradingStrategy")
+	ctx := NewIntegrationTestContext()
+	dao := dao.NewPluginDAO(ctx)
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", dao, mapper)
+
+	dao.Create(&entity.Plugin{
+		Name:     "RelativeStrengthIndex",
+		Filename: "rsi.so",
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+
+	dao.Create(&entity.Plugin{
+		Name:     "BollingerBands",
+		Filename: "bollinger_bands.so",
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+
+	dao.Create(&entity.Plugin{
+		Name:     "MovingAverageConvergenceDivergence",
+		Filename: "macd.so",
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+
+	dao.Create(&entity.Plugin{
+		Name:     "DefaultTradingStrategy",
+		Filename: "default.so",
+		Version:  "0.0.1a",
+		Type:     common.STRATEGY_PLUGIN_TYPE})
+
+	constructor, err := pluginService.CreateStrategy("DefaultTradingStrategy")
 	assert.Equal(t, nil, err)
 
-	rsiConstructor, err := pluginService.GetIndicator("rsi.so", "RelativeStrengthIndex")
+	rsiConstructor, err := pluginService.CreateIndicator("RelativeStrengthIndex")
 	assert.Equal(t, nil, err)
 	rsiIndicator, err := rsiConstructor(createIntegrationTestCandles(), nil)
 	assert.Equal(t, nil, err)
 	rsi := rsiIndicator.(indicators.RelativeStrengthIndex)
 
-	bollingerConstructor, err := pluginService.GetIndicator("bollinger_bands.so", "BollingerBands")
+	bollingerConstructor, err := pluginService.CreateIndicator("BollingerBands")
 	assert.Equal(t, nil, err)
 	bollingerIndicator, err := bollingerConstructor(createIntegrationTestCandles(), nil)
 	assert.Equal(t, nil, err)
 	bbands := bollingerIndicator.(indicators.BollingerBands)
 
-	macdConstructor, err := pluginService.GetIndicator("macd.so", "MovingAverageConvergenceDivergence")
+	macdConstructor, err := pluginService.CreateIndicator("MovingAverageConvergenceDivergence")
 	assert.Equal(t, nil, err)
 	macdIndicator, err := macdConstructor(createIntegrationTestCandles(), nil)
 	assert.Equal(t, nil, err)
@@ -168,12 +254,20 @@ func TestPluginService_Strategy_DefaultTradingStrategy(t *testing.T) {
 
 	assert.Equal(t, requiredIndicators, strategy.GetRequiredIndicators())
 	assert.Equal(t, strategyParams, strategy.GetParameters())
+	CleanupIntegrationTest()
 }
 
 func TestPluginService_Strategy_DefaultTradingStrategy_MissingRsiIndicators(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	pluginService := CreatePluginService(ctx, "../plugins")
-	constructor, err := pluginService.GetStrategy("default.so", "DefaultTradingStrategy")
+	ctx := NewIntegrationTestContext()
+	dao := dao.NewPluginDAO(ctx)
+	dao.Create(&entity.Plugin{
+		Name:     "DefaultTradingStrategy",
+		Filename: "default.so",
+		Version:  "0.0.1a",
+		Type:     common.STRATEGY_PLUGIN_TYPE})
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", dao, mapper)
+	constructor, err := pluginService.CreateStrategy("DefaultTradingStrategy")
 	assert.Equal(t, nil, err)
 	strategyParams := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{
@@ -183,12 +277,20 @@ func TestPluginService_Strategy_DefaultTradingStrategy_MissingRsiIndicators(t *t
 	strategy, err := constructor(strategyParams)
 	assert.Equal(t, "Strategy requires missing indicator: RelativeStrengthIndex", err.Error())
 	assert.Equal(t, nil, strategy)
+	CleanupIntegrationTest()
 }
 
 func TestPluginService_Strategy_DefaultTradingStrategy_InvalidConfiguration(t *testing.T) {
-	ctx := test.NewUnitTestContext()
-	pluginService := CreatePluginService(ctx, "../plugins")
-	constructor, err := pluginService.GetStrategy("default.so", "DefaultTradingStrategy")
+	ctx := NewIntegrationTestContext()
+	dao := dao.NewPluginDAO(ctx)
+	dao.Create(&entity.Plugin{
+		Name:     "DefaultTradingStrategy",
+		Filename: "default.so",
+		Version:  "0.0.1a",
+		Type:     common.STRATEGY_PLUGIN_TYPE})
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", dao, mapper)
+	constructor, err := pluginService.CreateStrategy("DefaultTradingStrategy")
 	assert.Equal(t, nil, err)
 	strategyParams := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{
@@ -199,4 +301,5 @@ func TestPluginService_Strategy_DefaultTradingStrategy_InvalidConfiguration(t *t
 	strategy, err := constructor(strategyParams)
 	assert.Equal(t, "Invalid configuration. Expected 8 items, received 2 (foo,bar)", err.Error())
 	assert.Equal(t, nil, strategy)
+	CleanupIntegrationTest()
 }

@@ -1,10 +1,9 @@
 package common
 
 import (
+	"crypto/rsa"
 	"net/http"
 	"time"
-
-	jwt "github.com/dgrijalva/jwt-go"
 )
 
 const (
@@ -16,8 +15,10 @@ const (
 	WEBSOCKET_KEEPALIVE   = 10 * time.Second
 	HTTP_CLIENT_TIMEOUT   = 10 * time.Second
 	CANDLESTICK_MIN_LOAD  = 250
-	DB_DIR                = "./db"
-	TMP_DIR               = "/tmp"
+	INDICATOR_PLUGIN_TYPE = "indicator"
+	STRATEGY_PLUGIN_TYPE  = "strategy"
+	EXCHANGE_PLUGIN_TYPE  = "exchange"
+	WALLET_PLUGIN_TYPE    = "wallet"
 )
 
 type EthereumToken interface {
@@ -30,16 +31,11 @@ type EthereumToken interface {
 	GetContractAddress() string
 }
 
-type Indicator interface {
+type Plugin interface {
 	GetName() string
 	GetFilename() string
 	GetVersion() string
-}
-
-type Strategy interface {
-	GetName() string
-	GetFilename() string
-	GetVersion() string
+	GetType() string
 }
 
 type Chart interface {
@@ -151,7 +147,7 @@ type PeriodListener interface {
 type Exchange interface {
 	GetName() string
 	GetBalances() ([]Coin, float64)
-	GetExchange() CryptoExchange
+	GetSummary() CryptoExchangeSummary
 	GetNetWorth() float64
 	GetTradingFee() float64
 	SubscribeToLiveFeed(currencyPair *CurrencyPair, price chan PriceChange)
@@ -162,24 +158,28 @@ type Exchange interface {
 	ParseImport(file string) ([]Order, error)
 }
 
-type User interface {
+type KeyPair interface {
+	GetDirectory() string
+	GetPrivateKey() *rsa.PrivateKey
+	GetPrivateBytes() []byte
+	GetPublicKey() *rsa.PublicKey
+	GetPublicBytes() []byte
+}
+
+type UserContext interface {
 	GetId() uint
 	GetUsername() string
 	GetLocalCurrency() string
 	GetEtherbase() string
 	GetKeystore() string
-	SetEtherbase(etherbase string)
-	SetKeystore(keystore string)
 }
 
-type Wallet interface {
-	GetBalance() CryptoWallet
-}
-
-type UserWallet interface {
-	GetUserId() uint
-	GetCurrency() string
-	GetAddress() string
+type UserCryptoExchange interface {
+	GetName() string
+	GetURL() string
+	GetKey() string
+	GetSecret() string
+	GetExtra() string
 }
 
 type Coin interface {
@@ -194,41 +194,31 @@ type Coin interface {
 	IsBitcoin() bool
 }
 
-type CryptoExchange interface {
+type CryptoExchangeSummary interface {
 	GetName() string
 	GetURL() string
 	GetTotal() float64
 	GetSatoshis() float64
 	GetCoins() []Coin
-}
-
-type CryptoExchangeList interface {
-	GetExchanges() []CryptoExchange
 	GetNetWorth() float64
 }
 
-type CryptoWallet interface {
+type UserCryptoWallet interface {
 	GetAddress() string
 	GetBalance() float64
 	GetCurrency() string
-	GetNetWorth() float64
+	GetValue() float64
 }
 
 type Portfolio interface {
-	GetUser() User
+	GetUser() UserContext
 	GetNetWorth() float64
-	GetExchanges() []CryptoExchange
-	GetWallets() []CryptoWallet
+	GetExchanges() []CryptoExchangeSummary
+	GetWallets() []UserCryptoWallet
 }
 
 type HttpWriter interface {
 	Write(w http.ResponseWriter, status int, response interface{})
-}
-
-type JsonWebToken interface {
-	GetToken() *jwt.Token
-	GenerateToken(w http.ResponseWriter, req *http.Request)
-	MiddlewareValidator(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
 }
 
 type PriceHistory interface {

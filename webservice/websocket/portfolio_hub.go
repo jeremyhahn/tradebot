@@ -29,7 +29,7 @@ func (h *PortfolioHub) Run() {
 
 		select {
 		case client := <-h.register:
-			client.ctx.Logger.Debugf("[PortfolioHub.run] Registering new client: %s", client.ctx.GetUser().GetUsername())
+			client.ctx.GetLogger().Debugf("[PortfolioHub.run] Registering new client: %s", client.ctx.GetUser().GetUsername())
 			h.clients[client] = true
 
 		case client := <-h.unregister:
