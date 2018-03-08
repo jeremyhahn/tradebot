@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -11,27 +12,27 @@ import (
 )
 
 type DefaultUserService struct {
-	ctx              *common.Context
-	userDAO          dao.UserDAO
-	pluginDAO        dao.PluginDAO
-	marketcapService *MarketCapService
-	ethereumService  EthereumService
-	userMapper       mapper.UserMapper
-	exchangeMapper   mapper.UserExchangeMapper
+	ctx                common.Context
+	userDAO            dao.UserDAO
+	pluginDAO          dao.PluginDAO
+	marketcapService   *MarketCapService
+	ethereumService    EthereumService
+	userMapper         mapper.UserMapper
+	userExchangeMapper mapper.UserExchangeMapper
 	UserService
 }
 
-func NewUserService(ctx *common.Context, userDAO dao.UserDAO, pluginDAO dao.PluginDAO,
+func NewUserService(ctx common.Context, userDAO dao.UserDAO, pluginDAO dao.PluginDAO,
 	marketcapService *MarketCapService, ethereumService EthereumService,
-	userMapper mapper.UserMapper, exchangeMapper mapper.UserExchangeMapper) UserService {
+	userMapper mapper.UserMapper, userExchangeMapper mapper.UserExchangeMapper) UserService {
 	return &DefaultUserService{
-		ctx:              ctx,
-		userDAO:          userDAO,
-		pluginDAO:        pluginDAO,
-		marketcapService: marketcapService,
-		ethereumService:  ethereumService,
-		userMapper:       userMapper,
-		exchangeMapper:   exchangeMapper}
+		ctx:                ctx,
+		userDAO:            userDAO,
+		pluginDAO:          pluginDAO,
+		marketcapService:   marketcapService,
+		ethereumService:    ethereumService,
+		userMapper:         userMapper,
+		userExchangeMapper: userExchangeMapper}
 }
 
 func (service *DefaultUserService) CreateUser(user common.UserContext) {
@@ -63,56 +64,74 @@ func (service *DefaultUserService) GetUserByName(username string) (common.UserCo
 	return service.userMapper.MapUserEntityToDto(entity), nil
 }
 
-func (service *DefaultUserService) GetExchange(user common.UserContext, name string, currencyPair *common.CurrencyPair) common.Exchange {
+func (service *DefaultUserService) GetExchange(user common.UserContext, name string, currencyPair *common.CurrencyPair) (common.Exchange, error) {
 	daoUser := &entity.User{Id: user.GetId()}
 	exchanges := service.userDAO.GetExchanges(daoUser)
 	for _, ex := range exchanges {
 		if ex.Name == name {
-			return NewExchangeService(service.ctx, service.pluginDAO, service.userDAO, service.userMapper, service.exchangeMapper).
-				CreateExchange(user, ex.Name)
+			exchange, err := NewExchangeService(service.ctx, service.pluginDAO, service.userDAO, service.userMapper, service.userExchangeMapper).
+				CreateExchange(ex.Name)
+			if err != nil {
+				service.ctx.GetLogger().Debugf("[UserService.GetExchange] Error: %s", err.Error())
+				return nil, err
+			}
+			return exchange, nil
 		}
 	}
-	return nil
+	return nil, errors.New("Exchange not found")
 }
 
-func (service *DefaultUserService) GetExchanges(user common.UserContext, currencyPair *common.CurrencyPair) []common.UserCryptoExchange {
-	service.ctx.Logger.Debugf("[UserService.GetExchanges] %+v, %+v", user, currencyPair)
+func (service *DefaultUserService) GetConfiguredExchanges() []common.UserCryptoExchange {
+	var exchanges []common.UserCryptoExchange
+	userEntity := &entity.User{Id: service.ctx.GetUser().GetId()}
+	userExchanges := service.userDAO.GetExchanges(userEntity)
+	for _, ex := range userExchanges {
+		exchanges = append(exchanges, service.userExchangeMapper.MapEntityToDto(&ex))
+	}
+	return exchanges
+}
 
-	var exchangeList []common.CryptoExchange
-	var chans []chan common.CryptoExchange
-	daoUser := &entity.User{Id: user.GetId()}
+func (service *DefaultUserService) GetExchangeSummary(currencyPair *common.CurrencyPair) ([]common.CryptoExchangeSummary, error) {
+	user := service.ctx.GetUser()
+	service.ctx.GetLogger().Debugf("[UserService.GetExchangeSummary] %+v, %+v", user, currencyPair)
+	var exchangeList []common.CryptoExchangeSummary
+	var chans []chan common.CryptoExchangeSummary
+	daoUser := &entity.User{Id: service.ctx.GetUser().GetId()}
 	exchanges := service.userDAO.GetExchanges(daoUser)
-
+	c := make(chan common.CryptoExchangeSummary, len(exchanges))
 	for _, ex := range exchanges {
-		c := make(chan common.CryptoExchange, 1)
 		chans = append(chans, c)
-		exchangeService := NewExchangeService(service.ctx, service.pluginDAO, service.userDAO, service.userMapper, service.exchangeMapper)
-		exchange := exchangeService.CreateExchange(user, ex.Name)
-		go func() { c <- exchange.GetExchange() }()
+		exchangeService := NewExchangeService(service.ctx, service.pluginDAO, service.userDAO, service.userMapper, service.userExchangeMapper)
+		exchange, err := exchangeService.CreateExchange(ex.GetName())
+		if err != nil {
+			service.ctx.GetLogger().Debugf("[UserService.GetExchangeSummary] Error: %s", err.Error())
+			return nil, err
+		}
+		go func() { c <- exchange.GetSummary() }()
 	}
 	for i := 0; i < len(exchanges); i++ {
 		exchangeList = append(exchangeList, <-chans[i])
 	}
-	service.ctx.Logger.Debugf("[UserService.GetExchanges] %+v", exchangeList)
-	return exchangeList
+	service.ctx.GetLogger().Debugf("[UserService.GetExchanges] %+v", exchangeList)
+	return exchangeList, nil
 }
 
 func (service *DefaultUserService) GetWallets(user common.UserContext) []common.UserCryptoWallet {
-	var walletList []common.CryptoWallet
+	var walletList []common.UserCryptoWallet
 	daoUser := &entity.User{Id: user.GetId()}
 	wallets := service.userDAO.GetWallets(daoUser)
-	var chans []chan common.CryptoWallet
+	var chans []chan common.UserCryptoWallet
 	for _, _wallet := range wallets {
 		wallet := _wallet
-		c := make(chan common.CryptoWallet, 1)
+		c := make(chan common.UserCryptoWallet, 1)
 		chans = append(chans, c)
 		go func() {
 			balance := service.getBalance(wallet.Currency, wallet.Address)
-			c <- &dto.CryptoWalletDTO{
+			c <- &dto.UserCryptoWalletDTO{
 				Address:  wallet.Address,
 				Currency: wallet.Currency,
 				Balance:  balance,
-				NetWorth: balance * service.getPrice(wallet.Currency, balance)}
+				Value:    balance * service.getPrice(wallet.Currency, balance)}
 		}()
 	}
 	for i := 0; i < len(wallets); i++ {
@@ -147,7 +166,7 @@ func (service *DefaultUserService) GetAllTokens(user common.UserContext) ([]comm
 		go func() {
 			tokenDTO, err := service.ethereumService.GetTokenBalance(_token.GetContract(), _token.GetWallet())
 			if err != nil {
-				service.ctx.Logger.Errorf("[UserService.GetTokens] Error: %s", err.Error())
+				service.ctx.GetLogger().Errorf("[UserService.GetTokens] Error: %s", err.Error())
 			}
 			c <- tokenDTO
 		}()
@@ -162,11 +181,11 @@ func (service *DefaultUserService) GetWallet(user common.UserContext, currency s
 	daoUser := &entity.User{Id: user.GetId()}
 	wallet := service.userDAO.GetWallet(daoUser, currency)
 	balance := service.getBalance(wallet.GetCurrency(), wallet.GetAddress())
-	return &dto.CryptoWalletDTO{
+	return &dto.UserCryptoWalletDTO{
 		Address:  wallet.GetAddress(),
 		Currency: wallet.GetCurrency(),
 		Balance:  balance,
-		NetWorth: service.getPrice(wallet.GetCurrency(), balance)}
+		Value:    service.getPrice(wallet.GetCurrency(), balance)}
 }
 
 func (service *DefaultUserService) GetToken(user common.UserContext, symbol string) (common.EthereumToken, error) {
@@ -176,7 +195,7 @@ func (service *DefaultUserService) GetToken(user common.UserContext, symbol stri
 }
 
 func (service *DefaultUserService) getBalance(currency, address string) float64 {
-	service.ctx.Logger.Debugf("[DefaultUserService.getBalance] currency=%s, address=%s", currency, address)
+	service.ctx.GetLogger().Debugf("[DefaultUserService.getBalance] currency=%s, address=%s", currency, address)
 	if currency == "XRP" {
 		return NewRipple(service.ctx, service.marketcapService).GetBalance(address).GetBalance()
 	} else if currency == "BTC" {
@@ -186,7 +205,7 @@ func (service *DefaultUserService) getBalance(currency, address string) float64 
 }
 
 func (service *DefaultUserService) getPrice(currency string, amt float64) float64 {
-	service.ctx.Logger.Debugf("[DefaultUserService.getPrice] currency=%s, amt=%.8f", currency, amt)
+	service.ctx.GetLogger().Debugf("[DefaultUserService.getPrice] currency=%s, amt=%.8f", currency, amt)
 	/*
 		if currency == "BTC" {
 			return util.TruncateFloat(NewBlockchainInfo(service.ctx).GetPrice()*amt, 8)

@@ -4,41 +4,45 @@ import (
 	"net/http"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
 )
 
 type ExchangeRestService interface {
 	GetDisplayNames(w http.ResponseWriter, r *http.Request)
-	GetUserExchanges(w http.ResponseWriter, r *http.Request)
 }
 
 type ExchangeRestServiceImpl struct {
-	ctx             *common.Context
-	exchangeService service.ExchangeService
-	userService     service.UserService
-	jsonWriter      common.HttpWriter
+	middlewareService service.Middleware
+	jsonWriter        common.HttpWriter
 }
 
-func NewExchangeRestService(ctx *common.Context, exchangeService service.ExchangeService,
-	userService service.UserService, jsonWriter common.HttpWriter) ExchangeRestService {
+func NewExchangeRestService(middlewareService service.Middleware,
+	jsonWriter common.HttpWriter) ExchangeRestService {
 	return &ExchangeRestServiceImpl{
-		ctx:             ctx,
-		exchangeService: exchangeService,
-		jsonWriter:      jsonWriter}
+		middlewareService: middlewareService,
+		jsonWriter:        jsonWriter}
 }
 
-func (irs *ExchangeRestServiceImpl) GetDisplayNames(w http.ResponseWriter, r *http.Request) {
-	irs.ctx.Logger.Debugf("[ExchangeRestService.GetExchangeNames]")
-	exchanges := irs.exchangeService.GetDisplayNames(irs.ctx.GetUser())
-	irs.jsonWriter.Write(w, http.StatusOK, RestResponse{
-		Success: true,
-		Payload: exchanges})
+func (restService *ExchangeRestServiceImpl) createExchangeService(ctx common.Context) service.ExchangeService {
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userDAO := dao.NewUserDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	return service.NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper)
 }
 
-func (irs *ExchangeRestServiceImpl) GetUserExchanges(w http.ResponseWriter, r *http.Request) {
-	irs.ctx.Logger.Debugf("[ExchangeRestService.GetExchanges]")
-	exchanges := irs.exchangeService.GetUserExchanges(irs.ctx.GetUser())
-	irs.jsonWriter.Write(w, http.StatusOK, RestResponse{
+func (restService *ExchangeRestServiceImpl) GetDisplayNames(w http.ResponseWriter, r *http.Request) {
+	ctx, err := restService.middlewareService.CreateContext(w, r)
+	if err != nil {
+		RestError(w, r, err, restService.jsonWriter)
+		return
+	}
+	defer ctx.Close()
+	exchangeService := restService.createExchangeService(ctx)
+	ctx.GetLogger().Debugf("[ExchangeRestService.GetDisplayNames]")
+	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
 		Success: true,
-		Payload: exchanges})
+		Payload: exchangeService.GetDisplayNames()})
 }

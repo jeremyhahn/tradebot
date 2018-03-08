@@ -1,12 +1,26 @@
 package service
 
 import (
+	"net/http"
+
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
-	"github.com/jeremyhahn/tradebot/viewmodel"
 )
+
+type Middleware interface {
+	CreateContext(w http.ResponseWriter, r *http.Request) (common.Context, error)
+	GetContext(userID uint) common.Context
+}
+
+type JsonWebTokenService interface {
+	ParseToken(r *http.Request) (*jwt.Token, *JsonWebTokenClaims, error)
+	GenerateToken(w http.ResponseWriter, req *http.Request)
+	Validate(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
+	Middleware
+}
 
 type WalletService interface {
 	GetBalances() float64
@@ -17,9 +31,9 @@ type PriceHistoryService interface {
 }
 
 type PortfolioService interface {
-	Build(user common.UserContext, currencyPair *common.CurrencyPair) common.Portfolio
-	Queue(user common.UserContext) <-chan common.Portfolio
-	Stream(user common.UserContext, currencyPair *common.CurrencyPair) <-chan common.Portfolio
+	Build(user common.UserContext, currencyPair *common.CurrencyPair) (common.Portfolio, error)
+	Queue(user common.UserContext) (<-chan common.Portfolio, error)
+	Stream(user common.UserContext, currencyPair *common.CurrencyPair) (<-chan common.Portfolio, error)
 	Stop(user common.UserContext)
 	IsStreaming(user common.UserContext) bool
 }
@@ -29,9 +43,10 @@ type UserService interface {
 	GetCurrentUser() (common.UserContext, error)
 	GetUserById(userId uint) (common.UserContext, error)
 	GetUserByName(username string) (common.UserContext, error)
-	GetExchange(user common.UserContext, name string, currencyPair *common.CurrencyPair) common.Exchange
-	GetExchanges(user common.UserContext, currencyPair *common.CurrencyPair) []common.UserCryptoExchange
-	GetWallets(user common.UserContext) []common.UserCryptoExchange
+	GetExchange(user common.UserContext, name string, currencyPair *common.CurrencyPair) (common.Exchange, error)
+	GetConfiguredExchanges() []common.UserCryptoExchange
+	GetExchangeSummary(currencyPair *common.CurrencyPair) ([]common.CryptoExchangeSummary, error)
+	GetWallets(user common.UserContext) []common.UserCryptoWallet
 	GetWallet(user common.UserContext, currency string) common.UserCryptoWallet
 	GetTokens(user common.UserContext, wallet string) ([]common.EthereumToken, error)
 	GetAllTokens(user common.UserContext) ([]common.EthereumToken, error)
@@ -73,12 +88,11 @@ type ProfitService interface {
 }
 
 type ExchangeService interface {
-	CreateExchange(user common.UserContext, exchangeName string) (common.Exchange, error)
-	GetDisplayNames(user common.UserContext) []string
-	GetUserExchanges(user common.UserContext) []viewmodel.UserCryptoExchange
-	GetExchanges(common.UserContext) []common.Exchange
-	GetExchange(user common.UserContext, name string) common.Exchange
-	GetCurrencyPairs(user common.UserContext, exchangeName string) ([]common.CurrencyPair, error)
+	CreateExchange(exchangeName string) (common.Exchange, error)
+	GetDisplayNames() []string
+	GetExchanges() []common.Exchange
+	GetExchange(name string) common.Exchange
+	GetCurrencyPairs(exchangeName string) ([]common.CurrencyPair, error)
 }
 
 type OrderService interface {

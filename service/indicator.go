@@ -22,8 +22,7 @@ type DefaultIndicatorService struct {
 	IndicatorService
 }
 
-func NewIndicatorService(ctx common.Context, chartIndicatorDAO dao.ChartIndicatorDAO,
-	pluginService PluginService) IndicatorService {
+func NewIndicatorService(ctx common.Context, chartIndicatorDAO dao.ChartIndicatorDAO, pluginService PluginService) IndicatorService {
 	return &DefaultIndicatorService{
 		ctx:               ctx,
 		chartIndicatorDAO: chartIndicatorDAO,
@@ -31,11 +30,11 @@ func NewIndicatorService(ctx common.Context, chartIndicatorDAO dao.ChartIndicato
 }
 
 func (service *DefaultIndicatorService) GetIndicator(name string) (common.Plugin, error) {
-	entity, err := service.indicatorDAO.Get(name)
+	entity, err := service.pluginService.GetPlugin(name, common.INDICATOR_PLUGIN_TYPE)
 	if err != nil {
 		return nil, err
 	}
-	return service.indicatorMapper.MapIndicatorEntityToDto(entity), nil
+	return service.pluginService.GetMapper().MapPluginEntityToDto(entity), nil
 }
 
 func (service *DefaultIndicatorService) GetChartIndicator(chart common.Chart, name string,
@@ -45,11 +44,7 @@ func (service *DefaultIndicatorService) GetChartIndicator(chart common.Chart, na
 	if err != nil {
 		return nil, err
 	}
-	indicator, err := service.GetIndicator(name)
-	if err != nil {
-		return nil, err
-	}
-	constructor, err := service.pluginService.GetIndicator(indicator.GetFilename(), name)
+	constructor, err := service.pluginService.CreateIndicator(name)
 	if err != nil {
 		return nil, err
 	}
@@ -65,11 +60,7 @@ func (service *DefaultIndicatorService) GetChartIndicators(chart common.Chart, c
 		return nil, err
 	}
 	for _, ci := range chartIndicators {
-		indicator, err := service.GetIndicator(ci.GetName())
-		if err != nil {
-			return nil, err
-		}
-		constructor, err := service.pluginService.GetIndicator(indicator.GetFilename(), ci.GetName())
+		constructor, err := service.pluginService.CreateIndicator(ci.GetName())
 		if err != nil {
 			return nil, err
 		}

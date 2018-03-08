@@ -14,7 +14,6 @@ type StrategyService interface {
 
 type DefaultStrategyService struct {
 	ctx              common.Context
-	pluginDAO        dao.PluginDAO
 	chartStrategyDAO dao.ChartStrategyDAO
 	pluginService    PluginService
 	indicatorService IndicatorService
@@ -34,11 +33,11 @@ func NewStrategyService(ctx common.Context, chartStrategyDAO dao.ChartStrategyDA
 }
 
 func (service *DefaultStrategyService) GetStrategy(name string) (common.Plugin, error) {
-	entity, err := service.pluginDAO.Get(name, "strategy")
+	entity, err := service.pluginService.GetPlugin(name, common.STRATEGY_PLUGIN_TYPE)
 	if err != nil {
 		return nil, err
 	}
-	return service.strategyMapper.MapStrategyEntityToDto(entity), nil
+	return service.pluginService.GetMapper().MapPluginEntityToDto(entity), nil
 }
 
 func (service *DefaultStrategyService) GetChartStrategy(chart common.Chart, name string, candles []common.Candlestick) (common.TradingStrategy, error) {
@@ -46,11 +45,7 @@ func (service *DefaultStrategyService) GetChartStrategy(chart common.Chart, name
 	if err != nil {
 		return nil, err
 	}
-	strategy, err := service.GetStrategy(name)
-	if err != nil {
-		return nil, err
-	}
-	constructor, err := service.pluginService.GetStrategy(strategy.GetFilename(), name)
+	constructor, err := service.pluginService.CreateStrategy(name)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +56,7 @@ func (service *DefaultStrategyService) GetChartStrategy(chart common.Chart, name
 		CurrencyPair: &common.CurrencyPair{
 			Base:          chart.GetBase(),
 			Quote:         chart.GetQuote(),
-			LocalCurrency: service.ctx.User.GetLocalCurrency()},
+			LocalCurrency: service.ctx.GetUser().GetLocalCurrency()},
 		LastTrade:  lastTrade,
 		Indicators: financialIndicators}
 	return constructor(&params)
@@ -76,11 +71,7 @@ func (service *DefaultStrategyService) GetChartStrategies(chart common.Chart, pa
 		return nil, err
 	}
 	for _, strategyEntity := range strategyEntities {
-		platformStrategy, err := service.GetStrategy(strategyEntity.GetName())
-		if err != nil {
-			return nil, err
-		}
-		constructor, err := service.pluginService.GetStrategy(platformStrategy.GetFilename(), strategyEntity.GetName())
+		constructor, err := service.pluginService.CreateStrategy(strategyEntity.GetName())
 		if err != nil {
 			return nil, err
 		}

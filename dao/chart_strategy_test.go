@@ -22,7 +22,7 @@ func TestChartStrategyDAO(t *testing.T) {
 			Parameters: "1,2,3"}}
 
 	chart := &entity.Chart{
-		UserId:    ctx.User.GetId(),
+		UserId:    ctx.GetUser().GetId(),
 		Base:      "BTC",
 		Quote:     "USD",
 		Exchange:  "gdax",

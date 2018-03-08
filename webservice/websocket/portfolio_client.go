@@ -10,7 +10,7 @@ import (
 )
 
 type PortfolioClient struct {
-	ctx              *common.Context
+	ctx              common.Context
 	service          service.PortfolioService
 	hub              *PortfolioHub
 	conn             *websocket.Conn
@@ -49,11 +49,16 @@ func (c *PortfolioClient) writePump() {
 		c.conn.Close()
 	}()
 	for {
+		queue, err := c.portfolioService.Queue(c.ctx.GetUser())
+		if err != nil {
+			c.ctx.GetLogger().Errorf("[PortfolioClient.writePump] Error: %s", err.Error())
+			continue
+		}
 		select {
 		case message, _ := <-c.send:
 			err := c.conn.WriteJSON(message)
 			if err != nil {
-				c.ctx.Logger.Errorf("[PortfolioClient.writePump] Error: %s", err.Error())
+				c.ctx.GetLogger().Errorf("[PortfolioClient.writePump] Error: %s", err.Error())
 				return
 			}
 			// Add queued messages
@@ -61,9 +66,9 @@ func (c *PortfolioClient) writePump() {
 			for i := 0; i < n; i++ {
 				c.conn.WriteJSON(<-c.send)
 			}
-		case portfolio := <-c.portfolioService.Queue(c.ctx.GetUser()):
+		case portfolio := <-queue:
 			if err := c.conn.WriteJSON(portfolio); err != nil {
-				c.ctx.Logger.Errorf("[PortfolioClient.writePump] Error: %s", err.Error())
+				c.ctx.GetLogger().Errorf("[PortfolioClient.writePump] Error: %s", err.Error())
 				return
 			}
 			time.Sleep(3 * time.Second)
@@ -80,15 +85,15 @@ func (c *PortfolioClient) keepAlive() {
 	})
 	go func() {
 		for {
-			c.ctx.Logger.Debug("[PortfolioClient.keepAlive] Sending keepalive")
+			c.ctx.GetLogger().Debug("[PortfolioClient.keepAlive] Sending keepalive")
 			err := c.conn.WriteMessage(websocket.PingMessage, []byte("keepalive"))
 			if err != nil {
-				c.ctx.Logger.Debugf("[PortfolioClient.keepAlive] Error: %s", err.Error())
+				c.ctx.GetLogger().Debugf("[PortfolioClient.keepAlive] Error: %s", err.Error())
 				return
 			}
 			time.Sleep(common.WEBSOCKET_KEEPALIVE / 2)
 			if time.Now().Sub(lastResponse) > common.WEBSOCKET_KEEPALIVE {
-				c.ctx.Logger.Debug("[PortfolioClient.keepAlive] Closing orphaned connection")
+				c.ctx.GetLogger().Debug("[PortfolioClient.keepAlive] Closing orphaned connection")
 				c.conn.Close()
 				return
 			}

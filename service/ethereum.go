@@ -37,9 +37,9 @@ type EthService struct {
 	EthereumService
 }
 
-func NewEthereumService(ctx common.Context, ipc, keystore string, userDAO dao.UserDAO,
+func NewEthereumService(ctx common.Context, userDAO dao.UserDAO,
 	userMapper mapper.UserMapper) (EthereumService, error) {
-	client, err := ethclient.Dial(ipc)
+	client, err := ethclient.Dial(ctx.GetIPC())
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func NewEthereumService(ctx common.Context, ipc, keystore string, userDAO dao.Us
 		userDAO:    userDAO,
 		userMapper: userMapper,
 		keystore: ethkeystore.NewKeyStore(
-			keystore,
+			ctx.GetKeystore(),
 			ethkeystore.StandardScryptN,
 			ethkeystore.StandardScryptP)}, nil
 }

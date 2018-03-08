@@ -8,35 +8,34 @@ import (
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/exchange"
 	"github.com/jeremyhahn/tradebot/mapper"
-	"github.com/jeremyhahn/tradebot/viewmodel"
 )
 
 type DefaultExchangeService struct {
-	ctx            common.Context
-	pluginDAO      dao.PluginDAO
-	userDAO        dao.UserDAO
-	userMapper     mapper.UserMapper
-	exchangeMapper mapper.UserExchangeMapper
-	exchangeMap    map[string]func(common.Context, entity.UserExchangeEntity) common.Exchange
+	ctx                common.Context
+	pluginDAO          dao.PluginDAO
+	userDAO            dao.UserDAO
+	userMapper         mapper.UserMapper
+	userExchangeMapper mapper.UserExchangeMapper
+	exchangeMap        map[string]func(common.Context, entity.UserExchangeEntity) common.Exchange
 	ExchangeService
 }
 
 func NewExchangeService(ctx common.Context, pluginDAO dao.PluginDAO, userDAO dao.UserDAO,
-	userMapper mapper.UserMapper, exchangeMapper mapper.UserExchangeMapper) ExchangeService {
+	userMapper mapper.UserMapper, userExchangeMapper mapper.UserExchangeMapper) ExchangeService {
 	return &DefaultExchangeService{
-		ctx:            ctx,
-		pluginDAO:      pluginDAO,
-		userDAO:        userDAO,
-		userMapper:     userMapper,
-		exchangeMapper: exchangeMapper,
+		ctx:                ctx,
+		pluginDAO:          pluginDAO,
+		userDAO:            userDAO,
+		userMapper:         userMapper,
+		userExchangeMapper: userExchangeMapper,
 		exchangeMap: map[string]func(ctx common.Context, exchange entity.UserExchangeEntity) common.Exchange{
 			"gdax":    exchange.NewGDAX,
 			"bittrex": exchange.NewBittrex,
 			"binance": exchange.NewBinance}}
 }
 
-func (service *DefaultExchangeService) CreateExchange(user common.UserContext, exchangeName string) (common.Exchange, error) {
-	userEntity := &entity.User{Id: user.GetId()}
+func (service *DefaultExchangeService) CreateExchange(exchangeName string) (common.Exchange, error) {
+	userEntity := &entity.User{Id: service.ctx.GetUser().GetId()}
 	exchange, err := service.userDAO.GetExchange(userEntity, exchangeName)
 	if err != nil {
 		service.ctx.GetLogger().Errorf("[ExchangeService.CreateExchange] Error: %s", err.Error())
@@ -45,9 +44,9 @@ func (service *DefaultExchangeService) CreateExchange(user common.UserContext, e
 	return service.exchangeMap[exchangeName](service.ctx, exchange), nil
 }
 
-func (service *DefaultExchangeService) GetDisplayNames(user common.UserContext) []string {
+func (service *DefaultExchangeService) GetDisplayNames() []string {
 	var exchanges []string
-	userEntity := &entity.User{Id: user.GetId()}
+	userEntity := &entity.User{Id: service.ctx.GetUser().GetId()}
 	userExchanges := service.userDAO.GetExchanges(userEntity)
 	for _, ex := range userExchanges {
 		exchanges = append(exchanges, ex.Name)
@@ -55,20 +54,9 @@ func (service *DefaultExchangeService) GetDisplayNames(user common.UserContext) 
 	return exchanges
 }
 
-func (service *DefaultExchangeService) GetUserExchanges(user common.UserContext) []viewmodel.UserCryptoExchange {
-	var exchanges []viewmodel.UserCryptoExchange
-	userEntity := &entity.User{Id: user.GetId()}
-	userExchanges := service.userDAO.GetExchanges(userEntity)
-	for _, ex := range userExchanges {
-		viewmodel := service.exchangeMapper.MapEntityToViewModel(&ex)
-		exchanges = append(exchanges, *viewmodel)
-	}
-	return exchanges
-}
-
-func (service *DefaultExchangeService) GetExchanges(user common.UserContext) []common.Exchange {
+func (service *DefaultExchangeService) GetExchanges() []common.Exchange {
 	var exchanges []common.Exchange
-	userEntity := &entity.User{Id: user.GetId()}
+	userEntity := &entity.User{Id: service.ctx.GetUser().GetId()}
 	userExchanges := service.userDAO.GetExchanges(userEntity)
 	for _, ex := range userExchanges {
 		exchanges = append(exchanges, service.exchangeMap[ex.Name](service.ctx, &ex))
@@ -76,8 +64,8 @@ func (service *DefaultExchangeService) GetExchanges(user common.UserContext) []c
 	return exchanges
 }
 
-func (service *DefaultExchangeService) GetExchange(user common.UserContext, exchangeName string) common.Exchange {
-	for _, ex := range service.GetExchanges(user) {
+func (service *DefaultExchangeService) GetExchange(exchangeName string) common.Exchange {
+	for _, ex := range service.GetExchanges() {
 		if ex.GetName() == exchangeName {
 			return ex
 		}
@@ -85,8 +73,8 @@ func (service *DefaultExchangeService) GetExchange(user common.UserContext, exch
 	return nil
 }
 
-func (service *DefaultExchangeService) GetCurrencyPairs(user common.UserContext, exchangeName string) ([]common.CurrencyPair, error) {
-	userEntity := service.userMapper.MapUserDtoToEntity(user)
+func (service *DefaultExchangeService) GetCurrencyPairs(exchangeName string) ([]common.CurrencyPair, error) {
+	userEntity := service.userMapper.MapUserDtoToEntity(service.ctx.GetUser())
 	userCryptoExchange, err := service.userDAO.GetExchange(userEntity.(*entity.User), exchangeName)
 	if err != nil {
 		return nil, err

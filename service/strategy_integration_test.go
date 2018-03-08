@@ -14,24 +14,22 @@ import (
 
 func TestGetPlatformStrategy_GetPlatformStrategy(t *testing.T) {
 	ctx := NewIntegrationTestContext()
-	strategyDAO := dao.NewStrategyDAO(ctx)
-	strategyEntity := &entity.Strategy{
+	pluginDAO := dao.NewPluginDAO(ctx)
+	strategyEntity := &entity.Plugin{
 		Name:     "DefaultTradingStrategy",
 		Filename: "default.so",
-		Version:  "0.0.1a"}
-	strategyDAO.Create(strategyEntity)
+		Version:  "0.0.1a",
+		Type:     common.STRATEGY_PLUGIN_TYPE}
+	pluginDAO.Create(strategyEntity)
 
-	pluginService := NewPluginService(ctx)
+	pluginService := NewPluginService(ctx, pluginDAO, mapper.NewPluginMapper())
 
-	indicatorDAO := dao.NewIndicatorDAO(ctx)
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
-	indicatorMapper := mapper.NewIndicatorMapper()
-	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
+	indicatorService := NewIndicatorService(ctx, chartIndicatorDAO, pluginService)
 
 	chartStrategyDAO := dao.NewChartStrategyDAO(ctx)
 	chartMapper := mapper.NewChartMapper(ctx)
-	strategyMapper := mapper.NewStrategyMapper()
-	strategyService := NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
+	strategyService := NewStrategyService(ctx, chartStrategyDAO, pluginService, indicatorService, chartMapper)
 
 	defaultTradingStrategy, err := strategyService.GetStrategy("DefaultTradingStrategy")
 	assert.Equal(t, nil, err)
@@ -45,32 +43,35 @@ func TestGetPlatformStrategy_GetPlatformStrategy(t *testing.T) {
 func TestGetChartStrategy_GetChartStrategy(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 
-	indicatorDAO := dao.NewIndicatorDAO(ctx)
-	indicatorDAO.Create(&entity.Indicator{
+	pluginDAO := dao.NewPluginDAO(ctx)
+	pluginDAO.Create(&entity.Plugin{
 		Name:     "RelativeStrengthIndex",
 		Filename: "rsi.so",
-		Version:  "0.0.1a"})
-	indicatorDAO.Create(&entity.Indicator{
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
 		Name:     "BollingerBands",
 		Filename: "bollinger_bands.so",
-		Version:  "0.0.1a"})
-	indicatorDAO.Create(&entity.Indicator{
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
 		Name:     "MovingAverageConvergenceDivergence",
 		Filename: "macd.so",
-		Version:  "0.0.1a"})
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
 
-	strategyDAO := dao.NewStrategyDAO(ctx)
-	strategyEntity := &entity.Strategy{
+	strategyEntity := &entity.Plugin{
 		Name:     "DefaultTradingStrategy",
 		Filename: "default.so",
-		Version:  "0.0.1a"}
-	strategyDAO.Create(strategyEntity)
+		Version:  "0.0.1a",
+		Type:     common.STRATEGY_PLUGIN_TYPE}
+	pluginDAO.Create(strategyEntity)
 
 	chartDAO := dao.NewChartDAO(ctx)
 	chartEntity := createIntegrationTestChart(ctx)
 	chartDAO.Create(chartEntity)
 
-	pluginService := CreatePluginService(ctx, "../plugins")
+	pluginService := CreatePluginService(ctx, "../plugins", pluginDAO, mapper.NewPluginMapper())
 	candles := createIntegrationTestCandles()
 
 	chartStrategyDAO := dao.NewChartStrategyDAO(ctx)
@@ -78,14 +79,12 @@ func TestGetChartStrategy_GetChartStrategy(t *testing.T) {
 	chartDTO := chartMapper.MapChartEntityToDto(chartEntity)
 
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
-	indicatorMapper := mapper.NewIndicatorMapper()
-	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
+	indicatorService := NewIndicatorService(ctx, chartIndicatorDAO, pluginService)
 	financialIndicators, err := indicatorService.GetChartIndicators(chartDTO, candles)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 3, len(financialIndicators))
 
-	strategyMapper := mapper.NewStrategyMapper()
-	strategyService := NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
+	strategyService := NewStrategyService(ctx, chartStrategyDAO, pluginService, indicatorService, chartMapper)
 
 	defaultTradingStrategy, err := strategyService.GetChartStrategy(chartDTO, "DefaultTradingStrategy", candles)
 	assert.Equal(t, nil, err)
@@ -98,32 +97,35 @@ func TestGetChartStrategy_GetChartStrategy(t *testing.T) {
 func TestGetChartStrategy_GetChartStrategies(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 
-	indicatorDAO := dao.NewIndicatorDAO(ctx)
-	indicatorDAO.Create(&entity.Indicator{
+	pluginDAO := dao.NewPluginDAO(ctx)
+	pluginDAO.Create(&entity.Plugin{
 		Name:     "RelativeStrengthIndex",
 		Filename: "rsi.so",
-		Version:  "0.0.1a"})
-	indicatorDAO.Create(&entity.Indicator{
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
 		Name:     "BollingerBands",
 		Filename: "bollinger_bands.so",
-		Version:  "0.0.1a"})
-	indicatorDAO.Create(&entity.Indicator{
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
 		Name:     "MovingAverageConvergenceDivergence",
 		Filename: "macd.so",
-		Version:  "0.0.1a"})
+		Version:  "0.0.1a",
+		Type:     common.INDICATOR_PLUGIN_TYPE})
 
-	strategyDAO := dao.NewStrategyDAO(ctx)
-	strategyEntity := &entity.Strategy{
+	strategyEntity := &entity.Plugin{
 		Name:     "DefaultTradingStrategy",
 		Filename: "default.so",
-		Version:  "0.0.1a"}
-	strategyDAO.Create(strategyEntity)
+		Version:  "0.0.1a",
+		Type:     common.STRATEGY_PLUGIN_TYPE}
+	pluginDAO.Create(strategyEntity)
 
 	chartDAO := dao.NewChartDAO(ctx)
 	chartEntity := createIntegrationTestChart(ctx)
 	chartDAO.Create(chartEntity)
 
-	pluginService := CreatePluginService(ctx, "../plugins")
+	pluginService := CreatePluginService(ctx, "../plugins", pluginDAO, mapper.NewPluginMapper())
 	candles := createIntegrationTestCandles()
 
 	chartStrategyDAO := dao.NewChartStrategyDAO(ctx)
@@ -131,20 +133,18 @@ func TestGetChartStrategy_GetChartStrategies(t *testing.T) {
 	chartDTO := chartMapper.MapChartEntityToDto(chartEntity)
 
 	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
-	indicatorMapper := mapper.NewIndicatorMapper()
-	indicatorService := NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
+	indicatorService := NewIndicatorService(ctx, chartIndicatorDAO, pluginService)
 	financialIndicators, err := indicatorService.GetChartIndicators(chartDTO, candles)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 3, len(financialIndicators))
 
-	strategyMapper := mapper.NewStrategyMapper()
-	strategyService := NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
+	strategyService := NewStrategyService(ctx, chartStrategyDAO, pluginService, indicatorService, chartMapper)
 
 	params := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{
 			Base:          chartEntity.GetBase(),
 			Quote:         chartEntity.GetQuote(),
-			LocalCurrency: ctx.User.GetLocalCurrency()},
+			LocalCurrency: ctx.GetUser().GetLocalCurrency()},
 		Indicators: financialIndicators}
 
 	tradingStrategies, err := strategyService.GetChartStrategies(chartDTO, params, candles)

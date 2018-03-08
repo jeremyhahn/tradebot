@@ -46,7 +46,7 @@ func (service *DefaultChartService) GetCurrencyPair(chart common.Chart) *common.
 }
 
 func (service *DefaultChartService) GetExchange(chart common.Chart) common.Exchange {
-	return service.exchangeService.GetExchange(service.ctx.GetUser(), chart.GetExchange())
+	return service.exchangeService.GetExchange(chart.GetExchange())
 }
 
 func (service *DefaultChartService) Stream(chart common.Chart,

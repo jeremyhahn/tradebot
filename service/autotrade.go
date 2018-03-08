@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 )
 
@@ -46,8 +46,8 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 		ats.ctx.GetLogger().Debugf("[AutoTradeService.EndWorldHunger] Loading chart %s-%s\n",
 			autoTradeChart.GetBase(), autoTradeChart.GetQuote())
 
-		userEntity := ats.userMapper.MapUserDtoToEntity(ats.ctx.GetUser())
-		exchange, err := ats.exchangeService.CreateExchange(userEntity, autoTradeChart.GetExchange())
+		//userEntity := ats.userMapper.MapUserDtoToEntity(ats.ctx.GetUser())
+		exchange, err := ats.exchangeService.CreateExchange(autoTradeChart.GetExchange())
 		if err != nil {
 			return err
 		}
@@ -119,7 +119,7 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 							Price:     currentPrice,
 							Amount:    quoteAmount,
 							ChartData: chartJSON}
-						thisProfit := &dao.Profit{
+						thisProfit := &entity.Profit{
 							UserId:   ats.ctx.GetUser().GetId(),
 							TradeId:  thisTrade.GetId(),
 							Quantity: quoteAmount,

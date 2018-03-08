@@ -2,7 +2,7 @@ package entity
 
 type Plugin struct {
 	Name     string `gorm:"primary_key"`
-	Filename string `gorm:"not null"`
+	Filename string `gorm:"unique;not null"`
 	Version  string `gorm:"not null"`
 	Type     string `gorm:"not null"`
 	PluginEntity

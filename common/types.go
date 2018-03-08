@@ -4,8 +4,6 @@ import (
 	"crypto/rsa"
 	"net/http"
 	"time"
-
-	jwt "github.com/dgrijalva/jwt-go"
 )
 
 const (
@@ -17,8 +15,10 @@ const (
 	WEBSOCKET_KEEPALIVE   = 10 * time.Second
 	HTTP_CLIENT_TIMEOUT   = 10 * time.Second
 	CANDLESTICK_MIN_LOAD  = 250
-	DB_DIR                = "./db"
-	TMP_DIR               = "/tmp"
+	INDICATOR_PLUGIN_TYPE = "indicator"
+	STRATEGY_PLUGIN_TYPE  = "strategy"
+	EXCHANGE_PLUGIN_TYPE  = "exchange"
+	WALLET_PLUGIN_TYPE    = "wallet"
 )
 
 type EthereumToken interface {
@@ -172,18 +172,7 @@ type UserContext interface {
 	GetLocalCurrency() string
 	GetEtherbase() string
 	GetKeystore() string
-	//SetEtherbase(etherbase string)
-	//SetKeystore(keystore string)
 }
-
-/*
-type User interface {
-	GetCharts() []Chart
-	GetWallets() []UserCryptoWallet
-	GetTokens() []EthereumToken
-	GetExchanges() []UserCryptoExchange
-	UserContext
-}*/
 
 type UserCryptoExchange interface {
 	GetName() string
@@ -218,23 +207,18 @@ type UserCryptoWallet interface {
 	GetAddress() string
 	GetBalance() float64
 	GetCurrency() string
+	GetValue() float64
 }
 
 type Portfolio interface {
 	GetUser() UserContext
 	GetNetWorth() float64
-	GetExchanges() []UserCryptoExchange
+	GetExchanges() []CryptoExchangeSummary
 	GetWallets() []UserCryptoWallet
 }
 
 type HttpWriter interface {
 	Write(w http.ResponseWriter, status int, response interface{})
-}
-
-type JsonWebToken interface {
-	GetToken() *jwt.Token
-	GenerateToken(w http.ResponseWriter, req *http.Request)
-	MiddlewareValidator(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
 }
 
 type PriceHistory interface {

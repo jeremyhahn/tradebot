@@ -3,11 +3,11 @@ package dto
 import "github.com/jeremyhahn/tradebot/common"
 
 type PortfolioDTO struct {
-	User      common.UserContext          `json:"user"`
-	NetWorth  float64                     `json:"net_worth"`
-	Exchanges []common.UserCryptoExchange `json:"exchanges"`
-	Wallets   []common.UserCryptoWallet   `json:"wallets"`
-	Tokens    []common.EthereumToken      `json:"tokens"`
+	User      common.UserContext             `json:"user"`
+	NetWorth  float64                        `json:"net_worth"`
+	Exchanges []common.CryptoExchangeSummary `json:"exchanges"`
+	Wallets   []common.UserCryptoWallet      `json:"wallets"`
+	Tokens    []common.EthereumToken         `json:"tokens"`
 	common.Portfolio
 }
 
@@ -23,7 +23,7 @@ func (dto *PortfolioDTO) GetNetWorth() float64 {
 	return dto.NetWorth
 }
 
-func (dto *PortfolioDTO) GetExchanges() []common.UserCryptoExchange {
+func (dto *PortfolioDTO) GetExchanges() []common.CryptoExchangeSummary {
 	return dto.Exchanges
 }
 

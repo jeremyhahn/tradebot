@@ -1,6 +1,9 @@
 package dao
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/entity"
 )
@@ -9,7 +12,7 @@ type PluginDAO interface {
 	Create(plugin entity.PluginEntity) error
 	Save(plugin entity.PluginEntity) error
 	Update(plugin entity.PluginEntity) error
-	Find() ([]entity.Plugin, error)
+	Find(pluginType string) ([]entity.Plugin, error)
 	Get(pluginName, pluginType string) (entity.PluginEntity, error)
 }
 
@@ -36,16 +39,22 @@ func (dao *PluginDAOImpl) Update(indicator entity.PluginEntity) error {
 
 func (dao *PluginDAOImpl) Get(pluginName, pluginType string) (entity.PluginEntity, error) {
 	var plugins []entity.Plugin
-	if err := dao.ctx.GetCoreDB().Where("name = ?, type = ?", pluginName, pluginType).Model(&entity.Plugin{}).Error; err != nil {
+	if err := dao.ctx.GetCoreDB().Where("name = ? AND type = ?", pluginName, pluginType).Find(&plugins).Error; err != nil {
 		return nil, err
+	}
+	if len(plugins) == 0 {
+		return nil, errors.New(fmt.Sprintf("%s (%s) plugin not found in database", pluginName, pluginType))
 	}
 	return &plugins[0], nil
 }
 
-func (dao *PluginDAOImpl) Find() ([]entity.Plugin, error) {
+func (dao *PluginDAOImpl) Find(pluginType string) ([]entity.Plugin, error) {
 	var plugins []entity.Plugin
-	if err := dao.ctx.GetCoreDB().Order("name asc").Model(&plugins).Error; err != nil {
+	if err := dao.ctx.GetCoreDB().Where("type = ?", pluginType).Order("name asc").Find(&plugins).Error; err != nil {
 		return nil, err
+	}
+	if len(plugins) == 0 {
+		return nil, errors.New("no plugins found in database")
 	}
 	return plugins, nil
 }

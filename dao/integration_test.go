@@ -1,14 +1,14 @@
+// +build integration
+
 package dao
 
 import (
-	"os"
 	"sync"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
-	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	logging "github.com/op/go-logging"
 )
@@ -16,8 +16,8 @@ import (
 var TEST_CONTEXT common.Context
 var TEST_LOCK sync.Mutex
 var TEST_USERNAME = "test"
-var TEST_COREDB_PATH = "/tmp/tradebot-integration-dao-testing.db"
-var TEST_PRICEDB_PATH = "/tmp/tradebot-pricehistory.db"
+
+var database = common.CreateDatabase("/tmp", "dao-", true)
 
 func NewIntegrationTestContext() common.Context {
 
@@ -27,28 +27,18 @@ func NewIntegrationTestContext() common.Context {
 	logging.SetBackend(backend)
 	logger := logging.MustGetLogger(common.APPNAME)
 
-	coredb, err := gorm.Open("sqlite3", TEST_COREDB_PATH)
-	coredb.LogMode(true)
-	if err != nil {
-		panic(err)
-	}
-	pricedb, err := gorm.Open("sqlite3", TEST_COREDB_PATH)
-	pricedb.LogMode(true)
-	if err != nil {
-		panic(err)
-	}
+	database.MigrateCoreDB()
+	database.MigratePriceDB()
 
 	TEST_CONTEXT = &common.Ctx{
-		CoreDB:  coredb,
-		PriceDB: pricedb,
+		AppRoot: "../",
+		CoreDB:  database.ConnectCoreDB(),
+		PriceDB: database.ConnectPriceDB(),
 		Logger:  logger,
 		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,
 			LocalCurrency: "USD"}}
-
-	NewMigrator(TEST_CONTEXT).MigrateCoreDB()
-	NewMigrator(TEST_CONTEXT).MigratePriceDB()
 
 	userDAO := NewUserDAO(TEST_CONTEXT)
 	userDAO.Save(&entity.User{Username: TEST_USERNAME, LocalCurrency: "USD"})
@@ -58,12 +48,11 @@ func NewIntegrationTestContext() common.Context {
 
 func CleanupIntegrationTest() {
 	if TEST_CONTEXT != nil {
-		TEST_CONTEXT.GetCoreDB().Close()
-		TEST_CONTEXT.GetPriceDB().Close()
-		os.Remove(TEST_COREDB_PATH)
-		os.Remove(TEST_PRICEDB_PATH)
+		database.Close(TEST_CONTEXT.GetCoreDB())
+		database.Close(TEST_CONTEXT.GetPriceDB())
+		database.DropCoreDB()
+		database.DropPriceDB()
 		TEST_LOCK.Unlock()
-		TEST_CONTEXT = nil
 	}
 }
 

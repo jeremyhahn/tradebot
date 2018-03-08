@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/viewmodel"
 )
@@ -17,59 +19,89 @@ type OrderHistoryRestService interface {
 }
 
 type OrderHistoryRestServiceImpl struct {
-	ctx          *common.Context
-	orderService service.OrderService
-	jsonWriter   common.HttpWriter
+	middlewareService service.Middleware
+	jsonWriter        common.HttpWriter
+	OrderHistoryRestService
 }
 
-func NewOrderHistoryRestService(ctx *common.Context, orderService service.OrderService,
-	jsonWriter common.HttpWriter) OrderHistoryRestService {
+func NewOrderHistoryRestService(middlewareService service.Middleware, jsonWriter common.HttpWriter) OrderHistoryRestService {
 	return &OrderHistoryRestServiceImpl{
-		ctx:          ctx,
-		orderService: orderService,
-		jsonWriter:   jsonWriter}
+		middlewareService: middlewareService,
+		jsonWriter:        jsonWriter}
 }
 
-func (ohrs *OrderHistoryRestServiceImpl) GetOrderHistory(w http.ResponseWriter, r *http.Request) {
-	ohrs.ctx.Logger.Debugf("[OrderHistoryRestService.GetOrderHistory]")
-	history := ohrs.orderService.GetOrderHistory()
-	var orders []viewmodel.Order
-	for _, order := range history {
-		orders = append(orders, ohrs.orderService.GetMapper().MapOrderDtoToViewModel(order))
+func (restService *OrderHistoryRestServiceImpl) createOrderService(ctx common.Context) service.OrderService {
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userDAO := dao.NewUserDAO(ctx)
+	orderDAO := dao.NewOrderDAO(ctx)
+
+	userMapper := mapper.NewUserMapper()
+	orderMapper := mapper.NewOrderMapper(ctx)
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+
+	marketcapService := service.NewMarketCapService(ctx.GetLogger())
+	exchangeService := service.NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper)
+	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper)
+	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
+
+	return service.NewOrderService(ctx, orderDAO, orderMapper, exchangeService, userService)
+}
+
+func (restService *OrderHistoryRestServiceImpl) GetOrderHistory(w http.ResponseWriter, r *http.Request) {
+	ctx, err := restService.middlewareService.CreateContext(w, r)
+	if err != nil {
+		RestError(w, r, err, restService.jsonWriter)
 	}
-	ohrs.jsonWriter.Write(w, http.StatusOK, RestResponse{
+	defer ctx.Close()
+	ctx.GetLogger().Debugf("[OrderHistoryRestService.GetOrderHistory]")
+	orderService := restService.createOrderService(ctx)
+	orderHistory := orderService.GetOrderHistory()
+	var orders []viewmodel.Order
+	for _, order := range orderHistory {
+		orders = append(orders, orderService.GetMapper().MapOrderDtoToViewModel(order))
+	}
+	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
 		Success: true,
 		Payload: orders})
 }
 
-func (ohrs *OrderHistoryRestServiceImpl) Import(w http.ResponseWriter, r *http.Request) {
-	ohrs.ctx.Logger.Debugf("[OrderHistoryRestServiceImpl.Import]")
+func (restService *OrderHistoryRestServiceImpl) Import(w http.ResponseWriter, r *http.Request) {
+
+	ctx, err := restService.middlewareService.CreateContext(w, r)
+	if err != nil {
+		return
+	}
+	defer ctx.Close()
+
+	ctx.GetLogger().Debugf("[OrderHistoryRestServiceImpl.Import]")
+
+	orderService := restService.createOrderService(ctx)
 
 	r.ParseMultipartForm(32 << 20)
 	file, handler, err := r.FormFile("csv")
 	if err != nil {
-		ohrs.ctx.Logger.Errorf("[OrderHistoryRestServiceImpl.Import] %s", err.Error())
-		ohrs.jsonWriter.Write(w, http.StatusBadRequest, RestResponse{
+		ctx.GetLogger().Errorf("[OrderHistoryRestServiceImpl.Import] %s", err.Error())
+		restService.jsonWriter.Write(w, http.StatusBadRequest, common.JsonResponse{
 			Success: false, Payload: "Missing CSV form field"})
 		return
 	}
 	defer file.Close()
 
-	filename := fmt.Sprintf("%s/%s", common.TMP_DIR, handler.Filename)
+	filename := fmt.Sprintf("/tmp/%s", handler.Filename)
 
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0644)
 	_, err = io.Copy(f, file)
 	if err != nil {
-		ohrs.ctx.Logger.Errorf("[OrderHistoryRestServiceImpl.Import] %s", err.Error())
-		ohrs.jsonWriter.Write(w, http.StatusInternalServerError, RestResponse{
+		ctx.GetLogger().Errorf("[OrderHistoryRestServiceImpl.Import] %s", err.Error())
+		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
 			Success: false, Payload: nil})
 		return
 	}
 
-	records, err := ohrs.orderService.ImportCSV(filename, r.FormValue("exchange"))
+	records, err := orderService.ImportCSV(filename, r.FormValue("exchange"))
 	if err != nil {
-		ohrs.ctx.Logger.Errorf("[OrderHistoryRestServiceImpl.Import] %s", err.Error())
-		ohrs.jsonWriter.Write(w, http.StatusInternalServerError, RestResponse{
+		ctx.GetLogger().Errorf("[OrderHistoryRestServiceImpl.Import] %s", err.Error())
+		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
 			Success: false, Payload: err.Error()})
 		return
 	}
@@ -77,10 +109,10 @@ func (ohrs *OrderHistoryRestServiceImpl) Import(w http.ResponseWriter, r *http.R
 	var response []viewmodel.Order
 	for _, orderDTO := range records {
 		response = append(response,
-			ohrs.orderService.GetMapper().MapOrderDtoToViewModel(orderDTO))
+			orderService.GetMapper().MapOrderDtoToViewModel(orderDTO))
 	}
 
-	ohrs.jsonWriter.Write(w, http.StatusOK, RestResponse{
+	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
 		Success: len(records) > 0,
 		Payload: response})
 }

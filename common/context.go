@@ -6,6 +6,7 @@ import (
 )
 
 type Context interface {
+	GetAppRoot() string
 	GetLogger() *logging.Logger
 	GetCoreDB() *gorm.DB
 	GetPriceDB() *gorm.DB
@@ -13,16 +14,26 @@ type Context interface {
 	SetUser(user UserContext)
 	GetDebug() bool
 	GetSSL() bool
+	GetIPC() string
+	GetKeystore() string
+	Close()
 }
 
 type Ctx struct {
-	Logger  *logging.Logger
-	CoreDB  *gorm.DB
-	PriceDB *gorm.DB
-	User    UserContext
-	Debug   bool
-	SSL     bool
+	AppRoot  string
+	Logger   *logging.Logger
+	CoreDB   *gorm.DB
+	PriceDB  *gorm.DB
+	User     UserContext
+	Debug    bool
+	SSL      bool
+	IPC      string
+	Keystore string
 	Context
+}
+
+func (c *Ctx) GetAppRoot() string {
+	return c.AppRoot
 }
 
 func (c *Ctx) GetLogger() *logging.Logger {
@@ -51,4 +62,18 @@ func (c *Ctx) GetDebug() bool {
 
 func (c *Ctx) GetSSL() bool {
 	return c.SSL
+}
+
+func (c *Ctx) GetIPC() string {
+	return c.IPC
+}
+
+func (c *Ctx) GetKeystore() string {
+	return c.Keystore
+}
+
+func (c *Ctx) Close() {
+	c.GetLogger().Debugf("[common.Context] Closing context")
+	c.GetCoreDB().Close()
+	c.GetPriceDB().Close()
 }

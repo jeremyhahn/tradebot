@@ -2,6 +2,18 @@ package entity
 
 import "time"
 
+type ProfitEntity interface {
+	GetId() uint
+	GetUserId() uint
+	GetTradeId() uint
+	GetQuantity() float64
+	GetBought() float64
+	GetSold() float64
+	GetFee() float64
+	GetTax() float64
+	GetTotal() float64
+}
+
 type PluginEntity interface {
 	GetName() string
 	GetFilename() string

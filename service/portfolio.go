@@ -29,17 +29,21 @@ func NewPortfolioService(ctx common.Context, marketcapService *MarketCapService,
 		ethereumService:  ethereumService}
 }
 
-func (ps *PortfolioServiceImpl) Build(user common.UserContext, currencyPair *common.CurrencyPair) common.Portfolio {
+func (ps *PortfolioServiceImpl) Build(user common.UserContext, currencyPair *common.CurrencyPair) (common.Portfolio, error) {
 	ps.ctx.GetLogger().Debugf("[PortfolioService.Build] Building portfolio for %s", user.GetUsername())
 	var netWorth float64
-	exchangeList := ps.userService.GetExchanges(ps.ctx.GetUser(), currencyPair)
+	exchangeList, err := ps.userService.GetExchangeSummary(currencyPair)
+	if err != nil {
+		ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error: %s", err.Error())
+		return nil, err
+	}
 	walletList := ps.userService.GetWallets(ps.ctx.GetUser())
 	var tokenList []common.EthereumToken
 	for _, ex := range exchangeList {
 		netWorth += ex.GetTotal()
 	}
 	for _, w := range walletList {
-		netWorth += w.GetNetWorth()
+		netWorth += w.GetValue()
 	}
 	accounts, err := ps.ethereumService.GetAccounts()
 	if err != nil {
@@ -57,11 +61,11 @@ func (ps *PortfolioServiceImpl) Build(user common.UserContext, currencyPair *com
 			ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error parsing MarketCap ETH response to float for address %s: %s", sAcct, err.Error())
 		}
 		total := floatBalance * priceUSD
-		walletList = append(walletList, &dto.CryptoWalletDTO{
+		walletList = append(walletList, &dto.UserCryptoWalletDTO{
 			Address:  sAcct,
 			Balance:  floatBalance,
 			Currency: "ETH",
-			NetWorth: total})
+			Value:    total})
 
 		netWorth += total
 
@@ -90,21 +94,29 @@ func (ps *PortfolioServiceImpl) Build(user common.UserContext, currencyPair *com
 		Wallets:   walletList}
 	ps.portfolios[user.GetId()] = portfolio
 	ps.stopChans[user.GetId()] = make(chan bool, 1)
-	return portfolio
+	return portfolio, nil
 }
 
-func (ps *PortfolioServiceImpl) Queue(user common.UserContext) <-chan common.Portfolio {
+func (ps *PortfolioServiceImpl) Queue(user common.UserContext) (<-chan common.Portfolio, error) {
 	ps.ctx.GetLogger().Debugf("[PortfolioService.Queue] Adding portfolio to queue on behalf of %s", user.GetUsername())
 	currencyPair := &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"}
-	portfolio := ps.Build(user, currencyPair)
+	portfolio, err := ps.Build(user, currencyPair)
+	if err != nil {
+		ps.ctx.GetLogger().Debugf("[PortfolioService.Queue] Error: %s", err.Error())
+		return nil, err
+	}
 	ps.ctx.GetLogger().Debugf("[PortfolioService.Queue] portfolio=%+v\n", portfolio)
 	portChan := make(chan common.Portfolio, 1)
 	portChan <- portfolio
-	return portChan
+	return portChan, nil
 }
 
-func (ps *PortfolioServiceImpl) Stream(user common.UserContext, currencyPair *common.CurrencyPair) <-chan common.Portfolio {
-	portfolio := ps.Build(user, currencyPair)
+func (ps *PortfolioServiceImpl) Stream(user common.UserContext, currencyPair *common.CurrencyPair) (<-chan common.Portfolio, error) {
+	portfolio, err := ps.Build(user, currencyPair)
+	if err != nil {
+		ps.ctx.GetLogger().Errorf("[PortfolioService.Stream] Error: %s", err.Error())
+		return nil, err
+	}
 	ps.ctx.GetLogger().Debugf("[PortfolioService.Stream] Starting stream for %s", portfolio.GetUser().GetUsername())
 	portChan := make(chan common.Portfolio, 10)
 	go func() {
@@ -119,7 +131,7 @@ func (ps *PortfolioServiceImpl) Stream(user common.UserContext, currencyPair *co
 			}
 		}
 	}()
-	return portChan
+	return portChan, nil
 }
 
 func (ps *PortfolioServiceImpl) Stop(user common.UserContext) {

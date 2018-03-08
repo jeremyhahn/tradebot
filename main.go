@@ -11,7 +11,6 @@ import (
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/webservice"
-	"github.com/jinzhu/gorm"
 	//_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/op/go-logging"
@@ -47,107 +46,68 @@ func main() {
 		logger.Debug("Starting in debug mode...")
 	}
 
-	coreDB := InitCoreDB(*debugFlag)
-	defer coreDB.Close()
-
-	priceDB := InitPriceDB(*debugFlag)
-	defer coreDB.Close()
+	databaseManager := common.CreateDatabase("./db", "", *debugFlag)
 
 	if *initDbFlag {
+		databaseManager.MigrateCoreDB()
+		databaseManager.MigratePriceDB()
 		os.Exit(0)
 	}
 
-	ctx := &common.Context{
-		CoreDB:  coreDB,
-		PriceDB: priceDB,
-		Logger:  logger,
-		Debug:   *debugFlag,
-		SSL:     *sslFlag}
+	ctx := &common.Ctx{
+		AppRoot:  wd,
+		CoreDB:   databaseManager.ConnectCoreDB(),
+		PriceDB:  databaseManager.ConnectPriceDB(),
+		Logger:   logger,
+		Debug:    *debugFlag,
+		SSL:      *sslFlag,
+		IPC:      *ipcFlag,
+		Keystore: *keystoreFlag}
+	defer ctx.Close()
 
 	userDAO := dao.NewUserDAO(ctx)
-	pluginDAO := dao.NewPluginDAO(ctx)
-
 	userMapper := mapper.NewUserMapper()
-	exchangeMapper := mapper.NewExchangeMapper()
-	marketcapService := service.NewMarketCapService(logger)
-	//priceHistoryService := service.NewPriceHistoryService(ctx)
 
-	ethereumService, err := service.NewEthereumService(ctx, *ipcFlag, *keystoreFlag, userDAO, userMapper)
+	ethereumService, err := service.NewEthereumService(ctx, userDAO, userMapper)
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
-	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, exchangeMapper)
-
-	chartDAO := dao.NewChartDAO(ctx)
-	indicatorDAO := dao.NewIndicatorDAO(ctx)
-	chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
-	profitDAO := dao.NewProfitDAO(ctx)
-	tradeDAO := dao.NewTradeDAO(ctx)
-	strategyDAO := dao.NewStrategyDAO(ctx)
-	chartStrategyDAO := dao.NewChartStrategyDAO(ctx)
-	orderDAO := dao.NewOrderDAO(ctx)
-
-	chartMapper := mapper.NewChartMapper(ctx)
-	indicatorMapper := mapper.NewIndicatorMapper()
-	strategyMapper := mapper.NewStrategyMapper()
-	tradeMapper := mapper.NewTradeMapper()
-	orderMapper := mapper.NewOrderMapper(ctx)
-
-	exchangeService := service.NewExchangeService(ctx, pluginDAO, userDAO, userMapper, exchangeMapper)
-	pluginService := service.NewPluginService(ctx)
-	indicatorService := service.NewIndicatorService(ctx, indicatorDAO, chartIndicatorDAO, pluginService, indicatorMapper)
-	chartService := service.NewChartService(ctx, chartDAO, exchangeService, indicatorService)
-	profitService := service.NewProfitService(ctx, profitDAO)
-	tradeService := service.NewTradeService(ctx, tradeDAO, tradeMapper)
-	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService, ethereumService)
-	strategyService := service.NewStrategyService(ctx, strategyDAO, chartStrategyDAO, pluginService, indicatorService, chartMapper, strategyMapper)
-	autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService, profitService, tradeService, strategyService)
-	orderService := service.NewOrderService(ctx, orderDAO, orderMapper, exchangeService, userService)
-
-	err = autoTradeService.EndWorldHunger()
+	jsonWebTokenService, err := service.NewJsonWebTokenService(ctx, databaseManager, ethereumService, common.NewJsonWriter())
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}
 
-	ws := webservice.NewWebServer(ctx, *portFlag, marketcapService,
-		exchangeService, ethereumService, userService, portfolioService,
-		orderService)
+	ws := webservice.NewWebServer(ctx, *portFlag, ethereumService, jsonWebTokenService)
 
 	go ws.Start()
 	ws.Run()
-}
 
-func InitCoreDB(logMode bool) *gorm.DB {
-	database := fmt.Sprintf("%s/%s.db", common.DB_DIR, common.APPNAME)
-	db := NewSQLite(database, logMode)
-	dao.NewMigrator(db).MigrateCoreDB()
-	return db
-}
+	/*
+		pluginDAO := dao.NewPluginDAO(ctx)
+		chartDAO := dao.NewChartDAO(ctx)
+		chartIndicatorDAO := dao.NewChartIndicatorDAO(ctx)
+		profitDAO := dao.NewProfitDAO(ctx)
+		tradeDAO := dao.NewTradeDAO(ctx)
+		chartStrategyDAO := dao.NewChartStrategyDAO(ctx)
 
-func InitPriceDB(logMode bool) *gorm.DB {
-	database := fmt.Sprintf("%s/prices.db", common.DB_DIR)
-	db := NewSQLite(database, logMode)
-	dao.NewMigrator(db).MigratePriceDB()
-	return db
-}
+		chartMapper := mapper.NewChartMapper(ctx)
+		tradeMapper := mapper.NewTradeMapper()
+		pluginMapper := mapper.NewPluginMapper()
+		userExchangeMapper := mapper.NewUserExchangeMapper()
 
-func NewSQLite(database string, logMode bool) *gorm.DB {
-	db, err := gorm.Open("sqlite3", database)
-	db.LogMode(logMode)
-	if err != nil {
-		panic(err)
-	}
-	return db
-}
+		exchangeService := service.NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper)
+		pluginService := service.NewPluginService(ctx, pluginDAO, pluginMapper)
+		indicatorService := service.NewIndicatorService(ctx, chartIndicatorDAO, pluginService)
+		chartService := service.NewChartService(ctx, userDAO, chartDAO, exchangeService, indicatorService)
+		profitService := service.NewProfitService(ctx, profitDAO)
+		tradeService := service.NewTradeService(ctx, tradeDAO, tradeMapper)
+		strategyService := service.NewStrategyService(ctx, chartStrategyDAO, pluginService, indicatorService, chartMapper)
+		autoTradeService := service.NewAutoTradeService(ctx, exchangeService, chartService, profitService, tradeService, strategyService, userMapper)
 
-/*
-func InitMySQL() *gorm.DB {
-	db, err := gorm.Open("mysql", "user:pass@tcp(ip:3306)/mydb?charset=utf8&parseTime=True")
-	db.LogMode(true)
-	if err != nil {
-		panic(err)
-	}
-	return db
+		err = autoTradeService.EndWorldHunger()
+		if err != nil {
+			ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
+		}
+	*/
 }
-*/

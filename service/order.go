@@ -33,7 +33,7 @@ func (os *DefaultOrderService) GetMapper() mapper.OrderMapper {
 
 func (os *DefaultOrderService) GetOrderHistory() []common.Order {
 	var orders []common.Order
-	exchanges := os.exchangeService.GetExchanges(os.ctx.GetUser())
+	exchanges := os.exchangeService.GetExchanges()
 	for _, ex := range exchanges {
 		if ex.GetName() == "gdax" {
 			balances, _ := ex.GetBalances()
@@ -46,7 +46,7 @@ func (os *DefaultOrderService) GetOrderHistory() []common.Order {
 			}
 			continue
 		}
-		currencyPairs, err := os.exchangeService.GetCurrencyPairs(os.ctx.GetUser(), ex.GetName())
+		currencyPairs, err := os.exchangeService.GetCurrencyPairs(ex.GetName())
 		if err != nil {
 			os.ctx.GetLogger().Errorf("[OrderService.GetOrderHistory] %s", err.Error())
 			return orders
@@ -75,7 +75,7 @@ func (os *DefaultOrderService) GetOrderHistory() []common.Order {
 
 func (dos *DefaultOrderService) ImportCSV(file, exchangeName string) ([]common.Order, error) {
 	dos.ctx.GetLogger().Debugf("[OrderService.ImportCSV] Creating %s exchange service", exchangeName)
-	exchange := dos.exchangeService.GetExchange(dos.ctx.GetUser(), exchangeName)
+	exchange := dos.exchangeService.GetExchange(exchangeName)
 	orderDTOs, err := exchange.ParseImport(file)
 	if err != nil {
 		return nil, err
