@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"sort"
 	"strconv"
@@ -48,23 +47,44 @@ func NewMarketCapService(ctx common.Context) MarketCapService {
 		interval:         300} // 5 minutes
 }
 
+func (service *MarketCapServiceImpl) GetMarket(symbol string) common.MarketCap {
+	MARKETCAP_RATELIMITER.RespectRateLimit()
+	markets := service.GetMarkets()
+	for _, m := range markets {
+		if m.Symbol == symbol {
+			service.logger.Debugf("[MarketCapServiceImpl.GetMarket] Getting market: %+v\n", m)
+			return m
+		}
+	}
+	return common.MarketCap{}
+}
+
 func (m *MarketCapServiceImpl) GetMarkets() []common.MarketCap {
 
 	MARKETCAP_RATELIMITER.RespectRateLimit()
 
-	limit := 10000
-	m.logger.Debugf("[MarketCapService.GetMarkets] Fetching %d markets", limit)
+	now := time.Now().Unix()
+	diff := now - m.lastUpdate
 
-	url := fmt.Sprintf("https://api.coinmarketcap.com/v1/ticker/?limit=%d", limit)
+	if diff >= m.interval {
 
-	_, body, err := util.HttpRequest(url)
-	if err != nil {
-		m.logger.Errorf("[MarketCapService.GetMarkets] %s", err.Error())
-	}
+		limit := 10000
+		m.logger.Debugf("[MarketCapService.GetMarkets] Fetching %d markets", limit)
 
-	jsonErr := json.Unmarshal(body, &m.Markets)
-	if jsonErr != nil {
-		m.logger.Errorf("[MarketCapService.GetMarkets] %s", jsonErr.Error())
+		url := fmt.Sprintf("https://api.coinmarketcap.com/v1/ticker/?limit=%d", limit)
+
+		_, body, err := util.HttpRequest(url)
+		if err != nil {
+			m.logger.Errorf("[MarketCapService.GetMarkets] %s", err.Error())
+		}
+
+		jsonErr := json.Unmarshal(body, &m.Markets)
+		if jsonErr != nil {
+			m.logger.Errorf("[MarketCapService.GetMarkets] %s", jsonErr.Error())
+		}
+
+		m.logger.Debugf("[MarketCapService.GetMarkets] Now: %d, Last: %d, Diff: %d, Markets: %+v\n", now, m.lastUpdate, diff, m.Markets)
+		m.lastUpdate = now
 	}
 
 	var marketList []common.MarketCap
@@ -79,48 +99,32 @@ func (m *MarketCapServiceImpl) GetMarkets() []common.MarketCap {
 	return m.Markets
 }
 
-func (service *MarketCapServiceImpl) GetMarket(symbol string) common.MarketCap {
-	MARKETCAP_RATELIMITER.RespectRateLimit()
-	markets := service.GetMarkets()
-	for _, m := range markets {
-		if m.Symbol == symbol {
-			service.logger.Debugf("[MarketCapServiceImpl.GetMarket] Getting market: %+v", m)
-			return m
-		}
-	}
-	return common.MarketCap{}
-}
-
 func (m *MarketCapServiceImpl) GetGlobalMarket(currency string) *common.GlobalMarketCap {
 
-	gmarket := common.GlobalMarketCap{}
+	now := time.Now().Unix()
+	diff := now - m.lastGlobalUpdate
 
-	m.logger.Debugf("[MarketCapService.GetMarkets] Fetching global market data in %s currency", currency)
+	if diff >= m.interval {
 
-	url := fmt.Sprintf("https://api.coinmarketcap.com/v1/global/?convert=%s", currency)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		m.logger.Errorf("[MarketCapService.GetGlobalMarket] %s", err.Error())
+		m.logger.Debugf("[MarketCapService.GetGlobalMarket] Fetching global market data in %s currency", currency)
+
+		url := fmt.Sprintf("https://api.coinmarketcap.com/v1/global/?convert=%s", currency)
+
+		_, body, err := util.HttpRequest(url)
+		if err != nil {
+			m.logger.Errorf("[MarketCapService.GetGlobalMarket] %s", err.Error())
+		}
+
+		jsonErr := json.Unmarshal(body, &m.GlobalMarket)
+		if jsonErr != nil {
+			m.logger.Errorf("[MarketCapService.GetGlobalMarket] %s", jsonErr.Error())
+		}
+
+		m.logger.Debugf("[MarketCapService.GetGlobalMarket] Now: %d, Last: %d, Diff: %d, Markets: %+v\n", now, m.lastGlobalUpdate, diff, m.GlobalMarket)
+		m.lastGlobalUpdate = now
 	}
 
-	req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
-
-	res, getErr := m.client.Do(req)
-	if getErr != nil {
-		m.logger.Errorf("[MarketCapService.GetGlobalMarket] %s", getErr.Error())
-	}
-
-	body, readErr := ioutil.ReadAll(res.Body)
-	if readErr != nil {
-		m.logger.Errorf("[MarketCapService.GetGlobalMarket] %s", readErr.Error())
-	}
-
-	jsonErr := json.Unmarshal(body, &gmarket)
-	if jsonErr != nil {
-		m.logger.Errorf("[MarketCapService.GetGlobalMarket] %s", jsonErr.Error())
-	}
-
-	return &gmarket
+	return m.GlobalMarket
 }
 
 func (m *MarketCapServiceImpl) GetMarketsByPrice(order string) []common.MarketCap {
