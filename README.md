@@ -69,7 +69,7 @@ Simply install docker and run the `build-docker.sh` bash script in the project r
 Windows Home Edition and versions prior to Windows 10 do not support native virtualization. As such, they require `docker-machine` included in the Docker Toolkit. Newer versions of Windows that support native virtualization can take advantage of the latest Docker CE with enhanced performance.
 
 
-## Tech Stack
+## Development :: Tech Stack
 
 
 #### User Interface
@@ -82,3 +82,16 @@ Windows Home Edition and versions prior to Windows 10 do not support native virt
 * [Ethereum](https://www.ethereum.org/)
 * [GORM](http://gorm.io/)
 * [SQLite](https://www.sqlite.org/)
+
+
+## Requirements
+
+
+#### Firewall
+
+Geth requires both TCP and UDP port 30303, otherwise it will not be able to synchronize the chain data with peers on the public network. Be sure these ports are forwarded to the system hosting Geth if it's behind a router/firewall.
+
+
+## Known Issues
+
+1. Calculations using floats instead of fixed decimals (causes minor rounding errors in some cases)

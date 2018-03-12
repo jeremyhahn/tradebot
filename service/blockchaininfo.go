@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -12,6 +11,26 @@ import (
 	"github.com/jeremyhahn/tradebot/util"
 	logging "github.com/op/go-logging"
 )
+
+type BitcoinRawAddrTxItem struct {
+	Addr  string  `json:"addr"`
+	Value float64 `json:"value"`
+}
+
+type BitcoinRawAddrTxInput struct {
+	PrevOut BitcoinRawAddrTxItem `json:"prev_out"`
+}
+
+type BitcoinRawAddrTx struct {
+	Inputs []BitcoinRawAddrTxInput `json:"inputs"`
+	Out    []BitcoinRawAddrTxItem  `json:"out"`
+	Time   int64                   `json:"time"`
+}
+
+type BitcoinRawAddr struct {
+	Txs         []BitcoinRawAddrTx `json:"txs"`
+	NumberOfTxs int                `json:"n_tx"`
+}
 
 type BlockchainWallet struct {
 	Address  string  `json:"address"`
@@ -33,7 +52,7 @@ type BlockchainInfo struct {
 	items      BlockchainTickerItem
 	lastPrice  float64
 	lastLookup time.Time
-	WalletService
+	BlockExplorerService
 }
 
 func NewBlockchainInfo(ctx common.Context) *BlockchainInfo {
@@ -48,16 +67,15 @@ func NewBlockchainInfo(ctx common.Context) *BlockchainInfo {
 func (b *BlockchainInfo) GetPrice() float64 {
 	elapsed := float64(time.Since(b.lastLookup))
 	if elapsed/float64(time.Second) >= 900 {
-		body, err := util.HttpRequest("https://blockchain.info/ticker")
+		_, body, err := util.HttpRequest("https://blockchain.info/ticker")
 		if err != nil {
-			b.logger.Errorf("[BlockchainInfo.GetPrice] Error: ", err.Error())
+			b.logger.Errorf("[BlockchainInfo.GetPrice] Error: %s", err.Error())
 		}
 		t := BlockchainTickerItem{}
 		jsonErr := json.Unmarshal(body, &t)
 		if jsonErr != nil {
 			b.logger.Errorf("[BlockchainInfo.GetPrice] %s", jsonErr.Error())
 		}
-
 		b.lastLookup = time.Now()
 		b.lastPrice = t.USD.Last
 	}
@@ -65,35 +83,84 @@ func (b *BlockchainInfo) GetPrice() float64 {
 }
 
 func (b *BlockchainInfo) GetBalance(address string) common.UserCryptoWallet {
-
 	url := fmt.Sprintf("https://blockchain.info/address/%s?format=json", address)
-
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	_, body, err := util.HttpRequest(url)
 	if err != nil {
 		b.logger.Errorf("[BlockchainInfo.GetBalance] %s", err.Error())
 	}
-
-	req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
-
-	res, getErr := b.client.Do(req)
-	if getErr != nil {
-		b.logger.Errorf("[BlockchainInfo.GetBalance] %s", getErr.Error())
-	}
-
-	body, readErr := ioutil.ReadAll(res.Body)
-	if readErr != nil {
-		b.logger.Errorf("[BlockchainInfo.GetBalance] %s", readErr.Error())
-	}
-
 	wallet := BlockchainWallet{}
 	jsonErr := json.Unmarshal(body, &wallet)
 	if jsonErr != nil {
 		b.logger.Errorf("[BlockchainInfo.GetBalance] %s", jsonErr.Error())
 	}
+	balance := wallet.Balance / 100000000
 	return &dto.UserCryptoWalletDTO{
 		Address:  address,
-		Balance:  wallet.Balance / 100000000,
-		Currency: "BTC"}
+		Balance:  balance,
+		Currency: "BTC",
+		Value:    balance * b.GetPrice()}
+}
+
+func (b *BlockchainInfo) GetTransactions(address string) ([]common.Transaction, error) {
+	return b.getTransactionsAt(address, 0)
+}
+
+func (b *BlockchainInfo) getTransactionsAt(address string, offset int) ([]common.Transaction, error) {
+
+	url := fmt.Sprintf("%s/%s?limit=%d&offset=%d", "https://blockchain.info/rawaddr", address, 50, offset)
+
+	b.logger.Debugf("[BlockchainInfo.GetTransactions] url: %s", url)
+
+	_, body, err := util.HttpRequest(url)
+	if err != nil {
+		return nil, err
+	}
+
+	var bitcoinRawAddr BitcoinRawAddr
+	jsonErr := json.Unmarshal(body, &bitcoinRawAddr)
+	if jsonErr != nil {
+		b.logger.Errorf("[BlockchainInfo.GetTransactions] Error: %s", jsonErr.Error())
+	}
+
+	transactions := make([]common.Transaction, 0, bitcoinRawAddr.NumberOfTxs)
+
+	if len(bitcoinRawAddr.Txs) <= 0 {
+		return transactions, nil
+	}
+
+	for _, tx := range bitcoinRawAddr.Txs {
+		for _, input := range tx.Inputs {
+			if input.PrevOut.Addr == address {
+				transactions = append(transactions, &dto.TransactionDTO{
+					Date:   time.Unix(tx.Time, 0),
+					Type:   "withdrawl",
+					Amount: input.PrevOut.Value / 100000000})
+			}
+		}
+		for _, out := range tx.Out {
+			if out.Addr == address {
+				transactions = append(transactions, &dto.TransactionDTO{
+					Date:   time.Unix(tx.Time, 0),
+					Type:   "deposit",
+					Amount: out.Value / 100000000})
+			}
+		}
+	}
+
+	newOffset := offset
+	numPages := bitcoinRawAddr.NumberOfTxs / len(bitcoinRawAddr.Txs)
+
+	for i := 1; i < numPages; i++ {
+		newOffset += 50
+		txs, err := b.getTransactionsAt(address, newOffset)
+		if err != nil {
+			return nil, err
+		}
+		transactions = append(transactions, txs...)
+		return transactions, nil
+	}
+
+	return transactions, nil
 }
 
 func (b *BlockchainInfo) ConvertToUSD(currency string, btc float64) float64 {

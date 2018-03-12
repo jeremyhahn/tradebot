@@ -78,14 +78,15 @@ func (service *JsonWebTokenServiceImpl) CreateContext(w http.ResponseWriter, r *
 			LocalCurrency: claims.LocalCurrency,
 			Etherbase:     claims.Etherbase,
 			Keystore:      claims.Keystore},
-		AppRoot:  service.ctx.GetAppRoot(),
-		Logger:   service.ctx.GetLogger(),
-		CoreDB:   service.databaseManager.ConnectCoreDB(),
-		PriceDB:  service.databaseManager.ConnectPriceDB(),
-		Debug:    service.ctx.GetDebug(),
-		SSL:      service.ctx.GetSSL(),
-		IPC:      service.ctx.GetIPC(),
-		Keystore: service.ctx.GetKeystore()}, nil
+		AppRoot:      service.ctx.GetAppRoot(),
+		Logger:       service.ctx.GetLogger(),
+		CoreDB:       service.databaseManager.ConnectCoreDB(),
+		PriceDB:      service.databaseManager.ConnectPriceDB(),
+		Debug:        service.ctx.GetDebug(),
+		SSL:          service.ctx.GetSSL(),
+		IPC:          service.ctx.GetIPC(),
+		Keystore:     service.ctx.GetKeystore(),
+		EthereumMode: service.ctx.GetEthereumMode()}, nil
 }
 
 func (service *JsonWebTokenServiceImpl) GetContext(userID uint) common.Context {
@@ -197,14 +198,15 @@ func (service *JsonWebTokenServiceImpl) Validate(w http.ResponseWriter, r *http.
 					LocalCurrency: claims.LocalCurrency,
 					Etherbase:     claims.Etherbase,
 					Keystore:      claims.Keystore},
-				AppRoot:  service.ctx.GetAppRoot(),
-				Logger:   service.ctx.GetLogger(),
-				CoreDB:   service.databaseManager.ConnectCoreDB(),
-				PriceDB:  service.databaseManager.ConnectPriceDB(),
-				Debug:    service.ctx.GetDebug(),
-				SSL:      service.ctx.GetSSL(),
-				IPC:      service.ctx.GetIPC(),
-				Keystore: service.ctx.GetKeystore()}
+				AppRoot:      service.ctx.GetAppRoot(),
+				Logger:       service.ctx.GetLogger(),
+				CoreDB:       service.databaseManager.ConnectCoreDB(),
+				PriceDB:      service.databaseManager.ConnectPriceDB(),
+				Debug:        service.ctx.GetDebug(),
+				SSL:          service.ctx.GetSSL(),
+				IPC:          service.ctx.GetIPC(),
+				Keystore:     service.ctx.GetKeystore(),
+				EthereumMode: service.ctx.GetEthereumMode()}
 
 			JWT_CONTEXT_LOCK.Lock()
 			service.contexts[claims.Id] = ctx

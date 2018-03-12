@@ -34,7 +34,7 @@ func (sc *SlickCharts) GetPriceHistory(currency string) []dto.PriceHistoryDTO {
 	sc.ctx.GetLogger().Debugf("[PriceHistoryService.GetPriceHistory] Getting %s price history", currency)
 
 	url := fmt.Sprintf("%s/%s/history", sc.endpoint, currency)
-	body, err := util.HttpRequest(url)
+	_, body, err := util.HttpRequest(url)
 
 	sc.ctx.GetLogger().Debugf("[PriceHistoryService.GetPriceHistory] Getting %s price history at endpoint %s - Response: ",
 		currency, url, string(body))

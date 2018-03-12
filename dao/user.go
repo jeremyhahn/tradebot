@@ -23,6 +23,8 @@ type UserDAO interface {
 	GetExchanges(user entity.UserEntity) []entity.UserCryptoExchange
 	GetExchange(user entity.UserEntity, exchangeName string) (entity.UserExchangeEntity, error)
 	CreateExchange(userExchange entity.UserExchangeEntity) error
+	CreateToken(userToken entity.UserTokenEntity) error
+	CreateWallet(userWallet entity.UserWalletEntity) error
 }
 
 type UserDAOImpl struct {
@@ -82,6 +84,14 @@ func (dao *UserDAOImpl) Find() ([]entity.User, error) {
 	return users, nil
 }
 
+func (dao *UserDAOImpl) CreateWallet(userWallet entity.UserWalletEntity) error {
+	if err := dao.ctx.GetCoreDB().Create(userWallet).Error; err != nil {
+		dao.ctx.GetLogger().Errorf("[UserDAO.CreateWallet] Error:%s", err.Error())
+		return err
+	}
+	return nil
+}
+
 func (dao *UserDAOImpl) GetWallets(user entity.UserEntity) []entity.UserWallet {
 	var wallets []entity.UserWallet
 	if err := dao.ctx.GetCoreDB().Model(user).Related(&wallets).Error; err != nil {
@@ -98,6 +108,14 @@ func (dao *UserDAOImpl) GetWallet(user entity.UserEntity, currency string) entit
 		}
 	}
 	return &entity.UserWallet{}
+}
+
+func (dao *UserDAOImpl) CreateToken(userToken entity.UserTokenEntity) error {
+	if err := dao.ctx.GetCoreDB().Create(userToken).Error; err != nil {
+		dao.ctx.GetLogger().Errorf("[UserDAO.CreateToken] Error:%s", err.Error())
+		return err
+	}
+	return nil
 }
 
 func (dao *UserDAOImpl) GetTokens(user entity.UserEntity) []entity.UserToken {

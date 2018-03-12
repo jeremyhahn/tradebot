@@ -15,49 +15,49 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var ETHEREUM_PASSPHRASE = "test"
-var ETHEREUM_ETHERBASE = "0x411e50dde8844a77323849f5031be52c1f592383"
-var ETHEREUM_BALANCE = "42000000000000000000"
+var GETH_PASSPHRASE = "test"
+var GETH_ETHERBASE = "0x411e50dde8844a77323849f5031be52c1f592383"
+var GETH_BALANCE = "42000000000000000000"
 
-func TestEthereumService_CreateDeleteAccount(t *testing.T) {
+func TestGethService_CreateDeleteAccount(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 
 	userMapper := mapper.NewUserMapper()
 	userDAO := dao.NewUserDAO(ctx)
-	service, err := NewEthereumService(ctx, userDAO, userMapper)
+	service, err := NewGethService(ctx, userDAO, userMapper)
 	assert.Nil(t, err)
 
-	err = service.Register("testuser", ETHEREUM_PASSPHRASE)
+	err = service.Register("testuser", GETH_PASSPHRASE)
 	assert.Equal(t, nil, err)
 	assert.NotNil(t, ctx.GetUser().GetEtherbase())
 
-	err = service.DeleteAccount(ETHEREUM_PASSPHRASE)
+	err = service.DeleteAccount(GETH_PASSPHRASE)
 	assert.Equal(t, nil, err)
 
 	CleanupIntegrationTest()
 }
 
-func TestEthereumService_Authenticate(t *testing.T) {
+func TestGethService_Authenticate(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 
 	userMapper := mapper.NewUserMapper()
 	userDAO := dao.NewUserDAO(ctx)
-	service, err := NewEthereumService(ctx, userDAO, userMapper)
+	service, err := NewGethService(ctx, userDAO, userMapper)
 	assert.Equal(t, nil, err)
 
 	testuser := "testuser"
 
-	err = service.Register(testuser, ETHEREUM_PASSPHRASE)
+	err = service.Register(testuser, GETH_PASSPHRASE)
 	assert.Equal(t, nil, err)
 
-	err = service.Authenticate(ctx.GetUser().GetEtherbase(), ETHEREUM_PASSPHRASE)
+	err = service.Authenticate(ctx.GetUser().GetEtherbase(), GETH_PASSPHRASE)
 	assert.Nil(t, err)
 
 	err = service.Authenticate(ctx.GetUser().GetEtherbase(), "nogood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "could not decrypt key with given passphrase", err.Error())
 
-	user, err := service.Login(testuser, ETHEREUM_PASSPHRASE)
+	user, err := service.Login(testuser, GETH_PASSPHRASE)
 	assert.Nil(t, err)
 	assert.Equal(t, uint(2), user.GetId())
 	assert.Equal(t, "testuser", user.GetUsername())
@@ -66,49 +66,49 @@ func TestEthereumService_Authenticate(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, "could not decrypt key with given passphrase", err.Error())
 
-	err = service.DeleteAccount(ETHEREUM_PASSPHRASE)
+	err = service.DeleteAccount(GETH_PASSPHRASE)
 	assert.Equal(t, nil, err)
 
 	CleanupIntegrationTest()
 }
 
 /*
-func TestEthereumService_GetBalance(t *testing.T) {
+func TestGethService_GetBalance(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 
 	userDAO := dao.NewUserDAO(ctx)
-	service, err := NewEthereumService(ctx, userDAO)
+	service, err := NewGethService(ctx, userDAO)
 	assert.Equal(t, nil, err)
 
-	err = service.Register("testuser", ETHEREUM_PASSPHRASE)
+	err = service.Register("testuser", GETH_PASSPHRASE)
 	assert.Equal(t, nil, err)
 
-	ctx.Logger.Debugf("Make sure you've got an account and mined some coins, and ETHEREUM_ETHERBASE holds the valid address...")
+	ctx.Logger.Debugf("Make sure you've got an account and mined some coins, and GETH_ETHERBASE holds the valid address...")
 
-	balance, err := service.GetBalance(ETHEREUM_ETHERBASE)
+	balance, err := service.GetBalance(GETH_ETHERBASE)
 	//expected := new(big.Int)
-	//expected.SetString(ETHEREUM_BALANCE, 10)
+	//expected.SetString(GETH_BALANCE, 10)
 	//assert.Equal(t, expected, balance)
 	assert.Equal(t, true, balance.Int64() > 0)
 
 	CleanupIntegrationTest()
 }*/
 
-func TestEthereumService_Register(t *testing.T) {
+func TestGethService_Register(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 
 	userMapper := mapper.NewUserMapper()
 	userDAO := dao.NewUserDAO(ctx)
-	service, err := NewEthereumService(ctx, userDAO, userMapper)
+	service, err := NewGethService(ctx, userDAO, userMapper)
 	assert.Nil(t, err)
 
-	err = service.Register("ethtest", ETHEREUM_PASSPHRASE)
+	err = service.Register("ethtest", GETH_PASSPHRASE)
 	assert.Nil(t, err)
 
 	assert.NotNil(t, ctx.GetUser().GetKeystore())
 	assert.NotNil(t, ctx.GetUser().GetEtherbase())
 
-	err = service.DeleteAccount(ETHEREUM_PASSPHRASE)
+	err = service.DeleteAccount(GETH_PASSPHRASE)
 	assert.Nil(t, err)
 
 	newUser, err := userDAO.GetByName("ethtest")
@@ -121,13 +121,13 @@ func TestEthereumService_Register(t *testing.T) {
 	CleanupIntegrationTest()
 }
 
-func getEthereumBalance(t *testing.T) *big.Int {
-	bal, err := new(big.Int).SetString(ETHEREUM_BALANCE, 10)
+func getGethBalance(t *testing.T) *big.Int {
+	bal, err := new(big.Int).SetString(GETH_BALANCE, 10)
 	assert.Nil(t, err)
 	return bal
 }
 
-func createEthereumSimulatedBackend() *backends.SimulatedBackend {
+func createGethSimulatedBackend() *backends.SimulatedBackend {
 	key, _ := crypto.GenerateKey()
 	auth := bind.NewKeyedTransactor(key)
 	alloc := make(core.GenesisAlloc)

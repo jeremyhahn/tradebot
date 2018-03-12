@@ -16,19 +16,21 @@ type Context interface {
 	GetSSL() bool
 	GetIPC() string
 	GetKeystore() string
+	GetEthereumMode() string
 	Close()
 }
 
 type Ctx struct {
-	AppRoot  string
-	Logger   *logging.Logger
-	CoreDB   *gorm.DB
-	PriceDB  *gorm.DB
-	User     UserContext
-	Debug    bool
-	SSL      bool
-	IPC      string
-	Keystore string
+	AppRoot      string
+	Logger       *logging.Logger
+	CoreDB       *gorm.DB
+	PriceDB      *gorm.DB
+	User         UserContext
+	Debug        bool
+	SSL          bool
+	IPC          string
+	Keystore     string
+	EthereumMode string
 	Context
 }
 
@@ -70,6 +72,10 @@ func (c *Ctx) GetIPC() string {
 
 func (c *Ctx) GetKeystore() string {
 	return c.Keystore
+}
+
+func (c *Ctx) GetEthereumMode() string {
+	return c.EthereumMode
 }
 
 func (c *Ctx) Close() {

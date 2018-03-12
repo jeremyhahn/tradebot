@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"encoding/csv"
 	"fmt"
 	"io"
 	"net/http"
@@ -39,9 +40,9 @@ func (restService *OrderHistoryRestServiceImpl) createOrderService(ctx common.Co
 	orderMapper := mapper.NewOrderMapper(ctx)
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 
-	marketcapService := service.NewMarketCapService(ctx.GetLogger())
+	marketcapService := service.NewMarketCapService(ctx)
 	exchangeService := service.NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper)
-	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper)
+	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
 
 	return service.NewOrderService(ctx, orderDAO, orderMapper, exchangeService, userService)
@@ -63,6 +64,27 @@ func (restService *OrderHistoryRestServiceImpl) GetOrderHistory(w http.ResponseW
 	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
 		Success: true,
 		Payload: orders})
+}
+
+func (restService *OrderHistoryRestServiceImpl) Export(w http.ResponseWriter, r *http.Request) {
+	ctx, err := restService.middlewareService.CreateContext(w, r)
+	if err != nil {
+		return
+	}
+	defer ctx.Close()
+
+	filename := fmt.Sprintf("%s-%s", ctx.GetUser().GetUsername(), "-8949.csv")
+	file, err := os.Create(filename)
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	ctx.GetLogger().Debugf("[OrderHistoryRestService.Export]")
+	orderService := restService.createOrderService(ctx)
+	orderHistory := orderService.GetOrderHistory()
+	var orders []viewmodel.Order
+	for _, order := range orderHistory {
+		orders = append(orders, orderService.GetMapper().MapOrderDtoToViewModel(order))
+	}
 }
 
 func (restService *OrderHistoryRestServiceImpl) Import(w http.ResponseWriter, r *http.Request) {

@@ -30,10 +30,10 @@ func TestPortfolioHandler_Stream(t *testing.T) {
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
 	hub := NewPortfolioHub(ctx.GetLogger())
-	marketcapService := service.NewMarketCapService(ctx.GetLogger())
+	marketcapService := service.NewMarketCapService(ctx)
 
 	userExchangeMapper := mapper.NewUserExchangeMapper()
-	ethereumService, err := service.NewEthereumService(ctx, userDAO, userMapper)
+	ethereumService, err := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	assert.Nil(t, err)
 
 	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)

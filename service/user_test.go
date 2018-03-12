@@ -2,94 +2,104 @@
 
 package service
 
-/*
+import (
+	"os"
+	"testing"
+
+	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/jeremyhahn/tradebot/test"
+	"github.com/stretchr/testify/assert"
+)
+
 func TestUserService_CreateUser(t *testing.T) {
 	service := createTestUserService()
 
-	userById := service.GetUserById(1)
-	if userById.Id != 1 {
-		t.Errorf("[TestUserService_CreateUser] Unexpected user id: %d, expected: %d", userById.Id, 1)
-	}
-	if userById.Username != "test" {
-		t.Errorf("[TestUserService_CreateUser] Unexpected username: %s, expected: %s", userById.Username, "test")
-	}
+	userById, err := service.GetUserById(1)
+	assert.Nil(t, err)
+	assert.Equal(t, uint(1), userById.GetId())
+	assert.Equal(t, "test", userById.GetUsername())
 
-	userByName := service.GetUserByName("test")
-	if userByName.Id != 1 {
-		t.Errorf("[TestUserService_CreateUser] Unexpected user id: %d, expected: %d", userByName.Id, 1)
-	}
-	if userByName.Username != "test" {
-		t.Errorf("[TestUserService_CreateUser] Unexpected username: %s, expected: %s", userByName.Username, "test")
-	}
+	userByName, err := service.GetUserByName("test")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(1), userByName.GetId())
+	assert.Equal(t, "test", userByName.GetUsername())
 
-	test.CleanupMockContext()
+	test.CleanupIntegrationTest()
+}
+
+func TestUserService_CreateGetWallet(t *testing.T) {
+	service := createTestUserService()
+
+	wallet := &dto.UserCryptoWalletDTO{
+		Address:  os.Getenv("ETH_ADDRESS"),
+		Currency: "ETH"}
+
+	err := service.CreateWallet(wallet)
+	assert.Nil(t, err)
+
+	ethWallet := service.GetWallet("ETH")
+	assert.NotNil(t, ethWallet)
+	assert.Equal(t, wallet.GetAddress(), ethWallet.GetAddress())
+	assert.Equal(t, wallet.GetCurrency(), ethWallet.GetCurrency())
+	assert.Equal(t, true, ethWallet.GetBalance() > 0)
+	assert.Equal(t, true, ethWallet.GetValue() > 0)
+
+	test.CleanupIntegrationTest()
 }
 
 func TestUserService_GetWallets(t *testing.T) {
 	service := createTestUserService()
-
-	user := service.GetCurrenctUser()
-	wallets := service.GetWallets(user)
-
-	if wallets[0].Address != test.BTC_ADDRESS {
-		t.Fatal("[TestUserService_GetWallets] Unexpected BTC wallet address")
-	}
-
-	if wallets[1].Address != test.XRP_ADDRESS {
-		t.Fatal("[TestUserService_GetWallets] Unexpected XRP wallet address")
-	}
-
-	test.CleanupMockContext()
-}
-
-func TestUserService_GetWallet(t *testing.T) {
-	service := createTestUserService()
-
-	user := service.GetCurrenctUser()
-	wallet := service.GetWallet(user, "BTC")
-
-	if wallet.Address != test.BTC_ADDRESS {
-		t.Fatal("[TestUserService_GetWallet] Unexpected BTC wallet address")
-	}
-
-	test.CleanupMockContext()
+	wallets := service.GetWallets()
+	assert.Equal(t, os.Getenv("BTC_ADDRESS"), wallets[0].GetAddress())
+	assert.Equal(t, os.Getenv("XRP_ADDRESS"), wallets[1].GetAddress())
+	test.CleanupIntegrationTest()
 }
 
 func TestUserService_GetExchanges(t *testing.T) {
 	service := createTestUserService()
 
-	user := service.GetCurrenctUser()
-	exchanges := service.GetExchanges(user)
+	exchanges := service.GetConfiguredExchanges()
 
-	service.ctx.Logger.Debugf("[Fuck] %+v\n", exchanges)
+	assert.Equal(t, "gdax", exchanges[0].GetName())
+	assert.Equal(t, "bittrex", exchanges[1].GetName())
+	assert.Equal(t, "binance", exchanges[2].GetName())
 
-	if exchanges[0].Name != "GDAX" {
-		t.Fatalf("[TestUserService_GetExchanges] Failed to get expected GDAX exchange, got: %s", exchanges[0].Name)
-	}
-	if exchanges[0].Total <= 0 {
-		t.Fatalf("[TestUserService_GetExchanges] Failed to get GDAX total, got: %f", exchanges[0].Total)
-	}
-
-	if exchanges[1].Name != "bittrex" {
-		t.Fatalf("[TestUserService_GetExchanges] Failed to get expected Bittrex exchange, got: %s", exchanges[1].Name)
-	}
-	if exchanges[1].Total <= 0 {
-		t.Fatalf("[TestUserService_GetExchanges] Failed to get Bittrex total, got: %f", exchanges[1].Total)
-	}
-
-	if exchanges[2].Name != "binance" {
-		t.Fatalf("[TestUserService_GetExchanges] Failed to get expected Binance exchange, got: %s", exchanges[2].Name)
-	}
-	if exchanges[2].Total <= 0 {
-		t.Fatalf("[TestUserService_GetExchanges] Failed to get Binance total, got: %f", exchanges[2].Total)
-	}
-
-	test.CleanupMockContext()
+	test.CleanupIntegrationTest()
 }
 
-func createTestUserService() *UserService {
-	ctx := test.NewTestContext()
-	dao := dao.NewUserDAO(ctx)
-	return NewUserService(ctx, dao)
+func TestUserService_GetTokens(t *testing.T) {
+	service := createTestUserService()
+
+	token := &dto.EthereumTokenDTO{
+		Symbol:          "GLA",
+		ContractAddress: os.Getenv("TOKEN_ADDRESS"),
+		WalletAddress:   os.Getenv("ETH_ADDRESS")}
+
+	err := service.CreateToken(token)
+	assert.Nil(t, err)
+
+	tokens, err := service.GetTokens(os.Getenv("ETH_ADDRESS"))
+
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(tokens))
+
+	assert.Equal(t, token.GetContractAddress(), tokens[0].GetContractAddress())
+	assert.Equal(t, token.GetWalletAddress(), tokens[0].GetWalletAddress())
+	assert.Equal(t, true, tokens[0].GetBalance() > 0)
+
+	test.CleanupIntegrationTest()
 }
-*/
+
+func createTestUserService() UserService {
+	ctx := test.NewIntegrationTestContext()
+	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	marketcapService := NewMarketCapService(ctx)
+	ethereumService, _ := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
+	return NewUserService(ctx, userDAO, pluginDAO, marketcapService,
+		ethereumService, userMapper, userExchangeMapper)
+}

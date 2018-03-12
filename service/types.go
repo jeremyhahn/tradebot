@@ -22,8 +22,40 @@ type JsonWebTokenService interface {
 	Middleware
 }
 
-type WalletService interface {
-	GetBalances() float64
+type AuthService interface {
+	Login(username, password string) (common.UserContext, error)
+	Register(username, password string) error
+}
+
+type BlockExplorerService interface {
+	GetWallet(address string) (common.UserCryptoWallet, error)
+	GetTransactions(address string) ([]common.Transaction, error)
+}
+
+type TokenService interface {
+	GetToken(walletAddress, contractAddress string) (common.EthereumToken, error)
+	GetTokenTransactions(contractAddress string) ([]common.Transaction, error)
+	//GetContract(address string) (common.EthereumContract, error)
+	//GetTotalSupply() uint
+	//GetAllowance() uint
+	//Transfer() bool
+	//Approve() bool
+	//TransferFrom(from, to EthereumTokenAddress, tokens, uint)
+}
+
+type EthereumService interface {
+	GetAccounts() ([]common.UserContext, error)
+	AuthService
+	BlockExplorerService
+	TokenService
+}
+
+type GethService interface {
+	Authenticate(address, passphrase string) error
+	CreateAccount(passphrase string) (common.UserContext, error)
+	DeleteAccount(passphrase string) error
+	AuthService
+	TokenService
 }
 
 type PriceHistoryService interface {
@@ -46,15 +78,12 @@ type UserService interface {
 	GetExchange(user common.UserContext, name string, currencyPair *common.CurrencyPair) (common.Exchange, error)
 	GetConfiguredExchanges() []common.UserCryptoExchange
 	GetExchangeSummary(currencyPair *common.CurrencyPair) ([]common.CryptoExchangeSummary, error)
-	GetWallets(user common.UserContext) []common.UserCryptoWallet
-	GetWallet(user common.UserContext, currency string) common.UserCryptoWallet
-	GetTokens(user common.UserContext, wallet string) ([]common.EthereumToken, error)
-	GetAllTokens(user common.UserContext) ([]common.EthereumToken, error)
-}
-
-type AuthService interface {
-	Login(username, password string) (common.UserContext, error)
-	Register(username, password string) error
+	GetWallets() []common.UserCryptoWallet
+	GetWallet(currency string) common.UserCryptoWallet
+	GetTokens(wallet string) ([]common.EthereumToken, error)
+	GetAllTokens() ([]common.EthereumToken, error)
+	CreateToken(token common.EthereumToken) error
+	CreateWallet(wallet common.UserCryptoWallet) error
 }
 
 type AutoTradeService interface {

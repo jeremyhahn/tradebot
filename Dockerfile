@@ -20,3 +20,4 @@ RUN cd "${TRADEHOME}" && make dockerbuild
 CMD "${TRADEHOME}/test/docker/start.sh"
 
 EXPOSE 8080
+EXPOSE 30303

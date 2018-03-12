@@ -183,12 +183,10 @@ class Portfolio extends React.Component {
 				<Paper style={{ marginTop: '60px', height: '100%'}}>
 
 					{ this.state.portfolio.exchanges.map( exchange =>
-
 						<List key={exchange.name}>
 							<ListSubheader style={{ textTransform: 'uppercase' }}>
 								{ exchange.name + " - " + exchange.satoshis + " BTC - " + exchange.total.formatMoney()}
 							</ListSubheader>
-
 							{
 								exchange.coins.map( coin =>
 									<Coin buySellHandler={this.handleBuySellModalOpen}
@@ -202,7 +200,6 @@ class Portfolio extends React.Component {
 					)}
 
 					{ this.state.portfolio.wallets &&
-
 						<List>
 						<ListSubheader style={{ textTransform: 'uppercase' }}>Wallets</ListSubheader>
 						{ this.state.portfolio.wallets.map( (wallet, i) =>
@@ -212,7 +209,18 @@ class Portfolio extends React.Component {
 							</ListItem>
 						)}
 						</List>
+					}
 
+          { this.state.portfolio.tokens &&
+						<List>
+						<ListSubheader style={{ textTransform: 'uppercase' }}>Tokens</ListSubheader>
+						{ this.state.portfolio.tokens.map( (token, i) =>
+							<ListItem key={token.symbol + "-" + i} button>
+                <Avatar src={"images/tokens/28/" + token.symbol.toLowerCase() + ".png"} />
+								<ListItemText primary={token.symbol} secondary={token.balance  + " (" + token.value.formatMoney() +")" } />
+							</ListItem>
+						)}
+						</List>
 					}
 
 					<BuySellDialog

@@ -102,3 +102,23 @@ func TestUserDAO_CreateGetUserExchange(t *testing.T) {
 
 	CleanupIntegrationTest()
 }
+
+func TestUserDAO_GetTokens(t *testing.T) {
+	ctx := NewIntegrationTestContext()
+	userDAO := NewUserDAO(ctx)
+
+	userDAO.CreateToken(&entity.UserToken{
+		UserId:          ctx.GetUser().GetId(),
+		Symbol:          "TEST",
+		ContractAddress: "0xabc123",
+		WalletAddress:   "0xdef456"})
+
+	tokens := userDAO.GetTokens(&entity.User{Id: 1})
+
+	assert.Equal(t, 1, len(tokens))
+	assert.Equal(t, "TEST", tokens[0].GetSymbol())
+	assert.Equal(t, "0xabc123", tokens[0].GetContractAddress())
+	assert.Equal(t, "0xdef456", tokens[0].GetWalletAddress())
+
+	CleanupIntegrationTest()
+}

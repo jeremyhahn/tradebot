@@ -18,9 +18,6 @@ import (
 	"github.com/op/go-logging"
 )
 
-var GDAXLastApiCall = time.Now().AddDate(0, 0, -1).Unix()
-var GDAX_MUTEX sync.Mutex
-
 type GDAX struct {
 	gdax            *gdax.Client
 	ctx             common.Context
@@ -32,8 +29,12 @@ type GDAX struct {
 	netWorth        float64
 	apiCallCount    int
 	tradingFee      float64
+	rateLimiter     *common.RateLimiter
 	common.Exchange
 }
+
+var GDAX_RATELIMITER = common.NewRateLimiter(3, 1)
+var GDAX_MUTEX sync.Mutex
 
 func NewGDAX(ctx common.Context, _gdax entity.UserExchangeEntity) common.Exchange {
 	return &GDAX{
@@ -49,8 +50,7 @@ func NewGDAX(ctx common.Context, _gdax entity.UserExchangeEntity) common.Exchang
 
 func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
 	start, end time.Time, granularity int) []common.Candlestick {
-
-	_gdax.respectRateLimit()
+	GDAX_RATELIMITER.RespectRateLimit()
 	_gdax.logger.Debugf("[GDAX.GetPriceHistory] Getting price history %s - %s with granularity %d",
 		util.FormatDate(start), util.FormatDate(end), granularity)
 	var candlesticks []common.Candlestick
@@ -99,7 +99,7 @@ func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
 }
 
 func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Order {
-	_gdax.respectRateLimit()
+	GDAX_RATELIMITER.RespectRateLimit()
 	_gdax.logger.Debug("[GDAX.GetOrderHistory] Getting order history")
 	var orders []common.Order
 	var ledger []gdax.LedgerEntry
@@ -158,7 +158,7 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
 		_gdax.logger.Debug("[GDAX.GetBalances] Returning cached balances")
 		return _gdax.balances, _gdax.netWorth
 	}
-	_gdax.respectRateLimit()
+	GDAX_RATELIMITER.RespectRateLimit()
 	_gdax.logger.Debugf("[GDAX] Getting balances")
 	var coins []common.Coin
 	sum := 0.0
@@ -257,7 +257,7 @@ func (_gdax *GDAX) GetSummary() common.CryptoExchangeSummary {
 			total += c.GetTotal()
 		} else {
 			currency := fmt.Sprintf("%s-BTC", c.GetCurrency())
-			_gdax.respectRateLimit()
+			GDAX_RATELIMITER.RespectRateLimit()
 			ticker, err := _gdax.gdax.GetTicker(currency)
 			if err != nil {
 				_gdax.logger.Errorf("[GDAX.GetExchange] %s", err.Error())
@@ -305,20 +305,7 @@ func (_gdax *GDAX) GetTradingFee() float64 {
 }
 
 func (_gdax *GDAX) respectRateLimit() {
-	now := time.Now().Unix()
-	diff := now - GDAXLastApiCall
-	for diff <= 30 && _gdax.apiCallCount >= 3 {
-		_gdax.logger.Info("[GDAX.respectRateLimit] Cooling off")
-		_gdax.logger.Debugf("[GDAX.respectRateLimit] apiCallCount: %d, lastApiCall: %d", _gdax.apiCallCount, GDAXLastApiCall)
-		time.Sleep(1 * time.Second)
-		GDAX_MUTEX.Lock()
-		_gdax.apiCallCount = 0
-		GDAX_MUTEX.Unlock()
-	}
-	GDAX_MUTEX.Lock()
-	GDAXLastApiCall = time.Now().Unix()
-	_gdax.apiCallCount += 1
-	GDAX_MUTEX.Unlock()
+	_gdax.rateLimiter.RespectRateLimit()
 }
 
 func (_gdax *GDAX) reverseCandlesticks(candles []common.Candlestick) []common.Candlestick {

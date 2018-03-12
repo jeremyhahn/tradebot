@@ -29,8 +29,8 @@ func (restService *UserRestServiceImpl) createUserService(ctx common.Context) se
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
-	marketcapService := service.NewMarketCapService(ctx.GetLogger())
-	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper)
+	marketcapService := service.NewMarketCapService(ctx)
+	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	return service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
 }
 

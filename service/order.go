@@ -31,6 +31,17 @@ func (os *DefaultOrderService) GetMapper() mapper.OrderMapper {
 	return os.orderMapper
 }
 
+/*
+func (os *DefaultOrderService) GetOrderHistoryPairs() []common.OrderPair {
+	var orderPairs []common.OrderPair
+	var buyOrders map[string][]common.Order
+	orders := os.GetOrderHistory()
+  for _, order := range orders {
+
+	}
+	return orderPairs
+}*/
+
 func (os *DefaultOrderService) GetOrderHistory() []common.Order {
 	var orders []common.Order
 	exchanges := os.exchangeService.GetExchanges()

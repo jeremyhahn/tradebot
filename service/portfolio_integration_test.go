@@ -13,13 +13,13 @@ import (
 
 func TestPortfolioService_Build(t *testing.T) {
 	ctx := NewIntegrationTestContext()
-	marketcapService := NewMarketCapService(ctx.GetLogger())
+	marketcapService := NewMarketCapService(ctx)
 
 	pluginDAO := dao.NewPluginDAO(ctx)
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
-	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper)
+	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	assert.Nil(t, err)
 	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
 
@@ -39,13 +39,13 @@ func TestPortfolioService_Build(t *testing.T) {
 
 func TestPortfolioService_Stream(t *testing.T) {
 	ctx := NewIntegrationTestContext()
-	marketcapService := NewMarketCapService(ctx.GetLogger())
+	marketcapService := NewMarketCapService(ctx)
 
 	pluginDAO := dao.NewPluginDAO(ctx)
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
-	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper)
+	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	assert.Nil(t, err)
 	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
 

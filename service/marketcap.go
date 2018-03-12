@@ -13,7 +13,13 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-type MarketCapService struct {
+type MarketCapService interface {
+	GetMarkets() []common.MarketCap
+	GetMarket(symbol string) common.MarketCap
+	GetGlobalMarket(currency string) *common.GlobalMarketCap
+}
+
+type MarketCapServiceImpl struct {
 	logger           *logging.Logger
 	client           http.Client
 	Markets          []common.MarketCap
@@ -23,52 +29,46 @@ type MarketCapService struct {
 	interval         int64
 }
 
-func NewMarketCapService(logger *logging.Logger) *MarketCapService {
+var MARKETCAP_RATELIMITER = common.NewRateLimiter(10, 1)
+
+func NewMarketCapService(ctx common.Context) MarketCapService {
 	client := http.Client{Timeout: time.Second * 2}
-	return &MarketCapService{
-		logger:           logger,
+	return &MarketCapServiceImpl{
+		logger:           ctx.GetLogger(),
 		client:           client,
 		lastUpdate:       time.Now().Unix() - 10000,
 		lastGlobalUpdate: time.Now().Unix() - 10000,
 		interval:         300} // 5 minutes
 }
 
-func (m *MarketCapService) GetMarkets() []common.MarketCap {
+func (m *MarketCapServiceImpl) GetMarkets() []common.MarketCap {
 
-	now := time.Now().Unix()
-	diff := now - m.lastUpdate
+	MARKETCAP_RATELIMITER.RespectRateLimit()
 
-	if diff >= m.interval {
+	limit := 10000
+	m.logger.Debugf("[NewMarketCap.GetMarkets] Fetching %d markets", limit)
 
-		limit := 10000
-		m.logger.Debugf("[NewMarketCap.GetMarkets] Fetching %d markets", limit)
+	url := fmt.Sprintf("https://api.coinmarketcap.com/v1/ticker/?limit=%d", limit)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", err.Error())
+	}
 
-		url := fmt.Sprintf("https://api.coinmarketcap.com/v1/ticker/?limit=%d", limit)
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		if err != nil {
-			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", err.Error())
-		}
+	req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
 
-		req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
+	res, getErr := m.client.Do(req)
+	if getErr != nil {
+		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", getErr.Error())
+	}
 
-		res, getErr := m.client.Do(req)
-		if getErr != nil {
-			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", getErr.Error())
-		}
+	body, readErr := ioutil.ReadAll(res.Body)
+	if readErr != nil {
+		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", readErr.Error())
+	}
 
-		body, readErr := ioutil.ReadAll(res.Body)
-		if readErr != nil {
-			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", readErr.Error())
-		}
-
-		jsonErr := json.Unmarshal(body, &m.Markets)
-		if jsonErr != nil {
-			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", jsonErr.Error())
-		}
-
-		fmt.Println("Fetching marketcap")
-		m.logger.Debugf("[NewMarketCap.GetMarkets] Now: %d, Last: %d, Diff: %d, Markets: %+v\n", now, m.lastUpdate, diff, m.Markets)
-		m.lastUpdate = now
+	jsonErr := json.Unmarshal(body, &m.Markets)
+	if jsonErr != nil {
+		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", jsonErr.Error())
 	}
 
 	var marketList []common.MarketCap
@@ -83,57 +83,52 @@ func (m *MarketCapService) GetMarkets() []common.MarketCap {
 	return m.Markets
 }
 
-func (m *MarketCapService) GetMarket(symbol string) common.MarketCap {
-	markets := m.GetMarkets()
+func (service *MarketCapServiceImpl) GetMarket(symbol string) common.MarketCap {
+	MARKETCAP_RATELIMITER.RespectRateLimit()
+	markets := service.GetMarkets()
 	for _, m := range markets {
 		if m.Symbol == symbol {
+			service.logger.Debugf("[MarketCapServiceImpl.GetMarket] Getting market: %+v", m)
 			return m
 		}
 	}
 	return common.MarketCap{}
 }
 
-func (m *MarketCapService) GetGlobalMarket(currency string) *common.GlobalMarketCap {
-
-	now := time.Now().Unix()
-	diff := now - m.lastUpdate
+func (m *MarketCapServiceImpl) GetGlobalMarket(currency string) *common.GlobalMarketCap {
 
 	gmarket := common.GlobalMarketCap{}
 
-	if diff >= m.interval {
+	m.logger.Debugf("[NewMarketCap.GetMarkets] Fetching global market data in %s currency", currency)
 
-		m.logger.Debugf("[NewMarketCap.GetMarkets] Fetching global market data in %s currency", currency)
+	url := fmt.Sprintf("https://api.coinmarketcap.com/v1/global/?convert=%s", currency)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", err.Error())
+	}
 
-		url := fmt.Sprintf("https://api.coinmarketcap.com/v1/global/?convert=%s", currency)
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		if err != nil {
-			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", err.Error())
-		}
+	req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
 
-		req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
+	res, getErr := m.client.Do(req)
+	if getErr != nil {
+		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", getErr.Error())
+	}
 
-		res, getErr := m.client.Do(req)
-		if getErr != nil {
-			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", getErr.Error())
-		}
+	body, readErr := ioutil.ReadAll(res.Body)
+	if readErr != nil {
+		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", readErr.Error())
+	}
 
-		body, readErr := ioutil.ReadAll(res.Body)
-		if readErr != nil {
-			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", readErr.Error())
-		}
-
-		jsonErr := json.Unmarshal(body, &gmarket)
-		if jsonErr != nil {
-			m.logger.Errorf("[NewMarketCap.GetMarkets] %s", jsonErr.Error())
-		}
-
-		fmt.Printf("%+v\n", gmarket)
+	jsonErr := json.Unmarshal(body, &gmarket)
+	if jsonErr != nil {
+		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", jsonErr.Error())
 	}
 
 	return &gmarket
 }
 
-func (m *MarketCapService) GetMarketsByPrice(order string) []common.MarketCap {
+func (m *MarketCapServiceImpl) GetMarketsByPrice(order string) []common.MarketCap {
+	MARKETCAP_RATELIMITER.RespectRateLimit()
 	markets := m.GetMarkets()
 	sort.Slice(markets, func(i, j int) bool {
 		priceI, _ := strconv.ParseFloat(markets[i].PriceUSD, 64)
@@ -148,7 +143,8 @@ func (m *MarketCapService) GetMarketsByPrice(order string) []common.MarketCap {
 	return markets
 }
 
-func (m *MarketCapService) GetMarketsByPercentChange1H(order string) []common.MarketCap {
+func (m *MarketCapServiceImpl) GetMarketsByPercentChange1H(order string) []common.MarketCap {
+	MARKETCAP_RATELIMITER.RespectRateLimit()
 	markets := m.GetMarkets()
 	sort.Slice(markets, func(i, j int) bool {
 		fi, _ := strconv.ParseFloat(markets[i].PercentChange1h, 64)
@@ -162,7 +158,8 @@ func (m *MarketCapService) GetMarketsByPercentChange1H(order string) []common.Ma
 	return markets
 }
 
-func (m *MarketCapService) GetMarketsByPercentChange24H(order string) []common.MarketCap {
+func (m *MarketCapServiceImpl) GetMarketsByPercentChange24H(order string) []common.MarketCap {
+	MARKETCAP_RATELIMITER.RespectRateLimit()
 	markets := m.GetMarkets()
 	sort.Slice(markets, func(i, j int) bool {
 		fi, _ := strconv.ParseFloat(markets[i].PercentChange24h, 64)
@@ -176,7 +173,8 @@ func (m *MarketCapService) GetMarketsByPercentChange24H(order string) []common.M
 	return markets
 }
 
-func (m *MarketCapService) GetMarketsByPercentChange7D(order string) []common.MarketCap {
+func (m *MarketCapServiceImpl) GetMarketsByPercentChange7D(order string) []common.MarketCap {
+	MARKETCAP_RATELIMITER.RespectRateLimit()
 	markets := m.GetMarkets()
 	sort.Slice(markets, func(i, j int) bool {
 		fi, _ := strconv.ParseFloat(markets[i].PercentChange7d, 64)
@@ -190,7 +188,8 @@ func (m *MarketCapService) GetMarketsByPercentChange7D(order string) []common.Ma
 	return markets
 }
 
-func (m *MarketCapService) GetMarketsByTopPerformers(order string) []common.MarketCap {
+func (m *MarketCapServiceImpl) GetMarketsByTopPerformers(order string) []common.MarketCap {
+	MARKETCAP_RATELIMITER.RespectRateLimit()
 	markets := m.GetMarkets()
 	sort.Slice(markets, func(i, j int) bool {
 		fi1h, _ := strconv.ParseFloat(markets[i].PercentChange1h, 64)
@@ -210,7 +209,8 @@ func (m *MarketCapService) GetMarketsByTopPerformers(order string) []common.Mark
 	return markets
 }
 
-func (m *MarketCapService) GetMarketsByTrending(order string) []common.MarketCap {
+func (m *MarketCapServiceImpl) GetTrendingMarkets(order string) []common.MarketCap {
+	MARKETCAP_RATELIMITER.RespectRateLimit()
 	markets := m.GetMarkets()
 	sort.Slice(markets, func(i, j int) bool {
 		fi, _ := strconv.ParseFloat(markets[i].PercentChange1h, 64)

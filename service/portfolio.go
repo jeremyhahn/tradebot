@@ -1,9 +1,6 @@
 package service
 
 import (
-	"math/big"
-	"strconv"
-
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dto"
 )
@@ -12,13 +9,13 @@ type PortfolioServiceImpl struct {
 	ctx              common.Context
 	stopChans        map[uint]chan bool
 	portfolios       map[uint]common.Portfolio
-	marketcapService *MarketCapService
+	marketcapService MarketCapService
 	userService      UserService
 	ethereumService  EthereumService
 	PortfolioService
 }
 
-func NewPortfolioService(ctx common.Context, marketcapService *MarketCapService,
+func NewPortfolioService(ctx common.Context, marketcapService MarketCapService,
 	userService UserService, ethereumService EthereumService) PortfolioService {
 	return &PortfolioServiceImpl{
 		ctx:              ctx,
@@ -37,51 +34,53 @@ func (ps *PortfolioServiceImpl) Build(user common.UserContext, currencyPair *com
 		ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error: %s", err.Error())
 		return nil, err
 	}
-	walletList := ps.userService.GetWallets(ps.ctx.GetUser())
-	var tokenList []common.EthereumToken
 	for _, ex := range exchangeList {
 		netWorth += ex.GetTotal()
 	}
+	walletList := ps.userService.GetWallets()
 	for _, w := range walletList {
 		netWorth += w.GetValue()
 	}
-	accounts, err := ps.ethereumService.GetAccounts()
-	if err != nil {
-		ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error getting local Ethereum accounts: %s", err.Error())
+	tokenList, err := ps.userService.GetAllTokens()
+	for _, t := range tokenList {
+		netWorth += t.GetValue()
 	}
-	for _, acct := range accounts {
-		sAcct := acct.Address.String()
-		balance, err := ps.ethereumService.GetBalance(sAcct)
-		if err != nil {
-			ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error getting Ethereum account balance for address %s: %s", sAcct, err.Error())
-		}
-		floatBalance, _ := new(big.Float).SetInt(balance).Float64()
-		priceUSD, err := strconv.ParseFloat(ps.marketcapService.GetMarket("ETH").PriceUSD, 64)
-		if err != nil {
-			ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error parsing MarketCap ETH response to float for address %s: %s", sAcct, err.Error())
-		}
-		total := floatBalance * priceUSD
-		walletList = append(walletList, &dto.UserCryptoWalletDTO{
-			Address:  sAcct,
-			Balance:  floatBalance,
-			Currency: "ETH",
-			Value:    total})
 
-		netWorth += total
-
-		tokens, err := ps.userService.GetTokens(ps.ctx.GetUser(), sAcct)
+	/*
+		accounts, err := ps.ethereumService.GetAccounts()
 		if err != nil {
-			ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error getting current user: %s", err.Error())
+			ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error getting local Ethereum accounts: %s", err.Error())
 		}
-		for _, token := range tokens {
-			f, err := strconv.ParseFloat(token.GetEthBalance(), 64)
+		for _, acct := range accounts {
+			etherbase := acct.GetEtherbase()
+			wallet, err := ps.ethereumService.GetWallet(etherbase)
 			if err != nil {
-				ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error parsing token balance to float: %s", err.Error())
+				ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error getting Ethereum account balance for address %s: %s",
+					etherbase, err.Error())
 			}
-			tokenList = append(tokenList, token)
-			netWorth += f * priceUSD
-		}
-	}
+			priceUSD, err := strconv.ParseFloat(ps.marketcapService.GetMarket("ETH").PriceUSD, 64)
+			if err != nil {
+				ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error parsing MarketCap ETH response to float for address %s: %s",
+					etherbase, err.Error())
+			}
+			total := wallet.GetBalance() * priceUSD
+			walletList = append(walletList, &dto.UserCryptoWalletDTO{
+				Address:  etherbase,
+				Balance:  wallet.GetBalance(),
+				Currency: "ETH",
+				Value:    total})
+
+			netWorth += total
+
+			tokens, err := ps.userService.GetTokens(ps.ctx.GetUser(), etherbase)
+			if err != nil {
+				ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error getting current user: %s", err.Error())
+			}
+			for _, token := range tokens {
+				tokenList = append(tokenList, token)
+				netWorth += token.GetBalance() * priceUSD
+			}
+		}*/
 
 	currentUser, err := ps.userService.GetCurrentUser()
 	if err != nil {
@@ -91,7 +90,8 @@ func (ps *PortfolioServiceImpl) Build(user common.UserContext, currencyPair *com
 		User:      currentUser,
 		NetWorth:  netWorth,
 		Exchanges: exchangeList,
-		Wallets:   walletList}
+		Wallets:   walletList,
+		Tokens:    tokenList}
 	ps.portfolios[user.GetId()] = portfolio
 	ps.stopChans[user.GetId()] = make(chan bool, 1)
 	return portfolio, nil

@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"fmt"
+
+	"github.com/jeremyhahn/tradebot/common"
+)
 
 type UserCryptoWalletDTO struct {
 	Address  string  `json:"address"`
@@ -28,4 +32,9 @@ func (dto *UserCryptoWalletDTO) GetCurrency() string {
 
 func (dto *UserCryptoWalletDTO) GetValue() float64 {
 	return dto.Value
+}
+
+func (dto *UserCryptoWalletDTO) String() string {
+	return fmt.Sprintf("[UserCryptoWalletDTO] Currency: %s, Address: %s, Balance: %.8f, Value: %.2f",
+		dto.GetCurrency(), dto.GetAddress(), dto.GetBalance(), dto.GetValue())
 }

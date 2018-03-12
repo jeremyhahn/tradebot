@@ -15,7 +15,7 @@ type PortfolioClient struct {
 	hub              *PortfolioHub
 	conn             *websocket.Conn
 	send             chan common.Portfolio
-	marketcapService *service.MarketCapService
+	marketcapService service.MarketCapService
 	userService      service.UserService
 	portfolioService service.PortfolioService
 }
@@ -71,7 +71,7 @@ func (c *PortfolioClient) writePump() {
 				c.ctx.GetLogger().Errorf("[PortfolioClient.writePump] Error: %s", err.Error())
 				return
 			}
-			time.Sleep(3 * time.Second)
+			time.Sleep(10 * time.Second)
 		}
 	}
 }

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 rm -rf blockchain/
-geth --datadir ./blockchain init genesis.json
-geth --datadir ./blockchain --networkid 420 console
+geth --datadir ./blockchain init genesis.json --port 30304
+geth --datadir ./blockchain --networkid 420 console --port 30304
 
 # Create new account
 # personal.newAccount("test")

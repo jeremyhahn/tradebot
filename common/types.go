@@ -21,14 +21,29 @@ const (
 	WALLET_PLUGIN_TYPE    = "wallet"
 )
 
+type Transaction interface {
+	GetDate() time.Time
+	GetType() string
+	GetAmount() float64
+	GetFee() float64
+}
+
 type EthereumToken interface {
 	GetName() string
 	GetSymbol() string
 	GetDecimals() uint8
-	GetTokenBalance() string
-	GetEthBalance() string
+	GetBalance() float64
 	GetWalletAddress() string
 	GetContractAddress() string
+	GetValue() float64
+}
+
+type EthereumContract interface {
+	GetAddress() string
+	GetSource() string
+	GetBin() string
+	GetABI() string
+	GetCreationDate() time.Time
 }
 
 type Plugin interface {
@@ -98,6 +113,11 @@ type Order interface {
 	GetTotal() float64
 	GetTotalCurrency() string
 	String() string
+}
+
+type OrderPair interface {
+	GetBuyOrder() Order
+	GetSellOrder() Order
 }
 
 type Profit interface {
@@ -215,6 +235,7 @@ type Portfolio interface {
 	GetNetWorth() float64
 	GetExchanges() []CryptoExchangeSummary
 	GetWallets() []UserCryptoWallet
+	GetTokens() []EthereumToken
 }
 
 type HttpWriter interface {

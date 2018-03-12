@@ -21,6 +21,7 @@ func main() {
 	wd, _ := os.Getwd()
 	defaultIpc := fmt.Sprintf("%s/%s", wd, "test/ethereum/blockchain/geth.ipc")
 	defaultKeystore := fmt.Sprintf("%s/%s", wd, "test/ethereum/blockchain/keystore")
+	defaultMode := "etherscan"
 
 	initDbFlag := flag.Bool("initdb", false, "Create initial database schema and exit")
 	portFlag := flag.Int("port", 8080, "Web server listen port")
@@ -28,6 +29,7 @@ func main() {
 	ipcFlag := flag.String("ipc", defaultIpc, "Path to geth IPC socket")
 	keystoreFlag := flag.String("keystore", defaultKeystore, "Path to default Ethereum keystore")
 	debugFlag := flag.Bool("debug", false, "Enable debug level logging")
+	ethereumModeFlag := flag.String("mode", defaultMode, "Ethereum mode [native | etherscan] (default: etherscan)")
 	flag.Parse()
 
 	f, err := os.OpenFile("tradebot.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
@@ -55,20 +57,21 @@ func main() {
 	}
 
 	ctx := &common.Ctx{
-		AppRoot:  wd,
-		CoreDB:   databaseManager.ConnectCoreDB(),
-		PriceDB:  databaseManager.ConnectPriceDB(),
-		Logger:   logger,
-		Debug:    *debugFlag,
-		SSL:      *sslFlag,
-		IPC:      *ipcFlag,
-		Keystore: *keystoreFlag}
+		AppRoot:      wd,
+		CoreDB:       databaseManager.ConnectCoreDB(),
+		PriceDB:      databaseManager.ConnectPriceDB(),
+		Logger:       logger,
+		Debug:        *debugFlag,
+		SSL:          *sslFlag,
+		IPC:          *ipcFlag,
+		Keystore:     *keystoreFlag,
+		EthereumMode: *ethereumModeFlag}
 	defer ctx.Close()
 
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
 
-	ethereumService, err := service.NewEthereumService(ctx, userDAO, userMapper)
+	ethereumService, err := service.NewEthereumService(ctx, userDAO, userMapper, service.NewMarketCapService(ctx))
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}

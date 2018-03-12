@@ -21,8 +21,8 @@ func TestOrderService_GetOrderHistory(t *testing.T) {
 	orderMapper := mapper.NewOrderMapper(ctx)
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 
-	marketcapService := NewMarketCapService(ctx.GetLogger())
-	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper)
+	marketcapService := NewMarketCapService(ctx)
+	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	assert.Nil(t, err)
 
 	exchangeService := NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper)
@@ -48,8 +48,8 @@ func TestOrderService_ImportCSV(t *testing.T) {
 	orderMapper := mapper.NewOrderMapper(ctx)
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 
-	marketcapService := NewMarketCapService(ctx.GetLogger())
-	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper)
+	marketcapService := NewMarketCapService(ctx)
+	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	assert.Nil(t, err)
 
 	exchangeService := NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper)

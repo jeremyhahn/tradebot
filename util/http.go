@@ -8,20 +8,20 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 )
 
-func HttpRequest(url string) ([]byte, error) {
+func HttpRequest(url string) (int, []byte, error) {
 	var client http.Client
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, err
+		return 500, nil, err
 	}
 	req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
 	res, getErr := client.Do(req)
 	if getErr != nil {
-		return nil, getErr
+		return res.StatusCode, []byte(res.Status), getErr
 	}
 	body, readErr := ioutil.ReadAll(res.Body)
 	if readErr != nil {
-		return nil, readErr
+		return res.StatusCode, []byte(res.Status), readErr
 	}
-	return body, nil
+	return res.StatusCode, body, nil
 }

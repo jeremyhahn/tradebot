@@ -52,13 +52,14 @@ type UserWalletEntity interface {
 	GetUserId() uint
 	GetCurrency() string
 	GetAddress() string
+	IsNative() bool
 }
 
 type UserTokenEntity interface {
 	GetUserId() uint
 	GetSymbol() string
-	GetContract() string
-	GetWallet() string
+	GetContractAddress() string
+	GetWalletAddress() string
 }
 
 type UserExchangeEntity interface {
