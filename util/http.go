@@ -15,13 +15,13 @@ func HttpRequest(url string) (int, []byte, error) {
 		return 500, nil, err
 	}
 	req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
-	res, getErr := client.Do(req)
-	if getErr != nil {
-		return res.StatusCode, []byte(res.Status), getErr
+	res, err := client.Do(req)
+	if err != nil {
+		return 500, nil, err
 	}
-	body, readErr := ioutil.ReadAll(res.Body)
-	if readErr != nil {
-		return res.StatusCode, []byte(res.Status), readErr
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return res.StatusCode, []byte(res.Status), err
 	}
 	return res.StatusCode, body, nil
 }

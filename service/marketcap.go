@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/util"
 	logging "github.com/op/go-logging"
 )
 
@@ -17,6 +18,12 @@ type MarketCapService interface {
 	GetMarkets() []common.MarketCap
 	GetMarket(symbol string) common.MarketCap
 	GetGlobalMarket(currency string) *common.GlobalMarketCap
+	GetMarketsByPrice(order string) []common.MarketCap
+	GetMarketsByPercentChange1H(order string) []common.MarketCap
+	GetMarketsByPercentChange24H(order string) []common.MarketCap
+	GetMarketsByPercentChange7D(order string) []common.MarketCap
+	GetMarketsByTopPerformers(order string) []common.MarketCap
+	GetTrendingMarkets(order string) []common.MarketCap
 }
 
 type MarketCapServiceImpl struct {
@@ -46,29 +53,18 @@ func (m *MarketCapServiceImpl) GetMarkets() []common.MarketCap {
 	MARKETCAP_RATELIMITER.RespectRateLimit()
 
 	limit := 10000
-	m.logger.Debugf("[NewMarketCap.GetMarkets] Fetching %d markets", limit)
+	m.logger.Debugf("[MarketCapService.GetMarkets] Fetching %d markets", limit)
 
 	url := fmt.Sprintf("https://api.coinmarketcap.com/v1/ticker/?limit=%d", limit)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+
+	_, body, err := util.HttpRequest(url)
 	if err != nil {
-		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", err.Error())
-	}
-
-	req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
-
-	res, getErr := m.client.Do(req)
-	if getErr != nil {
-		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", getErr.Error())
-	}
-
-	body, readErr := ioutil.ReadAll(res.Body)
-	if readErr != nil {
-		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", readErr.Error())
+		m.logger.Errorf("[MarketCapService.GetMarkets] %s", err.Error())
 	}
 
 	jsonErr := json.Unmarshal(body, &m.Markets)
 	if jsonErr != nil {
-		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", jsonErr.Error())
+		m.logger.Errorf("[MarketCapService.GetMarkets] %s", jsonErr.Error())
 	}
 
 	var marketList []common.MarketCap
@@ -99,29 +95,29 @@ func (m *MarketCapServiceImpl) GetGlobalMarket(currency string) *common.GlobalMa
 
 	gmarket := common.GlobalMarketCap{}
 
-	m.logger.Debugf("[NewMarketCap.GetMarkets] Fetching global market data in %s currency", currency)
+	m.logger.Debugf("[MarketCapService.GetMarkets] Fetching global market data in %s currency", currency)
 
 	url := fmt.Sprintf("https://api.coinmarketcap.com/v1/global/?convert=%s", currency)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", err.Error())
+		m.logger.Errorf("[MarketCapService.GetGlobalMarket] %s", err.Error())
 	}
 
 	req.Header.Set("User-Agent", fmt.Sprintf("%s/v%s", common.APPNAME, common.APPVERSION))
 
 	res, getErr := m.client.Do(req)
 	if getErr != nil {
-		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", getErr.Error())
+		m.logger.Errorf("[MarketCapService.GetGlobalMarket] %s", getErr.Error())
 	}
 
 	body, readErr := ioutil.ReadAll(res.Body)
 	if readErr != nil {
-		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", readErr.Error())
+		m.logger.Errorf("[MarketCapService.GetGlobalMarket] %s", readErr.Error())
 	}
 
 	jsonErr := json.Unmarshal(body, &gmarket)
 	if jsonErr != nil {
-		m.logger.Errorf("[NewMarketCap.GetMarkets] %s", jsonErr.Error())
+		m.logger.Errorf("[MarketCapService.GetGlobalMarket] %s", jsonErr.Error())
 	}
 
 	return &gmarket
