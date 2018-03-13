@@ -23,9 +23,12 @@ const (
 
 type Transaction interface {
 	GetDate() time.Time
+	GetCurrencyPair() *CurrencyPair
 	GetType() string
+	GetSource() string
 	GetAmount() float64
 	GetFee() float64
+	GetHistoricalPrice() float64
 }
 
 type EthereumToken interface {
@@ -112,6 +115,8 @@ type Order interface {
 	GetFeeCurrency() string
 	GetTotal() float64
 	GetTotalCurrency() string
+	GetHistoricalPrice() float64
+	GetHistoricalCurrency() string
 	String() string
 }
 
@@ -250,6 +255,12 @@ type PriceHistory interface {
 	GetClose() float64
 	GetVolume() float64
 	GetMarketCap() int64
+}
+
+type PriceHistoryService interface {
+	GetPriceOn(currency string, day time.Time) PriceHistory
+	GetClosePriceOn(currency string, date time.Time) float64
+	GetPriceHistory(currency string) []PriceHistory
 }
 
 type TradingStrategyParams struct {

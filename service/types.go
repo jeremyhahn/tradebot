@@ -5,7 +5,6 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 )
@@ -29,7 +28,8 @@ type AuthService interface {
 
 type BlockExplorerService interface {
 	GetWallet(address string) (common.UserCryptoWallet, error)
-	GetTransactions(address string) ([]common.Transaction, error)
+	GetTransactions() ([]common.Transaction, error)
+	GetTransactionsFor(address string) ([]common.Transaction, error)
 }
 
 type TokenService interface {
@@ -56,10 +56,6 @@ type GethService interface {
 	DeleteAccount(passphrase string) error
 	AuthService
 	TokenService
-}
-
-type PriceHistoryService interface {
-	GetPriceHistory(currency string) []dto.PriceHistoryDTO
 }
 
 type PortfolioService interface {

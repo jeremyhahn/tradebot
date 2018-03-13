@@ -11,24 +11,28 @@ import (
 )
 
 type DefaultExchangeService struct {
-	ctx                common.Context
-	pluginDAO          dao.PluginDAO
-	userDAO            dao.UserDAO
-	userMapper         mapper.UserMapper
-	userExchangeMapper mapper.UserExchangeMapper
-	exchangeMap        map[string]func(common.Context, entity.UserExchangeEntity) common.Exchange
+	ctx                 common.Context
+	pluginDAO           dao.PluginDAO
+	userDAO             dao.UserDAO
+	userMapper          mapper.UserMapper
+	userExchangeMapper  mapper.UserExchangeMapper
+	priceHistoryService common.PriceHistoryService
+	exchangeMap         map[string]func(common.Context, entity.UserExchangeEntity, common.PriceHistoryService) common.Exchange
 	ExchangeService
 }
 
 func NewExchangeService(ctx common.Context, pluginDAO dao.PluginDAO, userDAO dao.UserDAO,
-	userMapper mapper.UserMapper, userExchangeMapper mapper.UserExchangeMapper) ExchangeService {
+	userMapper mapper.UserMapper, userExchangeMapper mapper.UserExchangeMapper,
+	priceHistoryService common.PriceHistoryService) ExchangeService {
 	return &DefaultExchangeService{
-		ctx:                ctx,
-		pluginDAO:          pluginDAO,
-		userDAO:            userDAO,
-		userMapper:         userMapper,
-		userExchangeMapper: userExchangeMapper,
-		exchangeMap: map[string]func(ctx common.Context, exchange entity.UserExchangeEntity) common.Exchange{
+		ctx:                 ctx,
+		pluginDAO:           pluginDAO,
+		userDAO:             userDAO,
+		userMapper:          userMapper,
+		userExchangeMapper:  userExchangeMapper,
+		priceHistoryService: priceHistoryService,
+		exchangeMap: map[string]func(ctx common.Context, exchange entity.UserExchangeEntity,
+			priceHistoryService common.PriceHistoryService) common.Exchange{
 			"gdax":    exchange.NewGDAX,
 			"bittrex": exchange.NewBittrex,
 			"binance": exchange.NewBinance}}
@@ -41,7 +45,7 @@ func (service *DefaultExchangeService) CreateExchange(exchangeName string) (comm
 		service.ctx.GetLogger().Errorf("[ExchangeService.CreateExchange] Error: %s", err.Error())
 		return nil, err
 	}
-	return service.exchangeMap[exchangeName](service.ctx, exchange), nil
+	return service.exchangeMap[exchangeName](service.ctx, exchange, service.priceHistoryService), nil
 }
 
 func (service *DefaultExchangeService) GetDisplayNames() []string {
@@ -59,7 +63,7 @@ func (service *DefaultExchangeService) GetExchanges() []common.Exchange {
 	userEntity := &entity.User{Id: service.ctx.GetUser().GetId()}
 	userExchanges := service.userDAO.GetExchanges(userEntity)
 	for _, ex := range userExchanges {
-		exchanges = append(exchanges, service.exchangeMap[ex.Name](service.ctx, &ex))
+		exchanges = append(exchanges, service.exchangeMap[ex.Name](service.ctx, &ex, service.priceHistoryService))
 	}
 	return exchanges
 }

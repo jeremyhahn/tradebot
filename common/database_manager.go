@@ -61,7 +61,8 @@ func (database *DatabaseImpl) MigrateCoreDB() {
 }
 
 func (database *DatabaseImpl) MigratePriceDB() {
-	database.ConnectPriceDB().AutoMigrate(&entity.PriceHistory{})
+	priceDB := database.ConnectPriceDB()
+	priceDB.AutoMigrate(&entity.PriceHistory{})
 }
 
 func (database *DatabaseImpl) ConnectCoreDB() *gorm.DB {

@@ -1,3 +1,5 @@
+// +build integration
+
 package websocket
 
 import (
@@ -31,12 +33,13 @@ func TestPortfolioHandler_Stream(t *testing.T) {
 	userMapper := mapper.NewUserMapper()
 	hub := NewPortfolioHub(ctx.GetLogger())
 	marketcapService := service.NewMarketCapService(ctx)
+	priceHistoryService := service.NewPriceHistoryService(ctx)
 
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 	ethereumService, err := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	assert.Nil(t, err)
 
-	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
+	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper, priceHistoryService)
 
 	jsonWebTokenService, err := service.NewJsonWebTokenService(ctx, databaseManager, ethereumService, common.NewJsonWriter())
 	assert.Nil(t, err)

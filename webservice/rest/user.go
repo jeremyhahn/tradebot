@@ -30,8 +30,9 @@ func (restService *UserRestServiceImpl) createUserService(ctx common.Context) se
 	userMapper := mapper.NewUserMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 	marketcapService := service.NewMarketCapService(ctx)
+	priceHistoryService := service.NewPriceHistoryService(ctx)
 	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService)
-	return service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
+	return service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper, priceHistoryService)
 }
 
 func (restService *UserRestServiceImpl) GetExchanges(w http.ResponseWriter, r *http.Request) {

@@ -14,14 +14,24 @@ import (
 )
 
 func TestUserService_CreateUser(t *testing.T) {
-	service := createTestUserService()
+	ctx := test.NewIntegrationTestContext()
 
-	userById, err := service.GetUserById(1)
+	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	marketcapService := NewMarketCapService(ctx)
+	priceHistoryService := NewPriceHistoryService(ctx)
+	ethereumService, _ := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
+	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService,
+		ethereumService, userMapper, userExchangeMapper, priceHistoryService)
+
+	userById, err := userService.GetUserById(1)
 	assert.Nil(t, err)
 	assert.Equal(t, uint(1), userById.GetId())
 	assert.Equal(t, "test", userById.GetUsername())
 
-	userByName, err := service.GetUserByName("test")
+	userByName, err := userService.GetUserByName("test")
 	assert.Nil(t, err)
 	assert.Equal(t, uint(1), userByName.GetId())
 	assert.Equal(t, "test", userByName.GetUsername())
@@ -30,16 +40,26 @@ func TestUserService_CreateUser(t *testing.T) {
 }
 
 func TestUserService_CreateGetWallet(t *testing.T) {
-	service := createTestUserService()
+	ctx := test.NewIntegrationTestContext()
+
+	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	marketcapService := NewMarketCapService(ctx)
+	priceHistoryService := NewPriceHistoryService(ctx)
+	ethereumService, _ := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
+	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService,
+		ethereumService, userMapper, userExchangeMapper, priceHistoryService)
 
 	wallet := &dto.UserCryptoWalletDTO{
 		Address:  os.Getenv("ETH_ADDRESS"),
 		Currency: "ETH"}
 
-	err := service.CreateWallet(wallet)
+	err := userService.CreateWallet(wallet)
 	assert.Nil(t, err)
 
-	ethWallet := service.GetWallet("ETH")
+	ethWallet := userService.GetWallet("ETH")
 	assert.NotNil(t, ethWallet)
 	assert.Equal(t, wallet.GetAddress(), ethWallet.GetAddress())
 	assert.Equal(t, wallet.GetCurrency(), ethWallet.GetCurrency())
@@ -50,17 +70,35 @@ func TestUserService_CreateGetWallet(t *testing.T) {
 }
 
 func TestUserService_GetWallets(t *testing.T) {
-	service := createTestUserService()
-	wallets := service.GetWallets()
+	ctx := test.NewIntegrationTestContext()
+	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	marketcapService := NewMarketCapService(ctx)
+	priceHistoryService := NewPriceHistoryService(ctx)
+	ethereumService, _ := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
+	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService,
+		ethereumService, userMapper, userExchangeMapper, priceHistoryService)
+	wallets := userService.GetWallets()
 	assert.Equal(t, os.Getenv("BTC_ADDRESS"), wallets[0].GetAddress())
 	assert.Equal(t, os.Getenv("XRP_ADDRESS"), wallets[1].GetAddress())
 	test.CleanupIntegrationTest()
 }
 
 func TestUserService_GetExchanges(t *testing.T) {
-	service := createTestUserService()
+	ctx := test.NewIntegrationTestContext()
+	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	marketcapService := NewMarketCapService(ctx)
+	priceHistoryService := NewPriceHistoryService(ctx)
+	ethereumService, _ := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
+	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService,
+		ethereumService, userMapper, userExchangeMapper, priceHistoryService)
 
-	exchanges := service.GetConfiguredExchanges()
+	exchanges := userService.GetConfiguredExchanges()
 
 	assert.Equal(t, "gdax", exchanges[0].GetName())
 	assert.Equal(t, "bittrex", exchanges[1].GetName())
@@ -70,17 +108,26 @@ func TestUserService_GetExchanges(t *testing.T) {
 }
 
 func TestUserService_GetTokens(t *testing.T) {
-	service := createTestUserService()
+	ctx := test.NewIntegrationTestContext()
+	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	marketcapService := NewMarketCapService(ctx)
+	priceHistoryService := NewPriceHistoryService(ctx)
+	ethereumService, _ := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
+	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService,
+		ethereumService, userMapper, userExchangeMapper, priceHistoryService)
 
 	token := &dto.EthereumTokenDTO{
-		Symbol:          "GLA",
+		Symbol:          os.Getenv("TOKEN_SYMBOL"),
 		ContractAddress: os.Getenv("TOKEN_ADDRESS"),
 		WalletAddress:   os.Getenv("ETH_ADDRESS")}
 
-	err := service.CreateToken(token)
+	err := userService.CreateToken(token)
 	assert.Nil(t, err)
 
-	tokens, err := service.GetTokens(os.Getenv("ETH_ADDRESS"))
+	tokens, err := userService.GetTokens(os.Getenv("ETH_ADDRESS"))
 
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(tokens))
@@ -90,16 +137,4 @@ func TestUserService_GetTokens(t *testing.T) {
 	assert.Equal(t, true, tokens[0].GetBalance() > 0)
 
 	test.CleanupIntegrationTest()
-}
-
-func createTestUserService() UserService {
-	ctx := test.NewIntegrationTestContext()
-	userDAO := dao.NewUserDAO(ctx)
-	pluginDAO := dao.NewPluginDAO(ctx)
-	userMapper := mapper.NewUserMapper()
-	userExchangeMapper := mapper.NewUserExchangeMapper()
-	marketcapService := NewMarketCapService(ctx)
-	ethereumService, _ := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
-	return NewUserService(ctx, userDAO, pluginDAO, marketcapService,
-		ethereumService, userMapper, userExchangeMapper)
 }

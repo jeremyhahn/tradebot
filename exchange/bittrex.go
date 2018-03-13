@@ -10,30 +10,35 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
+	"github.com/jeremyhahn/tradebot/util"
 	logging "github.com/op/go-logging"
 	bittrex "github.com/toorop/go-bittrex"
 	"golang.org/x/text/encoding/unicode"
 )
 
 type Bittrex struct {
-	ctx        common.Context
-	client     *bittrex.Bittrex
-	logger     *logging.Logger
-	price      float64
-	satoshis   float64
-	name       string
-	tradingFee float64
-	tradePairs []common.CurrencyPair
+	ctx                 common.Context
+	client              *bittrex.Bittrex
+	logger              *logging.Logger
+	price               float64
+	satoshis            float64
+	name                string
+	tradingFee          float64
+	tradePairs          []common.CurrencyPair
+	priceHistoryService common.PriceHistoryService
 	common.Exchange
 }
 
-func NewBittrex(ctx common.Context, btx entity.UserExchangeEntity) common.Exchange {
+var BITTREX_RATE_LIMITER = common.NewRateLimiter(1, 1)
+
+func NewBittrex(ctx common.Context, btx entity.UserExchangeEntity, priceHistoryService common.PriceHistoryService) common.Exchange {
 	return &Bittrex{
-		ctx:        ctx,
-		client:     bittrex.New(btx.GetKey(), btx.GetSecret()),
-		logger:     ctx.GetLogger(),
-		name:       "bittrex",
-		tradingFee: .025}
+		ctx:                 ctx,
+		client:              bittrex.New(btx.GetKey(), btx.GetSecret()),
+		logger:              ctx.GetLogger(),
+		name:                "bittrex",
+		tradingFee:          .025,
+		priceHistoryService: priceHistoryService}
 }
 
 func (b *Bittrex) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceChange chan common.PriceChange) {
@@ -62,16 +67,18 @@ func (b *Bittrex) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceCh
 func (b *Bittrex) GetPriceHistory(currencyPair *common.CurrencyPair,
 	start, end time.Time, granularity int) []common.Candlestick {
 
-	b.logger.Debug("[Bittrex.GetTradeHistory] Getting trade history")
+	BITTREX_RATE_LIMITER.RespectRateLimit()
+
+	b.logger.Debug("[Bittrex.GetPriceHistory] Getting price history")
 	candlesticks := make([]common.Candlestick, 0)
 	marketHistory, err := b.client.GetMarketHistory(b.FormattedCurrencyPair(currencyPair))
 	if err != nil {
-		b.logger.Errorf("[Bittrex.GetTradeHistory] %s", err.Error())
+		b.logger.Errorf("[Bittrex.GetPriceHistory] %s", err.Error())
 	}
 	for _, m := range marketHistory {
 		f, _ := m.Price.Float64()
 		if err != nil {
-			b.logger.Errorf("[Bittrex.GetTradeHistory] %s", err.Error())
+			b.logger.Errorf("[Bittrex.GetPriceHistory] %s", err.Error())
 		}
 		candlesticks = append(candlesticks, common.Candlestick{Close: f})
 	}
@@ -79,34 +86,44 @@ func (b *Bittrex) GetPriceHistory(currencyPair *common.CurrencyPair,
 }
 
 func (b *Bittrex) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Order {
+	BITTREX_RATE_LIMITER.RespectRateLimit()
 	formattedCurrencyPair := b.FormattedCurrencyPair(currencyPair)
 	b.logger.Debugf("[Bittrex.GetOrderHistory] Getting %s order history", formattedCurrencyPair)
 	var orders []common.Order
 	orderHistory, err := b.client.GetOrderHistory(formattedCurrencyPair)
 	if err != nil {
-		b.logger.Errorf("[Bittrex.GetOrderHistory] %s", err.Error())
+		b.logger.Errorf("[Bittrex.GetOrderHistory] Error: %s", err.Error())
+	}
+	if len(orderHistory) == 0 {
+		b.logger.Warning("[Bittrex.GetOrderHistory] Zero records returned from Bittrex API")
 	}
 	for _, o := range orderHistory {
+
+		util.DUMP(o)
+
 		q, _ := o.Quantity.Float64()
 		p, _ := o.Price.Float64()
 		orders = append(orders, &dto.OrderDTO{
-			Id:               o.OrderUuid,
-			Exchange:         "bittrex",
-			Date:             o.TimeStamp.Time,
-			Type:             o.OrderType,
-			CurrencyPair:     currencyPair,
-			Quantity:         q,
-			QuantityCurrency: currencyPair.Quote,
-			Price:            p,
-			PriceCurrency:    currencyPair.Base,
-			Total:            q * p,
-			TotalCurrency:    currencyPair.Base,
-			FeeCurrency:      currencyPair.Base})
+			Id:                 o.OrderUuid,
+			Exchange:           "bittrex",
+			Date:               o.TimeStamp.Time,
+			Type:               o.OrderType,
+			CurrencyPair:       currencyPair,
+			Quantity:           q,
+			QuantityCurrency:   currencyPair.Quote,
+			Price:              p,
+			PriceCurrency:      currencyPair.Base,
+			Total:              q * p,
+			TotalCurrency:      currencyPair.Base,
+			FeeCurrency:        currencyPair.Base,
+			HistoricalPrice:    b.priceHistoryService.GetClosePriceOn(currencyPair.Quote, o.TimeStamp.Time),
+			HistoricalCurrency: b.ctx.GetUser().GetLocalCurrency()})
 	}
 	return orders
 }
 
 func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
+	BITTREX_RATE_LIMITER.RespectRateLimit()
 	var coins []common.Coin
 	sum := 0.0
 	balances, err := b.client.GetBalances()
@@ -189,6 +206,7 @@ func (b *Bittrex) GetBalances() ([]common.Coin, float64) {
 }
 
 func (b *Bittrex) getBitcoinPrice() float64 {
+	BITTREX_RATE_LIMITER.RespectRateLimit()
 	currencyPair := &common.CurrencyPair{
 		Base:          "BTC",
 		Quote:         b.ctx.GetUser().GetLocalCurrency(),
@@ -211,6 +229,7 @@ func (b *Bittrex) getBitcoinPrice() float64 {
 }
 
 func (b *Bittrex) GetSummary() common.CryptoExchangeSummary {
+	BITTREX_RATE_LIMITER.RespectRateLimit()
 	total := 0.0
 	satoshis := 0.0
 	balances, _ := b.GetBalances()
@@ -291,19 +310,21 @@ func (b *Bittrex) ParseImport(file string) ([]common.Order, error) {
 		}
 		currencyPair := common.NewCurrencyPair(values[1], b.ctx.GetUser().GetLocalCurrency())
 		order := &dto.OrderDTO{
-			Id:               fmt.Sprintf("%d", b.ctx.GetUser().GetId()),
-			Exchange:         b.name,
-			Date:             date,
-			Type:             orderType,
-			CurrencyPair:     currencyPair,
-			Quantity:         qty,
-			QuantityCurrency: currencyPair.Quote,
-			Price:            price,
-			Fee:              fee,
-			Total:            total,
-			PriceCurrency:    currencyPair.Base,
-			FeeCurrency:      currencyPair.Base,
-			TotalCurrency:    currencyPair.Base}
+			Id:                 fmt.Sprintf("%d", b.ctx.GetUser().GetId()),
+			Exchange:           b.name,
+			Date:               date,
+			Type:               orderType,
+			CurrencyPair:       currencyPair,
+			Quantity:           qty,
+			QuantityCurrency:   currencyPair.Quote,
+			Price:              price,
+			Fee:                fee,
+			Total:              total,
+			PriceCurrency:      currencyPair.Base,
+			FeeCurrency:        currencyPair.Base,
+			TotalCurrency:      currencyPair.Base,
+			HistoricalPrice:    b.priceHistoryService.GetClosePriceOn(currencyPair.Quote, date),
+			HistoricalCurrency: b.ctx.GetUser().GetLocalCurrency()}
 		orders = append(orders, order)
 	}
 	return orders, nil

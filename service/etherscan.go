@@ -51,27 +51,29 @@ type EtherScanResponse struct {
 }
 
 type EtherscanServiceImpl struct {
-	ctx              common.Context
-	userDAO          dao.UserDAO
-	userMapper       mapper.UserMapper
-	marketcapService MarketCapService
-	apiKeyToken      string
-	endpoint         string
-	rateLimiter      *common.RateLimiter
+	ctx                 common.Context
+	userDAO             dao.UserDAO
+	userMapper          mapper.UserMapper
+	marketcapService    MarketCapService
+	pricehistoryService common.PriceHistoryService
+	apiKeyToken         string
+	endpoint            string
+	rateLimiter         *common.RateLimiter
 	EthereumService
 }
 
 var ETHERSCAN_RATELIMITER = common.NewRateLimiter(5, 1)
 
 func NewEtherscanService(ctx common.Context, userDAO dao.UserDAO, userMapper mapper.UserMapper,
-	marketcapService MarketCapService) (EthereumService, error) {
+	marketcapService MarketCapService, priceHistoryService common.PriceHistoryService) (EthereumService, error) {
 	return &EtherscanServiceImpl{
-		ctx:              ctx,
-		userDAO:          userDAO,
-		userMapper:       userMapper,
-		marketcapService: marketcapService,
-		apiKeyToken:      ctx.GetKeystore(),
-		endpoint:         "https://api.etherscan.io/api"}, nil
+		ctx:                 ctx,
+		userDAO:             userDAO,
+		userMapper:          userMapper,
+		marketcapService:    marketcapService,
+		pricehistoryService: priceHistoryService,
+		apiKeyToken:         ctx.GetKeystore(),
+		endpoint:            "https://api.etherscan.io/api"}, nil
 }
 
 func (service *EtherscanServiceImpl) Login(username, password string) (common.UserContext, error) {
@@ -140,23 +142,40 @@ func (service *EtherscanServiceImpl) GetWallet(address string) (common.UserCrypt
 		Value:    service.getLastPrice() * balance}, nil
 }
 
-func (service *EtherscanServiceImpl) GetTransactions(address string) ([]common.Transaction, error) {
+func (service *EtherscanServiceImpl) GetTransactions() ([]common.Transaction, error) {
+	var transactions []common.Transaction
+	userEntity := &entity.User{Id: service.ctx.GetUser().GetId()}
+	wallets := service.userDAO.GetWallets(userEntity)
+	for _, wallet := range wallets {
+		if wallet.GetCurrency() != "ETH" {
+			continue
+		}
+		txs, err := service.GetTransactionsFor(wallet.GetAddress())
+		if err != nil {
+			return nil, err
+		}
+		transactions = append(transactions, txs...)
+	}
+	return transactions, nil
+}
+
+func (service *EtherscanServiceImpl) GetTransactionsFor(address string) ([]common.Transaction, error) {
 
 	ETHERSCAN_RATELIMITER.RespectRateLimit()
 
 	url := fmt.Sprintf("%s?module=account&action=txlist&address=0x%s&startblock=0&endblock=99999999999999999999999&sort=asc&apikey=%s",
 		service.endpoint, address, service.apiKeyToken)
-	service.ctx.GetLogger().Debugf("[EtherscanService.GetTransactions] url: %s", url)
+	service.ctx.GetLogger().Debugf("[EtherscanService.GetTransactionsFor] url: %s", url)
 
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTransactions] HTTP Request Error: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EtherscanService.GetTransactionsFor] HTTP Request Error: %s", err.Error())
 	}
 
 	response := EtherScanGetTransactionsResponse{}
 	jsonErr := json.Unmarshal(body, &response)
 	if jsonErr != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTransactions] JSON Unmarshall error: %s", jsonErr.Error())
+		service.ctx.GetLogger().Errorf("[EtherscanService.GetTransactionsFor] JSON Unmarshall error: %s", jsonErr.Error())
 	}
 
 	var transactions []common.Transaction
@@ -164,9 +183,9 @@ func (service *EtherscanServiceImpl) GetTransactions(address string) ([]common.T
 		var txType string
 		hexAddress := fmt.Sprintf("0x%s", address)
 		if tx.From == hexAddress {
-			txType = "withdrawl"
+			txType = "Withdrawl"
 		} else if tx.To == hexAddress {
-			txType = "deposit"
+			txType = "Deposit"
 		}
 		timestamp, err := strconv.ParseInt(tx.Timestamp, 10, 64)
 		if err != nil {
@@ -180,13 +199,25 @@ func (service *EtherscanServiceImpl) GetTransactions(address string) ([]common.T
 		if err != nil {
 			return nil, err
 		}
-		transactions = append(transactions, &dto.TransactionDTO{
-			Date:   time.Unix(timestamp, 0),
-			Type:   txType,
-			Amount: amount / 1000000000000000000,
-			Fee:    fee / 100000000})
-	}
+		localCurrency := service.ctx.GetUser().GetLocalCurrency()
+		finalAmount := amount / 1000000000000000000
 
+		closePrice := service.pricehistoryService.GetClosePriceOn("ETH", time.Unix(timestamp, 0))
+
+		transactions = append(transactions, &dto.TransactionDTO{
+			Date:               time.Unix(timestamp, 0),
+			CurrencyPair:       &common.CurrencyPair{Base: "ETH", Quote: localCurrency, LocalCurrency: localCurrency},
+			Type:               txType,
+			Source:             "Ethereum",
+			Amount:             finalAmount,
+			AmountCurrency:     "ETH",
+			Fee:                fee / 100000000,
+			FeeCurrency:        "ETH",
+			Total:              finalAmount * closePrice,
+			TotalCurrency:      "USD",
+			HistoricalPrice:    closePrice,
+			HistoricalCurrency: "USD"})
+	}
 	return transactions, nil
 }
 
@@ -198,23 +229,23 @@ func (service *EtherscanServiceImpl) GetToken(walletAddress, contractAddress str
 	url := fmt.Sprintf("%s?module=account&action=tokenbalance&contractaddress=0x%s&&address=0x%s&tag=latest&apikey=%s",
 		service.endpoint, contractAddress, walletAddress, service.apiKeyToken)
 
-	service.ctx.GetLogger().Debugf("[EtherscanService.GetTokenBalance] url: %s", url)
+	service.ctx.GetLogger().Debugf("[EtherscanService.GetToken] url: %s", url)
 
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTokenBalance] Error: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EtherscanService.GetToken] Error: %s", err.Error())
 		return nil, err
 	}
 
 	response := EtherScanResponse{}
 	jsonErr := json.Unmarshal(body, &response)
 	if jsonErr != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTokenBalance] %s", jsonErr.Error())
+		service.ctx.GetLogger().Errorf("[EtherscanService.GetToken] %s", jsonErr.Error())
 	}
 
 	result, err := strconv.ParseFloat(response.Result, 64)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTokenBalance] Float conversation error: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EtherscanService.GetToken] Float conversation error: %s", err.Error())
 	}
 
 	tokens := service.userDAO.GetTokens(&entity.User{
@@ -245,17 +276,22 @@ func (service *EtherscanServiceImpl) GetTokenTransactions(contractAddress string
 
 	url := fmt.Sprintf("%s?module=account&action=txlistinternal&address=0x%s&startblock=0&endblock=99999999999999999999999&sort=asc&apikey=%s",
 		service.endpoint, contractAddress, service.apiKeyToken)
-	service.ctx.GetLogger().Debugf("[EtherscanService.GetTransactions] url: %s", url)
+	service.ctx.GetLogger().Debugf("[EtherscanService.GetTokenTransactions] url: %s", url)
 
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTransactions] HTTP Request Error: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EtherscanService.GetTokenTransactions] HTTP Request Error: %s", err.Error())
 	}
 
 	response := EtherScanGetTransactionsResponse{}
 	jsonErr := json.Unmarshal(body, &response)
 	if jsonErr != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTransactions] JSON Unmarshall error: %s", jsonErr.Error())
+		service.ctx.GetLogger().Errorf("[EtherscanService.GetTokenTransactions] JSON Unmarshall error: %s", jsonErr.Error())
+	}
+
+	priceUSD, err := strconv.ParseFloat(service.marketcapService.GetMarket("ETH").PriceUSD, 64)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[EtherscanService.GetTokenTransactions] Error converting price to float: %s", err.Error())
 	}
 
 	var transactions []common.Transaction
@@ -263,9 +299,9 @@ func (service *EtherscanServiceImpl) GetTokenTransactions(contractAddress string
 		var txType string
 		hexAddress := fmt.Sprintf("0x%s", contractAddress)
 		if tx.From == hexAddress {
-			txType = "withdrawl"
+			txType = "Withdrawl"
 		} else if tx.To == hexAddress {
-			txType = "deposit"
+			txType = "Deposit"
 		}
 		timestamp, err := strconv.ParseInt(tx.Timestamp, 10, 64)
 		if err != nil {
@@ -279,11 +315,19 @@ func (service *EtherscanServiceImpl) GetTokenTransactions(contractAddress string
 		if err != nil {
 			return nil, err
 		}
+		localCurrency := service.ctx.GetUser().GetLocalCurrency()
+		finalAmount := amount / 1000000000000000000
 		transactions = append(transactions, &dto.TransactionDTO{
-			Date:   time.Unix(timestamp, 0),
-			Type:   txType,
-			Amount: amount / 1000000000000000000,
-			Fee:    fee / 100000000})
+			Date:           time.Unix(timestamp, 0),
+			CurrencyPair:   &common.CurrencyPair{Base: "ETH", Quote: localCurrency, LocalCurrency: localCurrency},
+			Type:           txType,
+			Source:         "Ethereum",
+			Amount:         finalAmount,
+			AmountCurrency: "ETH",
+			Fee:            fee / 100000000,
+			FeeCurrency:    "ETH",
+			Total:          finalAmount * priceUSD,
+			TotalCurrency:  "USD"})
 	}
 
 	return transactions, nil

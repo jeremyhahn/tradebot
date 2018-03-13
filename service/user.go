@@ -13,27 +13,30 @@ import (
 )
 
 type DefaultUserService struct {
-	ctx                common.Context
-	userDAO            dao.UserDAO
-	pluginDAO          dao.PluginDAO
-	marketcapService   MarketCapService
-	ethereumService    EthereumService
-	userMapper         mapper.UserMapper
-	userExchangeMapper mapper.UserExchangeMapper
+	ctx                 common.Context
+	userDAO             dao.UserDAO
+	pluginDAO           dao.PluginDAO
+	marketcapService    MarketCapService
+	ethereumService     EthereumService
+	userMapper          mapper.UserMapper
+	userExchangeMapper  mapper.UserExchangeMapper
+	priceHistoryService common.PriceHistoryService
 	UserService
 }
 
 func NewUserService(ctx common.Context, userDAO dao.UserDAO, pluginDAO dao.PluginDAO,
 	marketcapService MarketCapService, ethereumService EthereumService,
-	userMapper mapper.UserMapper, userExchangeMapper mapper.UserExchangeMapper) UserService {
+	userMapper mapper.UserMapper, userExchangeMapper mapper.UserExchangeMapper,
+	priceHistoryService common.PriceHistoryService) UserService {
 	return &DefaultUserService{
-		ctx:                ctx,
-		userDAO:            userDAO,
-		pluginDAO:          pluginDAO,
-		marketcapService:   marketcapService,
-		ethereumService:    ethereumService,
-		userMapper:         userMapper,
-		userExchangeMapper: userExchangeMapper}
+		ctx:                 ctx,
+		userDAO:             userDAO,
+		pluginDAO:           pluginDAO,
+		marketcapService:    marketcapService,
+		ethereumService:     ethereumService,
+		userMapper:          userMapper,
+		userExchangeMapper:  userExchangeMapper,
+		priceHistoryService: priceHistoryService}
 }
 
 func (service *DefaultUserService) CreateUser(user common.UserContext) {
@@ -70,8 +73,8 @@ func (service *DefaultUserService) GetExchange(user common.UserContext, name str
 	exchanges := service.userDAO.GetExchanges(daoUser)
 	for _, ex := range exchanges {
 		if ex.Name == name {
-			exchange, err := NewExchangeService(service.ctx, service.pluginDAO, service.userDAO, service.userMapper, service.userExchangeMapper).
-				CreateExchange(ex.Name)
+			exchange, err := NewExchangeService(service.ctx, service.pluginDAO, service.userDAO,
+				service.userMapper, service.userExchangeMapper, service.priceHistoryService).CreateExchange(ex.Name)
 			if err != nil {
 				service.ctx.GetLogger().Debugf("[UserService.GetExchange] Error: %s", err.Error())
 				return nil, err
@@ -102,7 +105,8 @@ func (service *DefaultUserService) GetExchangeSummary(currencyPair *common.Curre
 	c := make(chan common.CryptoExchangeSummary, len(exchanges))
 	for _, ex := range exchanges {
 		chans = append(chans, c)
-		exchangeService := NewExchangeService(service.ctx, service.pluginDAO, service.userDAO, service.userMapper, service.userExchangeMapper)
+		exchangeService := NewExchangeService(service.ctx, service.pluginDAO, service.userDAO,
+			service.userMapper, service.userExchangeMapper, service.priceHistoryService)
 		exchange, err := exchangeService.CreateExchange(ex.GetName())
 		if err != nil {
 			service.ctx.GetLogger().Debugf("[UserService.GetExchangeSummary] Error: %s", err.Error())

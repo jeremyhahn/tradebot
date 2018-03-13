@@ -19,33 +19,35 @@ import (
 )
 
 type GDAX struct {
-	gdax            *gdax.Client
-	ctx             common.Context
-	logger          *logging.Logger
-	name            string
-	lastApiCall     int64
-	lastBalanceCall int64
-	balances        []common.Coin
-	netWorth        float64
-	apiCallCount    int
-	tradingFee      float64
-	rateLimiter     *common.RateLimiter
+	gdax                *gdax.Client
+	ctx                 common.Context
+	logger              *logging.Logger
+	name                string
+	lastApiCall         int64
+	lastBalanceCall     int64
+	balances            []common.Coin
+	netWorth            float64
+	apiCallCount        int
+	tradingFee          float64
+	rateLimiter         *common.RateLimiter
+	priceHistoryService common.PriceHistoryService
 	common.Exchange
 }
 
 var GDAX_RATELIMITER = common.NewRateLimiter(3, 1)
 var GDAX_MUTEX sync.Mutex
 
-func NewGDAX(ctx common.Context, _gdax entity.UserExchangeEntity) common.Exchange {
+func NewGDAX(ctx common.Context, _gdax entity.UserExchangeEntity, priceHistoryService common.PriceHistoryService) common.Exchange {
 	return &GDAX{
-		ctx:          ctx,
-		gdax:         gdax.NewClient(_gdax.GetSecret(), _gdax.GetKey(), _gdax.GetExtra()),
-		logger:       ctx.GetLogger(),
-		name:         "gdax",
-		apiCallCount: 0,
-		netWorth:     0.0,
-		balances:     make([]common.Coin, 0),
-		tradingFee:   0.025}
+		ctx:                 ctx,
+		gdax:                gdax.NewClient(_gdax.GetSecret(), _gdax.GetKey(), _gdax.GetExtra()),
+		logger:              ctx.GetLogger(),
+		name:                "gdax",
+		apiCallCount:        0,
+		netWorth:            0.0,
+		balances:            make([]common.Coin, 0),
+		tradingFee:          0.025,
+		priceHistoryService: priceHistoryService}
 }
 
 func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
@@ -129,22 +131,52 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.O
 				}
 				pieces := strings.Split(e.Details.ProductId, "-")
 				base, quote := pieces[0], pieces[1]
+				orderDate := e.CreatedAt.Time()
+
+				util.DUMP(order)
+
+				var historicalPrice float64
+				if order.ExecutedValue > 0 {
+					historicalPrice = order.ExecutedValue / order.FilledSize
+				} else {
+					historicalPrice = _gdax.priceHistoryService.GetClosePriceOn(base, e.CreatedAt.Time())
+				}
+
+				/*
+					historicalPrice := order.Price
+					if historicalPrice >= 0 {
+						startDate := orderDate.Add(-24 * time.Hour)
+						endDate := orderDate.Add(5 * time.Hour)
+						_gdax.ctx.GetLogger().Debugf("[GDAX.GetOrderHistory] Looking for order date %s within range %s - %s", orderDate, startDate, endDate)
+						priceHistory := _gdax.GetPriceHistory(currencyPair, startDate, endDate, 60)
+						_gdax.ctx.GetLogger().Debugf("[GDAX.GetOrderHistory] Found %d records", len(priceHistory))
+						closestCandle, err := util.FindClosesttDatedCandle(_gdax.ctx.GetLogger(), orderDate, priceHistory)
+						if err != nil {
+							_gdax.ctx.GetLogger().Errorf("[GDAX.GetOrderHistory] Error %s", err.Error())
+							return orders
+						}
+						_gdax.ctx.GetLogger().Debugf("[GDAX.GetOrderHistory] Using closest order price of %f on %s", closestCandle.Close, closestCandle.Date)
+						historicalPrice = closestCandle.Close
+					}*/
+
 				orders = append(orders, &dto.OrderDTO{
 					Id:       strconv.FormatInt(int64(e.Id), 10),
-					Exchange: "gdax",
-					Date:     e.CreatedAt.Time(),
+					Exchange: "GDAX",
+					Date:     orderDate,
 					Type:     order.Side,
 					CurrencyPair: &common.CurrencyPair{
 						Base:  base,
 						Quote: quote},
-					Quantity:         order.FilledSize,
-					QuantityCurrency: base,
-					Fee:              util.TruncateFloat(order.FillFees, 2),
-					Price:            order.Price,
-					Total:            order.ExecutedValue,
-					PriceCurrency:    quote,
-					FeeCurrency:      quote,
-					TotalCurrency:    quote})
+					Quantity:           order.FilledSize,
+					QuantityCurrency:   base,
+					Fee:                util.TruncateFloat(order.FillFees, 2),
+					Price:              order.Price,
+					Total:              order.ExecutedValue,
+					PriceCurrency:      quote,
+					FeeCurrency:        quote,
+					TotalCurrency:      quote,
+					HistoricalPrice:    historicalPrice,
+					HistoricalCurrency: _gdax.ctx.GetUser().GetLocalCurrency()})
 			}
 		}
 	}

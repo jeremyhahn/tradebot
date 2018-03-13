@@ -47,11 +47,11 @@ const LeftDrawer = (props) => {
 					<ListItemText primary="Portfolio"/>
 				</ListItem>
 
-        <ListItem onTouchTap={ handleClose } onClick={function() {navigate('/trades')}} button>
+        <ListItem onTouchTap={ handleClose } onClick={function() {navigate('/transactions')}} button>
 					<ListItemAvatar>
-					  <Avatar src={"images/avatars/128/trade.png"} />
+					  <Avatar src={"images/avatars/128/transactions.png"} />
 					</ListItemAvatar>
-					<ListItemText primary="Trades"/>
+					<ListItemText primary="Transactions"/>
 				</ListItem>
 
         <ListItem onTouchTap={ handleClose } onClick={function() {navigate('/orders')}} button>

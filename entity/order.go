@@ -3,20 +3,22 @@ package entity
 import "time"
 
 type Order struct {
-	Id               uint      `gorm:"primary_key"`
-	UserId           uint      `gorm:"unique_index:idx_orderhistory"`
-	Date             time.Time `gorm:"unique_index:idx_orderhistory"`
-	Exchange         string    `gorm:"unique_index:idx_orderhistory"`
-	Type             string
-	Currency         string `gorm:"unique_index:idx_orderhistory"`
-	Quantity         float64
-	QuantityCurrency string `gorm:"varchar(6)"`
-	Price            float64
-	PriceCurrency    string `gorm:"varchar(6)"`
-	Fee              float64
-	FeeCurrency      string  `gorm:"varchar(6)"`
-	Total            float64 `gorm:"unique_index:idx_orderhistory"`
-	TotalCurrency    string  `gorm:"varchar(6)"`
+	Id                 uint      `gorm:"primary_key"`
+	UserId             uint      `gorm:"unique_index:idx_orderhistory"`
+	Date               time.Time `gorm:"unique_index:idx_orderhistory"`
+	Exchange           string    `gorm:"unique_index:idx_orderhistory"`
+	Type               string
+	Currency           string `gorm:"unique_index:idx_orderhistory"`
+	Quantity           float64
+	QuantityCurrency   string `gorm:"varchar(6)"`
+	Price              float64
+	PriceCurrency      string `gorm:"varchar(6)"`
+	Fee                float64
+	FeeCurrency        string  `gorm:"varchar(6)"`
+	Total              float64 `gorm:"unique_index:idx_orderhistory"`
+	TotalCurrency      string  `gorm:"varchar(6)"`
+	HistoricalPrice    float64
+	HistoricalCurrency string `gorm:"varchar(6)"`
 	OrderEntity
 }
 
@@ -74,4 +76,12 @@ func (order *Order) GetTotalCurrency() string {
 
 func (order *Order) GetQuantityCurrency() string {
 	return order.QuantityCurrency
+}
+
+func (order *Order) GetHistoricalPrice() float64 {
+	return order.HistoricalPrice
+}
+
+func (order *Order) GetHistoricalCurrency() string {
+	return order.HistoricalCurrency
 }

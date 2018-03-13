@@ -41,9 +41,10 @@ func (restService *OrderHistoryRestServiceImpl) createOrderService(ctx common.Co
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 
 	marketcapService := service.NewMarketCapService(ctx)
-	exchangeService := service.NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper)
+	priceHistoryService := service.NewPriceHistoryService(ctx)
+	exchangeService := service.NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper, priceHistoryService)
 	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService)
-	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
+	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper, priceHistoryService)
 
 	return service.NewOrderService(ctx, orderDAO, orderMapper, exchangeService, userService)
 }

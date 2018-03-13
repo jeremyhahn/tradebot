@@ -51,6 +51,7 @@ func (ws *WebServer) Start() {
 	orderHistoryRestService := rest.NewOrderHistoryRestService(ws.jsonWebTokenService, jsonWriter)
 	exchangeRestService := rest.NewExchangeRestService(ws.jsonWebTokenService, jsonWriter)
 	userRestService := rest.NewUserRestService(ws.jsonWebTokenService, jsonWriter)
+	transactionRestService := rest.NewTransactionRestService(ws.jsonWebTokenService, jsonWriter)
 	router.Handle("/api/v1/orderhistory", negroni.New(
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
 		negroni.Wrap(http.HandlerFunc(orderHistoryRestService.GetOrderHistory)),
@@ -66,6 +67,10 @@ func (ws *WebServer) Start() {
 	router.Handle("/api/v1/user/exchanges", negroni.New(
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
 		negroni.Wrap(http.HandlerFunc(userRestService.GetExchanges)),
+	))
+	router.Handle("/api/v1/transactions", negroni.New(
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(transactionRestService.GetTransactions)),
 	))
 
 	// Websocket Handlers

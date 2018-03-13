@@ -1,3 +1,5 @@
+// +build integration
+
 package service
 
 import (
@@ -32,6 +34,11 @@ type MockIndicatorService_Chart struct {
 
 type MockFinancialIndicator_Chart struct {
 	common.FinancialIndicator
+	mock.Mock
+}
+
+type MockPriceHistoryService_Chart struct {
+	common.PriceHistoryService
 	mock.Mock
 }
 
@@ -321,7 +328,7 @@ func (mes *MockExchangeService_Chart) GetExchanges() []common.Exchange {
 		Key:    "ABC123",
 		Secret: "$ecret!",
 		Extra:  "Exchange specific data here"}
-	return []common.Exchange{exchange.NewGDAX(ctx, testExchange)}
+	return []common.Exchange{exchange.NewGDAX(ctx, testExchange, new(MockPriceHistoryService_Chart))}
 }
 
 func (mes *MockIndicatorService_Chart) GetChartIndicator(chart common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {

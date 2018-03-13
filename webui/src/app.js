@@ -25,6 +25,7 @@ import Exchanges from 'app/ui/pages/Exchanges';
 import Settings from 'app/ui/pages/Settings';
 import Chart from 'app/ui/pages/Chart';
 import OrderHistory from 'app/ui/pages/OrderHistory';
+import Transactions from 'app/ui/pages/Transactions';
 import Login from 'app/components/Login';
 import Logout from 'app/components/Logout';
 import Register from 'app/ui/pages/Register';
@@ -55,6 +56,7 @@ render(
 			<Route exact path="/" component={ Exchanges } />
 			<Switch>
 				<Route exact path="/portfolio" component={ Portfolio } />
+        <Route exact path="/transactions" component={ Transactions } />
 				<Route exact path="/orders" component={ OrderHistory } />
 				<Route exact path="/exchanges" component={ Exchanges } />
 				<Route exact path="/settings" component={ Settings } />

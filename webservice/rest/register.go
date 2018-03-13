@@ -8,6 +8,16 @@ import (
 	"github.com/jeremyhahn/tradebot/service"
 )
 
+type RegisterResponse struct {
+	Error   string `json:"error"`
+	Success bool   `json:"success"`
+}
+
+type RegisterRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type RegisterRestService interface {
 	Register(w http.ResponseWriter, r *http.Request)
 }

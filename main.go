@@ -23,7 +23,7 @@ func main() {
 	defaultKeystore := fmt.Sprintf("%s/%s", wd, "test/ethereum/blockchain/keystore")
 	defaultMode := "etherscan"
 
-	initDbFlag := flag.Bool("initdb", false, "Create initial database schema and exit")
+	initDbFlag := flag.Bool("initdb", false, "Create / migrate database schema and exit")
 	portFlag := flag.Int("port", 8080, "Web server listen port")
 	sslFlag := flag.Bool("ssl", true, "Enable HTTPS / WSS over TLS")
 	ipcFlag := flag.String("ipc", defaultIpc, "Path to geth IPC socket")

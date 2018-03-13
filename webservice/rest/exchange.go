@@ -30,7 +30,8 @@ func (restService *ExchangeRestServiceImpl) createExchangeService(ctx common.Con
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
-	return service.NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper)
+	priceHistoryService := service.NewPriceHistoryService(ctx)
+	return service.NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper, priceHistoryService)
 }
 
 func (restService *ExchangeRestServiceImpl) GetDisplayNames(w http.ResponseWriter, r *http.Request) {

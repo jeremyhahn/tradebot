@@ -62,13 +62,14 @@ func (ph *PortfolioHandler) OnConnect(w http.ResponseWriter, r *http.Request) {
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 
 	marketcapService := service.NewMarketCapService(ctx)
+	priceHistoryService := service.NewPriceHistoryService(ctx)
 	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	if err != nil {
 		ctx.GetLogger().Errorf("[PortfolioHandler.stream] Error: %s", err.Error())
 		return
 	}
 
-	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
+	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper, priceHistoryService)
 	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 
 	client := &PortfolioClient{

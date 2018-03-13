@@ -22,11 +22,12 @@ func TestOrderService_GetOrderHistory(t *testing.T) {
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 
 	marketcapService := NewMarketCapService(ctx)
+	priceHistoryService := NewPriceHistoryService(ctx)
 	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	assert.Nil(t, err)
 
-	exchangeService := NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper)
-	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
+	exchangeService := NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper, priceHistoryService)
+	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper, priceHistoryService)
 	orderService := NewOrderService(ctx, orderDAO, orderMapper, exchangeService, userService)
 
 	history := orderService.GetOrderHistory()
@@ -49,11 +50,12 @@ func TestOrderService_ImportCSV(t *testing.T) {
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 
 	marketcapService := NewMarketCapService(ctx)
+	priceHistoryService := NewPriceHistoryService(ctx)
 	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	assert.Nil(t, err)
 
-	exchangeService := NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper)
-	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
+	exchangeService := NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper, priceHistoryService)
+	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper, priceHistoryService)
 	orderService := NewOrderService(ctx, orderDAO, orderMapper, exchangeService, userService)
 
 	orders, err := orderService.ImportCSV("../test/data/bittrex.csv", "bittrex")

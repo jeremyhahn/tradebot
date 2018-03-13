@@ -21,22 +21,21 @@ import FileDownload from 'material-ui-icons/FileDownload';
 import FilterListIcon from 'material-ui-icons/FilterList';
 import { lighten } from 'material-ui/styles/colorManipulator';
 import Loading from 'app/components/Loading';
-import ImportDialog from 'app/components/dialogs/Import';
 import withAuth from 'app/components/withAuth';
 import AuthService from 'app/components/AuthService';
 
 const columnData = [
   { id: 'date', numeric: false, disablePadding: true, label: 'Date' },
-  { id: 'exchange', numeric: false, disablePadding: false, label: 'Exchange' },
   { id: 'type', numeric: false, disablePadding: false, label: 'Type' },
-  { id: 'currency_pair', numeric: true, disablePadding: false, label: 'Currency' },
-  { id: 'quantity', numeric: true, disablePadding: false, label: 'Quantity' },
-  { id: 'price', numeric: true, disablePadding: false, label: 'Price' },
+  { id: 'currency', numeric: false, disablePadding: false, label: 'Currency' },
+  { id: 'source', numeric: false, disablePadding: false, label: 'Source' },
+  { id: 'amount', numeric: true, disablePadding: false, label: 'Amount' },
   { id: 'fee', numeric: true, disablePadding: false, label: 'Fee' },
-  { id: 'total', numeric: true, disablePadding: false, label: 'Total' }
+  { id: 'total', numeric: true, disablePadding: false, label: 'Total' },
+  { id: 'historical_price', numeric: true, disablePadding: false, label: 'Historical Price' },
 ];
 
-class OrderHistoryHead extends React.Component {
+class TransactionsHead extends React.Component {
 
   createSortHandler = property => event => {
     this.props.onRequestSort(event, property);
@@ -75,7 +74,7 @@ class OrderHistoryHead extends React.Component {
   }
 }
 
-OrderHistoryHead.propTypes = {
+TransactionsHead.propTypes = {
   numSelected: PropTypes.number.isRequired,
   onRequestSort: PropTypes.func.isRequired,
   order: PropTypes.string.isRequired,
@@ -121,7 +120,7 @@ const styles = theme => ({
   }
 });
 
-class OrderHistory extends React.Component {
+class Transactions extends React.Component {
 
   constructor(props, context) {
     super(props, context);
@@ -137,10 +136,7 @@ class OrderHistory extends React.Component {
       page: 0,
       rowsPerPage: 10
     }
-    this.importDialogHandler = this.importDialogHandler.bind(this)
-    this.handleImportDialogClose = this.handleImportDialogClose.bind(this)
-    this.fetchOrderHistory = this.fetchOrderHistory.bind(this)
-    this.appendImportData = this.appendImportData.bind(this)
+    this.fetchTransactions = this.fetchTransactions.bind(this)
   }
 
   handleRequestSort = (event, property) => {
@@ -170,11 +166,11 @@ class OrderHistory extends React.Component {
   isSelected = id => this.state.selected.indexOf(id) !== -1;
 
   componentDidMount() {
-    this.fetchOrderHistory()
+    this.fetchTransactions()
 	}
 
-  fetchOrderHistory() {
-    this.Auth.fetchOrderHistory()
+  fetchTransactions() {
+    this.Auth.fetchTransactions()
       .then(function (response) {
         console.log(response);
         if(response.success) {
@@ -186,25 +182,8 @@ class OrderHistory extends React.Component {
       }.bind(this))
   }
 
-  appendImportData(newData) {
-    console.log(newData)
-    this.setState({
-      data: this.state.data.concat(newData),
-      order: 'desc'
-    })
-    this.handleRequestSort(null, 'date')
-  }
-
   currencyIcon(currency) {
     return "images/crypto/128/" + currency.toLowerCase() + ".png";
-  }
-
-  importDialogHandler() {
-    this.setState({importDialog: true})
-  }
-
-  handleImportDialogClose() {
-    this.setState({importDialog: false})
   }
 
   render() {
@@ -216,17 +195,17 @@ class OrderHistory extends React.Component {
       <Paper className={classes.root}>
         {this.state.loading &&
           <div className={classes.loadingContainer}>
-            <Loading text="Loading order history..." />
+            <Loading text="Loading transactions..." />
           </div>
         }
         <div className={classes.tableWrapper}>
           <Toolbar>
-            <Button className={classes.buttonText} size="small" color="inherit" onClick={this.importDialogHandler}>
-              Import <FileUpload className={classes.leftIcon} />
+            <Button className={classes.buttonText} size="small" color="inherit">
+              Statement <FileDownload className={classes.leftIcon} />
             </Button>
           </Toolbar>
           <Table className={classes.table}>
-            <OrderHistoryHead
+            <TransactionsHead
               numSelected={selected.length}
               order={order}
               orderBy={orderBy}
@@ -240,20 +219,13 @@ class OrderHistory extends React.Component {
                 return (
                   <TableRow key={n.id}>
                     <TableCell padding="none">{n.date}</TableCell>
-                    <TableCell numeric>{n.exchange}</TableCell>
-                    <TableCell numeric>{n.type}</TableCell>
-                    <TableCell numeric>
-                      {n.currency_pair.base}-{n.currency_pair.quote}
-                    </TableCell>
-                    <TableCell numeric>{n.quantity}
-                    <img className={classes.currencyIcon}
-                         src={this.currencyIcon(n.quantity_currency)}
-                         title={n.quantity_currency} />
-                    </TableCell>
-                    <TableCell numeric>{n.price.formatCurrency(n.price_currency)}
+                    <TableCell>{n.type}</TableCell>
+                    <TableCell>{n.currency_pair.base}-{n.currency_pair.quote}</TableCell>
+                    <TableCell>{n.source}</TableCell>
+                    <TableCell numeric>{n.amount.formatCurrency(n.amount_currency)}
                       <img className={classes.currencyIcon}
-                         src={this.currencyIcon(n.price_currency)}
-                         title={n.price_currency} />
+                         src={this.currencyIcon(n.amount_currency)}
+                         title={n.amount_currency + " - " + (n.amount * n.historical_price).formatCurrency(n.historical_currency)} />
                     </TableCell>
                     <TableCell numeric>{n.fee.formatCurrency(n.fee_currency)}
                       <img className={classes.currencyIcon}
@@ -264,6 +236,11 @@ class OrderHistory extends React.Component {
                       <img className={classes.currencyIcon}
                            src={this.currencyIcon(n.total_currency)}
                            title={n.total_currency} />
+                    </TableCell>
+                    <TableCell numeric>{n.historical_price.formatCurrency(n.historical_currency)}
+                      <img className={classes.currencyIcon}
+                           src={this.currencyIcon(n.historical_currency)}
+                           title={n.historical_currency} />
                     </TableCell>
                   </TableRow>
                 );
@@ -294,14 +271,13 @@ class OrderHistory extends React.Component {
             </TableFooter>
           </Table>
         </div>
-        <ImportDialog open={this.state.importDialog} onClose={this.handleImportDialogClose} addData={this.appendImportData} />
       </Paper>
     );
   }
 }
 
-OrderHistory.propTypes = {
+Transactions.propTypes = {
   classes: PropTypes.object.isRequired,
 };
 
-export default withAuth(withStyles(styles)(OrderHistory));
+export default withAuth(withStyles(styles)(Transactions));

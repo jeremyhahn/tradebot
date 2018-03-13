@@ -6,18 +6,6 @@ export default class AuthService {
     constructor(domain) {
         this.domain = domain || window.location.protocol + '//localhost:8080/api/v1';
         this.fetch = this.fetch.bind(this);
-        /*
-        this.register = this.register.bind(this);
-        this.login = this.login.bind(this);
-        this.logout = this.login.bind(this);
-        this.setToken = this.setToken.bind(this);
-        this.getToken = this.getToken.bind(this);
-        this.getProfile = this.getProfile.bind(this);
-        this.getUser = this.getUser.bind(this);
-        this.getExpiration = this.getExpiration.bind(this);
-        this.loggedIn = this.loggedIn.bind(this);
-        this.isTokenExpired = this.isTokenExpired.bind(this);
-        */
     }
 
     login(username, password) {
@@ -43,6 +31,22 @@ export default class AuthService {
         }).then(res => {
             return Promise.resolve(res);
         })
+    }
+
+    fetchTransactions() {
+      return this.fetch(`${this.domain}/transactions`, {
+          method: 'GET'
+      }).then(res => {
+          return Promise.resolve(res)
+      })
+    }
+
+    fetchOrderHistory() {
+      return this.fetch(`${this.domain}/orderhistory`, {
+          method: 'GET'
+      }).then(res => {
+          return Promise.resolve(res)
+      })
     }
 
     importOrders(formData) {

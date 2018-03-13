@@ -57,21 +57,23 @@ type SymbolTicker struct {
 }
 
 type Binance struct {
-	client     *binance.Client
-	ctx        common.Context
-	logger     *logging.Logger
-	name       string
-	tradingFee float64
+	client              *binance.Client
+	ctx                 common.Context
+	logger              *logging.Logger
+	name                string
+	tradingFee          float64
+	priceHistoryService common.PriceHistoryService
 	common.Exchange
 }
 
-func NewBinance(ctx common.Context, exchange entity.UserExchangeEntity) common.Exchange {
+func NewBinance(ctx common.Context, exchange entity.UserExchangeEntity, priceHistoryService common.PriceHistoryService) common.Exchange {
 	return &Binance{
-		ctx:        ctx,
-		client:     binance.NewClient(exchange.GetKey(), exchange.GetSecret()),
-		logger:     ctx.GetLogger(),
-		name:       "binance",
-		tradingFee: .01}
+		ctx:                 ctx,
+		client:              binance.NewClient(exchange.GetKey(), exchange.GetSecret()),
+		logger:              ctx.GetLogger(),
+		name:                "binance",
+		tradingFee:          .01,
+		priceHistoryService: priceHistoryService}
 }
 
 func (b *Binance) GetBalances() ([]common.Coin, float64) {
@@ -158,15 +160,17 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 
 func (b *Binance) GetPriceHistory(currencyPair *common.CurrencyPair,
 	start, end time.Time, granularity int) []common.Candlestick {
-
-	b.logger.Debug("[Binance.GetTradeHistory] Getting trade history")
 	candlesticks := make([]common.Candlestick, 0)
-	interval := fmt.Sprintf("%dm", granularity/60)
+	interval := fmt.Sprintf("%dm", granularity)
+	startTime := start.UnixNano() / int64(time.Millisecond)
+	endTime := end.UnixNano() / int64(time.Millisecond)
+	b.logger.Debugf("[Binance.GetPriceHistory] Getting %s price history between %d and %d on a %s interval", currencyPair, startTime, endTime, interval)
 	klines, err := b.client.NewKlinesService().
+		StartTime(startTime).EndTime(endTime).
 		Symbol(b.FormattedCurrencyPair(currencyPair)).
 		Interval(interval).Do(context.Background())
 	if err != nil {
-		b.logger.Errorf("[Binance.GetTradeHistory] %s", err.Error())
+		b.logger.Errorf("[Binance.GetPriceHistory] Error: %s", err.Error())
 		return candlesticks
 	}
 	for _, k := range klines {
@@ -174,6 +178,7 @@ func (b *Binance) GetPriceHistory(currencyPair *common.CurrencyPair,
 		close, _ := strconv.ParseFloat(k.Close, 64)
 		open, _ := strconv.ParseFloat(k.Open, 64)
 		candlesticks = append(candlesticks, common.Candlestick{
+			Date:   time.Unix(k.CloseTime/1000, 0),
 			Close:  close,
 			Open:   open,
 			Period: granularity,
@@ -198,6 +203,7 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Or
 		} else {
 			orderType = "sell"
 		}
+		orderDate := time.Unix(o.Time/1000, 0)
 		qty, err := strconv.ParseFloat(o.Quantity, 64)
 		if err != nil {
 			b.ctx.GetLogger().Errorf("[Binance.GetOrderHistory] Failed to parse quantity to float64: %s", err.Error())
@@ -210,20 +216,35 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Or
 		if err != nil {
 			b.ctx.GetLogger().Errorf("[Binance.GetOrderHistory] Failed to parse commission to float64: %s", err.Error())
 		}
+		/*startDate := orderDate.Add(-10 * time.Minute)
+		endDate := orderDate.Add(5 * time.Minute)
+		b.logger.Debugf("[Binance.GetOrderHistory] Looking for order date %s within range %s - %s", orderDate, startDate, endDate)
+		priceHistory := b.GetPriceHistory(currencyPair, startDate, endDate, 1)
+		b.logger.Debugf("[Binance.GetOrderHistory] Found %d records", len(priceHistory))
+		closestCandle, err := util.FindClosesttDatedCandle(b.ctx.GetLogger(), orderDate, priceHistory)
+		if err != nil {
+			b.logger.Errorf("[Binance.GetOrderHistory] Error %s", err.Error())
+			return _orders
+		}
+		b.logger.Debugf("[Binance.GetOrderHistory] Using closest order price of %f on %s", closestCandle.Close, closestCandle.Date)*/
 		_orders = append(_orders, &dto.OrderDTO{
-			Id:               strconv.FormatInt(int64(o.ID), 10),
-			Exchange:         "binance",
-			Type:             orderType,
-			CurrencyPair:     currencyPair,
-			Date:             time.Unix(o.Time/1000, 0),
-			Fee:              c,
-			Quantity:         qty,
-			QuantityCurrency: currencyPair.Base,
-			Price:            p,
-			Total:            qty * p,
-			PriceCurrency:    "BTC",
-			FeeCurrency:      currencyPair.Base,
-			TotalCurrency:    currencyPair.Quote})
+			Id:                 strconv.FormatInt(int64(o.ID), 10),
+			Exchange:           "binance",
+			Type:               orderType,
+			CurrencyPair:       currencyPair,
+			Date:               orderDate,
+			Fee:                c,
+			Quantity:           qty,
+			QuantityCurrency:   currencyPair.Base,
+			Price:              p,
+			Total:              qty * p,
+			PriceCurrency:      "BTC",
+			FeeCurrency:        currencyPair.Base,
+			TotalCurrency:      currencyPair.Quote,
+			HistoricalPrice:    b.priceHistoryService.GetClosePriceOn(currencyPair.Base, orderDate),
+			HistoricalCurrency: b.ctx.GetUser().GetLocalCurrency()})
+
+		//return _orders
 	}
 	return _orders
 }

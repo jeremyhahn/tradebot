@@ -19,9 +19,10 @@ func TestPortfolioService_Build(t *testing.T) {
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
+	priceHistoryService := NewPriceHistoryService(ctx)
 	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	assert.Nil(t, err)
-	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
+	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper, priceHistoryService)
 
 	service := NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 	currencyPair := &common.CurrencyPair{
@@ -45,9 +46,10 @@ func TestPortfolioService_Stream(t *testing.T) {
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
+	priceHistoryService := NewPriceHistoryService(ctx)
 	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
 	assert.Nil(t, err)
-	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper)
+	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper, priceHistoryService)
 
 	service := NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 	currencyPair := &common.CurrencyPair{

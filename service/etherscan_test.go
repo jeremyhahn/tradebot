@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/jeremyhahn/tradebot/util"
@@ -17,7 +18,8 @@ import (
 func TestEtherScan_GetWallet(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
-	service, err := NewEtherscanService(ctx, dao.NewUserDAO(ctx), mapper.NewUserMapper(), NewMarketCapService(ctx))
+	service, err := NewEtherscanService(ctx, dao.NewUserDAO(ctx), mapper.NewUserMapper(),
+		NewMarketCapService(ctx), NewPriceHistoryService(ctx))
 	assert.Nil(t, err)
 
 	wallet, err := service.GetWallet(os.Getenv("ETH_ADDRESS"))
@@ -35,12 +37,30 @@ func TestEtherScanService_GetTransactions(t *testing.T) {
 
 	walletAddress := os.Getenv("ETH_ADDRESS")
 
-	service, err := NewEtherscanService(ctx, dao.NewUserDAO(ctx), mapper.NewUserMapper(), NewMarketCapService(ctx))
+	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	marketcapService := NewMarketCapService(ctx)
+	priceHistoryService := NewPriceHistoryService(ctx)
+	ethereumService, _ := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
+	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService,
+		ethereumService, userMapper, userExchangeMapper, priceHistoryService)
+
+	userService.CreateWallet(&dto.UserCryptoWalletDTO{
+		Address:  os.Getenv("ETH_ADDRESS"),
+		Currency: "ETH"})
+
+	userService.CreateToken(&dto.EthereumTokenDTO{
+		Symbol:          os.Getenv("TOKEN_SYMBOL"),
+		ContractAddress: os.Getenv("TOKEN_ADDRESS"),
+		WalletAddress:   os.Getenv("ETH_ADDRESS")})
+
+	etherscanService, err := NewEtherscanService(ctx, userDAO, userMapper, marketcapService,
+		NewPriceHistoryService(ctx))
 	assert.Nil(t, err)
 
-	transactions, err := service.GetTransactions(walletAddress)
-
-	service.GetTransactions(walletAddress)
+	transactions, err := etherscanService.GetTransactions()
 
 	assert.Nil(t, err)
 	assert.NotNil(t, transactions)
@@ -50,9 +70,9 @@ func TestEtherScanService_GetTransactions(t *testing.T) {
 	totalFees := 0.0
 
 	for _, tx := range transactions {
-		if tx.GetType() == "deposit" {
+		if tx.GetType() == "Deposit" {
 			totalDeposit += tx.GetAmount()
-		} else if tx.GetType() == "withdrawl" {
+		} else if tx.GetType() == "Withdrawl" {
 			totalWithdrawl += tx.GetAmount()
 			totalFees += tx.GetFee()
 		}
@@ -63,7 +83,7 @@ func TestEtherScanService_GetTransactions(t *testing.T) {
 
 	txSum := totalDeposit - totalWithdrawl - totalFees
 
-	wallet, err := service.GetWallet(walletAddress)
+	wallet, err := etherscanService.GetWallet(walletAddress)
 	assert.Nil(t, err)
 
 	actual := util.TruncateFloat(wallet.GetBalance(), 8)
@@ -76,7 +96,8 @@ func TestEtherScanService_GetTransactions(t *testing.T) {
 func TestEtherScan_GetToken(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
-	service, err := NewEtherscanService(ctx, dao.NewUserDAO(ctx), mapper.NewUserMapper(), NewMarketCapService(ctx))
+	service, err := NewEtherscanService(ctx, dao.NewUserDAO(ctx), mapper.NewUserMapper(),
+		NewMarketCapService(ctx), NewPriceHistoryService(ctx))
 	assert.Nil(t, err)
 
 	token, err := service.GetToken(os.Getenv("ETH_ADDRESS"), os.Getenv("TOKEN_ADDRESS"))
@@ -91,10 +112,11 @@ func TestEtherScan_GetToken(t *testing.T) {
 func TestEtherScanService_GetTokenTransactions(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
-	service, err := NewEtherscanService(ctx, dao.NewUserDAO(ctx), mapper.NewUserMapper(), NewMarketCapService(ctx))
+	service, err := NewEtherscanService(ctx, dao.NewUserDAO(ctx), mapper.NewUserMapper(),
+		NewMarketCapService(ctx), NewPriceHistoryService(ctx))
 	assert.Nil(t, err)
 
-	transactions, err := service.GetTokenTransactions(os.Getenv("TOKEN_INTERMEDIARY"))
+	transactions, err := service.GetTokenTransactions(os.Getenv("TOKEN_INTERNAL_ADDRESS"))
 
 	assert.Nil(t, err)
 	assert.NotNil(t, transactions)

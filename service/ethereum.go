@@ -30,7 +30,7 @@ func NewEthereumService(ctx common.Context, userDAO dao.UserDAO, userMapper mapp
 			ethereumService: gethService.(EthereumService)}
 		//} else if ctx.GetEthereumMode() == "etherscan" {
 	} else {
-		etherscanService, err := NewEtherscanService(ctx, userDAO, userMapper, marketcapService)
+		etherscanService, err := NewEtherscanService(ctx, userDAO, userMapper, marketcapService, NewPriceHistoryService(ctx))
 		if err != nil {
 			return nil, err
 		}
@@ -59,8 +59,12 @@ func (facade *EthereumServiceImpl) GetWallet(address string) (common.UserCryptoW
 	return facade.ethereumService.GetWallet(address)
 }
 
-func (facade *EthereumServiceImpl) GetTransactions(address string) ([]common.Transaction, error) {
-	return facade.ethereumService.GetTransactions(address)
+func (facade *EthereumServiceImpl) GetTransactions() ([]common.Transaction, error) {
+	return facade.ethereumService.GetTransactions()
+}
+
+func (facade *EthereumServiceImpl) GetTransactionsFor(address string) ([]common.Transaction, error) {
+	return facade.ethereumService.GetTransactionsFor(address)
 }
 
 func (facade *EthereumServiceImpl) GetToken(walletAddress, contractAddress string) (common.EthereumToken, error) {

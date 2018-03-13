@@ -36,6 +36,8 @@ type OrderEntity interface {
 	GetFeeCurrency() string
 	GetTotal() float64
 	GetTotalCurrency() string
+	GetHistoricalPrice() float64
+	GetHistoricalCurrency() string
 }
 
 type UserEntity interface {
