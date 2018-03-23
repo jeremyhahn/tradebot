@@ -34,6 +34,8 @@ func (service *TransactionServiceImpl) GetMapper() mapper.TransactionMapper {
 }
 
 func (service *TransactionServiceImpl) GetTransactions() ([]common.Transaction, error) {
+	service.ctx.GetLogger().Debugf("[TransactionService.GetTransactions] Retrieving transaction history for: %s",
+		service.ctx.GetUser().GetUsername())
 	transactions, err := service.ethereumService.GetTransactions()
 	if err != nil {
 		return nil, err
@@ -55,7 +57,7 @@ func (service *TransactionServiceImpl) GetOrderHistory() []common.Transaction {
 		service.ctx.GetLogger().Errorf("[TransactionService.GetOrderHistory] Error loading user exchanges: %s", err.Error())
 	}
 	for _, ex := range exchanges {
-		if ex.GetName() == "gdax" || ex.GetName() == "coinbase" { // TODO standardize exchange interface
+		if ex.GetName() == "GDAX" || ex.GetName() == "Coinbase" { // TODO standardize exchange interface
 			balances, _ := ex.GetBalances()
 			for _, coin := range balances {
 				currencyPair := &common.CurrencyPair{
