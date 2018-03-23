@@ -96,3 +96,8 @@ Geth requires both TCP and UDP port 30303, otherwise it will not be able to sync
 
 1. Indicators need to be refactored from floats to decimals to avoid minor rounding errors over time (indicators only)
    (ex: .123456789 BTC (9 places) is rounded to .12345679 (8 places) instead of .12345678)
+
+
+## Support
+
+Join the [Telegram Channel](https://t.me/joinchat/AAAAAE3ha9a8OpK4bJFomQ) for assistance.

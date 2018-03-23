@@ -74,7 +74,7 @@ class Portfolio extends React.Component {
 		var loc = window.location, new_uri;
 		var protocol = (loc.protocol === "https:") ? "wss" : "ws";
 		if(this.ws == null) {
-		  this.ws = new WebSocket(protocol + "://localhost:8080/ws/portfolio");
+		  this.ws = new WebSocket(protocol + "://" + loc.hostname + ':' + loc.port + "/ws/portfolio");
 	  }
 		var _this = this;
 		var ws = this.ws;

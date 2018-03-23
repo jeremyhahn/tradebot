@@ -4,7 +4,8 @@ import axios from 'axios';
 export default class AuthService {
 
     constructor(domain) {
-        this.domain = domain || window.location.protocol + '//localhost:8080/api/v1';
+        this.domain = domain || window.location.protocol + '//' +
+            window.location.hostname + ':' + window.location.port + '/api/v1';
         this.fetch = this.fetch.bind(this);
     }
 

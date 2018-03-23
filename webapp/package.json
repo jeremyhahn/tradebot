@@ -6,7 +6,7 @@
     "start:dev": "NODE_ENV=development && webpack-dev-server --hot --progress --colors --content-base public/ --config scripts/webpack.config.dev.js",
     "start": "node scripts/server.js",
     "watch": "cross-env NODE_ENV=development webpack --progress --colors -w --config scripts/webpack.config.dev.js",
-    "clean": "rimraf public/scripts",
+    "clean": "rm -rf public/scripts",
     "build:dev": "npm run clean && cross-env NODE_ENV=development webpack -p --config scripts/webpack.config.dev.js",
     "build:pro": "npm run clean && cross-env NODE_ENV=production webpack -p --config scripts/webpack.config.pro.js"
   },
