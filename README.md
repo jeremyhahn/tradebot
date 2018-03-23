@@ -1,26 +1,26 @@
 # tradebot
 
-Ethereum powered automated cryptocurrency trading platform.
+Decentralized cryptocurrency trading platform with portfolio, accounting / tax reports, and automated trading bot.
 
 
 ## Current Features
-
+* Run locally (your computer, your data), centralized (hosted), or decentralized (Ethereum).
 * User friendly web interface
-* Portfolio, Order history & accounting / tax reporting; Form 8949 statement
-* Exchange order / trade history reporting; Generate accounting reports
-* Plugin system supports financial indicators, trading strategies, exchanges and wallets
-* Trading bot automatically executes trades based on configured trading strategies / indicators
+* Plugin architecture supports financial indicators, trading strategies, exchanges and wallets
+* Portfolio shows hosted exchange and offline wallet balances
+* Exchange order / trade history import via API and CSV
+* Accounting / tax reporting (form 8949 statement)
+* Trading bot to automatically execute trades based on configured trading strategies / indicators
 * Json Web Token (JWT) protected APIs
 * REST and WebSocket APIs
 
 
 ## Roadmap
-* Develop initial set of trading contracts
-* Feature bounties
-* Marketplace for custom plugins
+* Decentralized trading protocol
+* Feature voting / bounties
+* Marketplace for custom trading strategies and indicators
 * Live Charts
-* Distributed trading protocol
-* Exchange features: distributed order book, buy / sell between network users, atomic swaps
+* Integrate with open source, decentralized atomic swap exchange(s)
 * Financial lending
 
 
@@ -94,4 +94,5 @@ Geth requires both TCP and UDP port 30303, otherwise it will not be able to sync
 
 ## Known Issues
 
-1. Calculations using floats instead of fixed decimals (causes minor rounding errors in some cases)
+1. Indicators need to be refactored from floats to decimals to avoid minor rounding errors over time (indicators only)
+   (ex: .123456789 BTC (9 places) is rounded to .12345679 (8 places) instead of .12345678)

@@ -42,7 +42,7 @@ export default class AuthService {
     }
 
     fetchOrderHistory() {
-      return this.fetch(`${this.domain}/orderhistory`, {
+      return this.fetch(`${this.domain}/transactions/orderhistory`, {
           method: 'GET'
       }).then(res => {
           return Promise.resolve(res)
@@ -59,7 +59,7 @@ export default class AuthService {
       if(this.loggedIn()) {
           config.headers['Authorization'] = 'Bearer ' + this.getToken()
       }
-      return post(`${this.domain}/import`, formData, config)
+      return post(`${this.domain}/transactions/import`, formData, config)
     }
 
     getExchangeNames() {

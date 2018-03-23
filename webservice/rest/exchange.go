@@ -29,9 +29,10 @@ func (restService *ExchangeRestServiceImpl) createExchangeService(ctx common.Con
 	pluginDAO := dao.NewPluginDAO(ctx)
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
+	pluginMapper := mapper.NewPluginMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
-	priceHistoryService := service.NewPriceHistoryService(ctx)
-	return service.NewExchangeService(ctx, pluginDAO, userDAO, userMapper, userExchangeMapper, priceHistoryService)
+	pluginService := service.NewPluginService(ctx, pluginDAO, pluginMapper)
+	return service.NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
 }
 
 func (restService *ExchangeRestServiceImpl) GetDisplayNames(w http.ResponseWriter, r *http.Request) {
@@ -42,8 +43,14 @@ func (restService *ExchangeRestServiceImpl) GetDisplayNames(w http.ResponseWrite
 	}
 	defer ctx.Close()
 	exchangeService := restService.createExchangeService(ctx)
+	names, err := exchangeService.GetDisplayNames()
+	if err != nil {
+		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
+			Success: false,
+			Payload: err.Error()})
+	}
 	ctx.GetLogger().Debugf("[ExchangeRestService.GetDisplayNames]")
 	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
 		Success: true,
-		Payload: exchangeService.GetDisplayNames()})
+		Payload: names})
 }

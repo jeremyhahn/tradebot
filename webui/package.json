@@ -52,6 +52,7 @@
     "prop-types": "^15.6.0",
     "react": "^15.6.2",
     "react-bootstrap": "^0.31.5",
+    "react-copy-to-clipboard": "^5.0.1",
     "react-dom": "^15.6.2",
     "react-dropzone": "^4.2.8",
     "react-number-format": "^3.1.2",

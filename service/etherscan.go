@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -12,6 +13,7 @@ import (
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/util"
+	"github.com/shopspring/decimal"
 )
 
 type EtherScanTx struct {
@@ -51,29 +53,29 @@ type EtherScanResponse struct {
 }
 
 type EtherscanServiceImpl struct {
-	ctx                 common.Context
-	userDAO             dao.UserDAO
-	userMapper          mapper.UserMapper
-	marketcapService    MarketCapService
-	pricehistoryService common.PriceHistoryService
-	apiKeyToken         string
-	endpoint            string
-	rateLimiter         *common.RateLimiter
+	ctx              common.Context
+	userDAO          dao.UserDAO
+	userMapper       mapper.UserMapper
+	marketcapService MarketCapService
+	fiatPriceService common.FiatPriceService
+	apiKeyToken      string
+	endpoint         string
+	rateLimiter      *common.RateLimiter
 	EthereumService
 }
 
 var ETHERSCAN_RATELIMITER = common.NewRateLimiter(5, 1)
 
 func NewEtherscanService(ctx common.Context, userDAO dao.UserDAO, userMapper mapper.UserMapper,
-	marketcapService MarketCapService, priceHistoryService common.PriceHistoryService) (EthereumService, error) {
+	marketcapService MarketCapService, fiatPriceService common.FiatPriceService) (EthereumService, error) {
 	return &EtherscanServiceImpl{
-		ctx:                 ctx,
-		userDAO:             userDAO,
-		userMapper:          userMapper,
-		marketcapService:    marketcapService,
-		pricehistoryService: priceHistoryService,
-		apiKeyToken:         ctx.GetKeystore(),
-		endpoint:            "https://api.etherscan.io/api"}, nil
+		ctx:              ctx,
+		userDAO:          userDAO,
+		userMapper:       userMapper,
+		marketcapService: marketcapService,
+		fiatPriceService: fiatPriceService,
+		apiKeyToken:      "YourApiKeyToken",
+		endpoint:         "https://api.etherscan.io/api"}, nil
 }
 
 func (service *EtherscanServiceImpl) Login(username, password string) (common.UserContext, error) {
@@ -160,63 +162,67 @@ func (service *EtherscanServiceImpl) GetTransactions() ([]common.Transaction, er
 }
 
 func (service *EtherscanServiceImpl) GetTransactionsFor(address string) ([]common.Transaction, error) {
-
 	ETHERSCAN_RATELIMITER.RespectRateLimit()
-
 	url := fmt.Sprintf("%s?module=account&action=txlist&address=0x%s&startblock=0&endblock=99999999999999999999999&sort=asc&apikey=%s",
 		service.endpoint, address, service.apiKeyToken)
 	service.ctx.GetLogger().Debugf("[EtherscanService.GetTransactionsFor] url: %s", url)
-
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
 		service.ctx.GetLogger().Errorf("[EtherscanService.GetTransactionsFor] HTTP Request Error: %s", err.Error())
 	}
-
 	response := EtherScanGetTransactionsResponse{}
 	jsonErr := json.Unmarshal(body, &response)
 	if jsonErr != nil {
 		service.ctx.GetLogger().Errorf("[EtherscanService.GetTransactionsFor] JSON Unmarshall error: %s", jsonErr.Error())
 	}
-
 	var transactions []common.Transaction
 	for _, tx := range response.Result {
 		var txType string
 		hexAddress := fmt.Sprintf("0x%s", address)
 		if tx.From == hexAddress {
-			txType = "Withdrawl"
+			txType = common.WITHDRAWAL_ORDER_TYPE
 		} else if tx.To == hexAddress {
-			txType = "Deposit"
+			txType = common.DEPOSIT_ORDER_TYPE
 		}
 		timestamp, err := strconv.ParseInt(tx.Timestamp, 10, 64)
 		if err != nil {
 			return nil, err
 		}
-		amount, err := strconv.ParseFloat(tx.Value, 64)
+		amount, err := decimal.NewFromString(tx.Value)
 		if err != nil {
 			return nil, err
 		}
-		fee, err := strconv.ParseFloat(tx.GasUsed, 64)
+		fee, err := decimal.NewFromString(tx.GasUsed)
 		if err != nil {
 			return nil, err
 		}
 		localCurrency := service.ctx.GetUser().GetLocalCurrency()
-		finalAmount := amount / 1000000000000000000
-
-		closePrice := service.pricehistoryService.GetClosePriceOn("ETH", time.Unix(timestamp, 0))
-
+		finalAmount := amount.Div(decimal.NewFromFloat(1000000000000000000))
+		finalFee := fee.Div(decimal.NewFromFloat(100000000))
+		candlestick, err := service.fiatPriceService.GetPriceAt("ETH", time.Unix(timestamp, 0))
+		if err != nil {
+			return nil, err
+		}
+		closePrice := decimal.NewFromFloat(candlestick.Close)
 		transactions = append(transactions, &dto.TransactionDTO{
-			Date:               time.Unix(timestamp, 0),
-			CurrencyPair:       &common.CurrencyPair{Base: "ETH", Quote: localCurrency, LocalCurrency: localCurrency},
-			Type:               txType,
-			Source:             "Ethereum",
-			Amount:             finalAmount,
-			AmountCurrency:     "ETH",
-			Fee:                fee / 100000000,
-			FeeCurrency:        "ETH",
-			Total:              finalAmount * closePrice,
-			TotalCurrency:      "USD",
-			HistoricalPrice:    closePrice,
-			HistoricalCurrency: "USD"})
+			Id:                   tx.Timestamp,
+			Date:                 time.Unix(timestamp, 0),
+			CurrencyPair:         &common.CurrencyPair{Base: "ETH", Quote: localCurrency, LocalCurrency: localCurrency},
+			Type:                 txType,
+			Network:              "etherscan",
+			NetworkDisplayName:   "Ethereum",
+			Quantity:             finalAmount.StringFixed(8),
+			QuantityCurrency:     "ETH",
+			FiatQuantity:         finalAmount.Mul(closePrice).StringFixed(2),
+			FiatQuantityCurrency: "USD",
+			Price:                closePrice.StringFixed(2),
+			PriceCurrency:        "USD",
+			Fee:                  finalFee.StringFixed(8),
+			FeeCurrency:          "ETH",
+			FiatFee:              finalFee.Mul(closePrice).StringFixed(2),
+			FiatFeeCurrency:      "USD",
+			Total:                finalAmount.Mul(closePrice).StringFixed(2),
+			TotalCurrency:        "USD"})
 	}
 	return transactions, nil
 }
@@ -289,9 +295,9 @@ func (service *EtherscanServiceImpl) GetTokenTransactions(contractAddress string
 		service.ctx.GetLogger().Errorf("[EtherscanService.GetTokenTransactions] JSON Unmarshall error: %s", jsonErr.Error())
 	}
 
-	priceUSD, err := strconv.ParseFloat(service.marketcapService.GetMarket("ETH").PriceUSD, 64)
+	priceUSD, err := decimal.NewFromString(service.marketcapService.GetMarket("ETH").PriceUSD)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTokenTransactions] Error converting price to float: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EtherscanService.GetTokenTransactions] Error converting price to decimal: %s", err.Error())
 	}
 
 	var transactions []common.Transaction
@@ -299,37 +305,39 @@ func (service *EtherscanServiceImpl) GetTokenTransactions(contractAddress string
 		var txType string
 		hexAddress := fmt.Sprintf("0x%s", contractAddress)
 		if tx.From == hexAddress {
-			txType = "Withdrawl"
+			txType = common.WITHDRAWAL_ORDER_TYPE
 		} else if tx.To == hexAddress {
-			txType = "Deposit"
+			txType = common.DEPOSIT_ORDER_TYPE
 		}
 		timestamp, err := strconv.ParseInt(tx.Timestamp, 10, 64)
 		if err != nil {
 			return nil, err
 		}
-		amount, err := strconv.ParseFloat(tx.Value, 64)
+		amount, err := decimal.NewFromString(tx.Value)
 		if err != nil {
 			return nil, err
 		}
-		fee, err := strconv.ParseFloat(tx.GasUsed, 64)
+		fee, err := decimal.NewFromString(tx.GasUsed)
 		if err != nil {
 			return nil, err
 		}
 		localCurrency := service.ctx.GetUser().GetLocalCurrency()
-		finalAmount := amount / 1000000000000000000
+		finalAmount := amount.Div(decimal.NewFromFloat(1000000000000000000))
 		transactions = append(transactions, &dto.TransactionDTO{
-			Date:           time.Unix(timestamp, 0),
-			CurrencyPair:   &common.CurrencyPair{Base: "ETH", Quote: localCurrency, LocalCurrency: localCurrency},
-			Type:           txType,
-			Source:         "Ethereum",
-			Amount:         finalAmount,
-			AmountCurrency: "ETH",
-			Fee:            fee / 100000000,
-			FeeCurrency:    "ETH",
-			Total:          finalAmount * priceUSD,
-			TotalCurrency:  "USD"})
+			Id:               tx.Timestamp,
+			Date:             time.Unix(timestamp, 0),
+			CurrencyPair:     &common.CurrencyPair{Base: "ETH", Quote: localCurrency, LocalCurrency: localCurrency},
+			Type:             strings.Title(txType),
+			Network:          "Ethereum",
+			Quantity:         finalAmount.StringFixed(8),
+			QuantityCurrency: "ETH",
+			Price:            priceUSD.StringFixed(2),
+			PriceCurrency:    "USD",
+			Fee:              fee.Div(decimal.NewFromFloat(100000000)).StringFixed(8),
+			FeeCurrency:      "ETH",
+			Total:            finalAmount.Mul(priceUSD).StringFixed(2),
+			TotalCurrency:    "USD"})
 	}
-
 	return transactions, nil
 }
 

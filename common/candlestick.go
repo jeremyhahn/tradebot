@@ -6,15 +6,15 @@ import (
 )
 
 type Candlestick struct {
-	Exchange     string
-	CurrencyPair *CurrencyPair
-	Period       int
-	Date         time.Time
-	Open         float64
-	Close        float64
-	High         float64
-	Low          float64
-	Volume       float64
+	Exchange     string        `json:"exchange"`
+	CurrencyPair *CurrencyPair `json:"currency_pair"`
+	Period       int           `json:"period"`
+	Date         time.Time     `json:"date"`
+	Open         float64       `json:"open"`
+	Close        float64       `json:"close"`
+	High         float64       `json:"high"`
+	Low          float64       `json:"low"`
+	Volume       float64       `json:"volume"`
 }
 
 func CreateCandlestick(exchangeName string, currencyPair *CurrencyPair, period int, prices []float64) *Candlestick {
@@ -52,7 +52,7 @@ func NewCandlestickPeriod(period int) time.Time {
 	return t
 }
 
-func (candle *Candlestick) ToString() string {
+func (candle *Candlestick) String() string {
 	var base, quote string
 	if candle.CurrencyPair != nil {
 		base = candle.CurrencyPair.Base

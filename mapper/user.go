@@ -24,6 +24,7 @@ func (mapper *DefaultUserMapper) MapUserEntityToDto(entity entity.UserEntity) co
 		Id:            entity.GetId(),
 		Username:      entity.GetUsername(),
 		LocalCurrency: entity.GetLocalCurrency(),
+		FiatExchange:  entity.GetFiatExchange(),
 		Etherbase:     entity.GetEtherbase(),
 		Keystore:      entity.GetKeystore()}
 }
@@ -33,6 +34,7 @@ func (mapper *DefaultUserMapper) MapUserDtoToEntity(dto common.UserContext) enti
 		Id:            dto.GetId(),
 		Username:      dto.GetUsername(),
 		LocalCurrency: dto.GetLocalCurrency(),
+		FiatExchange:  dto.GetFiatExchange(),
 		Etherbase:     dto.GetEtherbase(),
 		Keystore:      dto.GetKeystore()}
 }

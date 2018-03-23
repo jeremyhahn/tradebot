@@ -51,7 +51,7 @@ func (database *DatabaseImpl) MigrateCoreDB() {
 	coreDB.AutoMigrate(&entity.Profit{})
 	coreDB.AutoMigrate(&entity.MarketCap{})
 	coreDB.AutoMigrate(&entity.GlobalMarketCap{})
-	coreDB.AutoMigrate(&entity.Order{})
+	coreDB.AutoMigrate(&entity.Transaction{})
 	coreDB.AutoMigrate(&entity.Trade{})
 	coreDB.AutoMigrate(&entity.User{})
 	coreDB.AutoMigrate(&entity.UserWallet{})

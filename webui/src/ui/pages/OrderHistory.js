@@ -27,9 +27,9 @@ import AuthService from 'app/components/AuthService';
 
 const columnData = [
   { id: 'date', numeric: false, disablePadding: true, label: 'Date' },
-  { id: 'exchange', numeric: false, disablePadding: false, label: 'Exchange' },
   { id: 'type', numeric: false, disablePadding: false, label: 'Type' },
-  { id: 'currency_pair', numeric: true, disablePadding: false, label: 'Currency' },
+  { id: 'currency_pair', numeric: false, disablePadding: false, label: 'Currency' },
+  { id: 'network', numeric: false, disablePadding: false, label: 'Network' },
   { id: 'quantity', numeric: true, disablePadding: false, label: 'Quantity' },
   { id: 'price', numeric: true, disablePadding: false, label: 'Price' },
   { id: 'fee', numeric: true, disablePadding: false, label: 'Fee' },
@@ -137,10 +137,7 @@ class OrderHistory extends React.Component {
       page: 0,
       rowsPerPage: 10
     }
-    this.importDialogHandler = this.importDialogHandler.bind(this)
-    this.handleImportDialogClose = this.handleImportDialogClose.bind(this)
     this.fetchOrderHistory = this.fetchOrderHistory.bind(this)
-    this.appendImportData = this.appendImportData.bind(this)
   }
 
   handleRequestSort = (event, property) => {
@@ -186,25 +183,8 @@ class OrderHistory extends React.Component {
       }.bind(this))
   }
 
-  appendImportData(newData) {
-    console.log(newData)
-    this.setState({
-      data: this.state.data.concat(newData),
-      order: 'desc'
-    })
-    this.handleRequestSort(null, 'date')
-  }
-
   currencyIcon(currency) {
     return "images/crypto/128/" + currency.toLowerCase() + ".png";
-  }
-
-  importDialogHandler() {
-    this.setState({importDialog: true})
-  }
-
-  handleImportDialogClose() {
-    this.setState({importDialog: false})
   }
 
   render() {
@@ -220,11 +200,6 @@ class OrderHistory extends React.Component {
           </div>
         }
         <div className={classes.tableWrapper}>
-          <Toolbar>
-            <Button className={classes.buttonText} size="small" color="inherit" onClick={this.importDialogHandler}>
-              Import <FileUpload className={classes.leftIcon} />
-            </Button>
-          </Toolbar>
           <Table className={classes.table}>
             <OrderHistoryHead
               numSelected={selected.length}
@@ -237,18 +212,28 @@ class OrderHistory extends React.Component {
             <TableBody className={classes.tableBody}>
               {data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(n => {
                 const isSelected = this.isSelected(n.id);
+
+                const columnData = [
+                  { id: 'date', numeric: false, disablePadding: false, label: 'Date' },
+                  { id: 'type', numeric: false, disablePadding: false, label: 'Type' },
+                  { id: 'currency', numeric: false, disablePadding: false, label: 'Currency' },
+                  { id: 'network', numeric: false, disablePadding: false, label: 'Network' },
+                  { id: 'quantity', numeric: true, disablePadding: false, label: 'Quantity' },
+                  { id: 'price', numeric: true, disablePadding: false, label: 'Price' },
+                  { id: 'fee', numeric: true, disablePadding: false, label: 'Fee' },
+                  { id: 'total', numeric: true, disablePadding: false, label: 'Total' },
+                ];
+
                 return (
                   <TableRow key={n.id}>
-                    <TableCell padding="none">{n.date}</TableCell>
-                    <TableCell numeric>{n.exchange}</TableCell>
-                    <TableCell numeric>{n.type}</TableCell>
-                    <TableCell numeric>
-                      {n.currency_pair.base}-{n.currency_pair.quote}
-                    </TableCell>
+                    <TableCell padding="none">{new Date(n.date).customFormat()}</TableCell>
+                    <TableCell>{n.type}</TableCell>
+                    <TableCell>{n.currency_pair.base}-{n.currency_pair.quote}</TableCell>
+                    <TableCell>{n.network_display_name}</TableCell>
                     <TableCell numeric>{n.quantity}
-                    <img className={classes.currencyIcon}
-                         src={this.currencyIcon(n.quantity_currency)}
-                         title={n.quantity_currency} />
+                      <img className={classes.currencyIcon}
+                           src={this.currencyIcon(n.quantity_currency)}
+                           title={n.quantity_currency} />
                     </TableCell>
                     <TableCell numeric>{n.price.formatCurrency(n.price_currency)}
                       <img className={classes.currencyIcon}
@@ -270,14 +255,14 @@ class OrderHistory extends React.Component {
               })}
               {emptyRows > 0 && (
                 <TableRow style={{ height: 49 * emptyRows }}>
-                  <TableCell colSpan={6} />
+                  <TableCell colSpan={8} />
                 </TableRow>
               )}
             </TableBody>
             <TableFooter>
               <TableRow>
                 <TablePagination
-                  colSpan={6}
+                  colSpan={8}
                   count={data.length}
                   rowsPerPage={rowsPerPage}
                   page={page}
@@ -294,7 +279,6 @@ class OrderHistory extends React.Component {
             </TableFooter>
           </Table>
         </div>
-        <ImportDialog open={this.state.importDialog} onClose={this.handleImportDialogClose} addData={this.appendImportData} />
       </Paper>
     );
   }

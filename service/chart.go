@@ -45,8 +45,12 @@ func (service *DefaultChartService) GetCurrencyPair(chart common.Chart) *common.
 		LocalCurrency: service.ctx.GetUser().GetLocalCurrency()}
 }
 
-func (service *DefaultChartService) GetExchange(chart common.Chart) common.Exchange {
-	return service.exchangeService.GetExchange(chart.GetExchange())
+func (service *DefaultChartService) GetExchange(chart common.Chart) (common.Exchange, error) {
+	exchange, err := service.exchangeService.GetExchange(chart.GetExchange())
+	if err != nil {
+		return nil, err
+	}
+	return exchange, nil
 }
 
 func (service *DefaultChartService) Stream(chart common.Chart,
@@ -62,7 +66,10 @@ func (service *DefaultChartService) Stream(chart common.Chart,
 	service.closeChans[chartId] = make(chan bool)
 
 	currencyPair := service.GetCurrencyPair(chart)
-	exchange := service.GetExchange(chart)
+	exchange, err := service.GetExchange(chart)
+	if err != nil {
+		return err
+	}
 
 	service.ctx.GetLogger().Infof("[DefaultChartService.Stream] Streaming %s %s chart data.",
 		exchange.GetName(), exchange.FormattedCurrencyPair(currencyPair))
@@ -230,10 +237,14 @@ func (service *DefaultChartService) LoadCandlesticks(chart common.Chart, exchang
 		LocalCurrency: service.ctx.GetUser().GetLocalCurrency()}
 	service.ctx.GetLogger().Debugf("[DefaultChartService.LoadCandlesticks] Getting %s %s trade history from %s - %s ",
 		exchange.GetName(), exchange.FormattedCurrencyPair(currencyPair), lastWeek, now)
-	candles = exchange.GetPriceHistory(currencyPair, lastWeek, now, chart.GetPeriod())
+	candles, err := exchange.GetPriceHistory(currencyPair, lastWeek, now, chart.GetPeriod())
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[DefaultChartService.LoadCandlesticks] Error: %s", err.Error())
+		return candles
+	}
 	if service.ctx.GetDebug() {
 		for _, c := range candles {
-			service.ctx.GetLogger().Debugf("Prewarming kline: %s", c.ToString())
+			service.ctx.GetLogger().Debugf("Prewarming kline: %s", c)
 		}
 	}
 	if len(candles) < 35 {

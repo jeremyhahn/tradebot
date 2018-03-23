@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"plugin"
@@ -10,23 +11,24 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 )
 
-const (
-	INDICATOR_PLUGIN = "indicators"
-	STRATEGY_PLUGIN  = "strategies"
-	INDICATOR_TYPE   = "indicator"
-	STRATEGY_TYPE    = "strategy"
-)
-
+var PLUGINTYPE = map[string]string{
+	common.INDICATOR_PLUGIN_TYPE: "indicators",
+	common.STRATEGY_PLUGIN_TYPE:  "strategies",
+	common.EXCHANGE_PLUGIN_TYPE:  "exchanges"}
 var PLUGINS = make(map[string]*plugin.Plugin)
 
 type PluginService interface {
 	GetMapper() mapper.PluginMapper
 	GetPlugin(pluginName, pluginType string) (common.Plugin, error)
+	GetPlugins(pluginType string) ([]string, error)
+	ListPlugins(pluginType string) ([]string, error)
 	CreateIndicator(indicatorName string) (func(candles []common.Candlestick, params []string) (common.FinancialIndicator, error), error)
 	CreateStrategy(strategyName string) (func(params *common.TradingStrategyParams) (common.TradingStrategy, error), error)
+	CreateExchange(exchangeName string) (func(ctx common.Context, userExchangeEntity entity.UserExchangeEntity) common.Exchange, error)
 }
 
 type DefaultPluginService struct {
@@ -70,14 +72,27 @@ func (service *DefaultPluginService) GetPlugin(pluginName, pluginType string) (c
 	return service.mapper.MapPluginEntityToDto(entity), nil
 }
 
+func (service *DefaultPluginService) GetPlugins(pluginType string) ([]string, error) {
+	entities, err := service.dao.Find(pluginType)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[PluginService.GetPlugin] Error: %s", err.Error())
+		return nil, err
+	}
+	plugins := make([]string, len(entities))
+	for i, entity := range entities {
+		plugins[i] = entity.GetName()
+	}
+	return plugins, nil
+}
+
 func (service *DefaultPluginService) CreateIndicator(indicatorName string) (func(candles []common.Candlestick, params []string) (common.FinancialIndicator, error), error) {
-	indicatorEntity, err := service.dao.Get(indicatorName, INDICATOR_TYPE)
+	indicatorEntity, err := service.dao.Get(indicatorName, common.INDICATOR_PLUGIN_TYPE)
 	if err != nil {
 		service.ctx.GetLogger().Errorf("[PluginService.CreateIndicator] Error: %s", err.Error())
 		return nil, err
 	}
 	filename := indicatorEntity.GetFilename()
-	lib, err := service.openPlugin(INDICATOR_PLUGIN, filename)
+	lib, err := service.openPlugin(PLUGINTYPE[common.INDICATOR_PLUGIN_TYPE], filename)
 	if err != nil {
 		service.ctx.GetLogger().Errorf("[PluginService.CreateIndicator] Error loading %s. %s", filename, err.Error())
 		return nil, err
@@ -92,7 +107,8 @@ func (service *DefaultPluginService) CreateIndicator(indicatorName string) (func
 	}
 	impl, ok := indicator.(func(candles []common.Candlestick, params []string) (common.FinancialIndicator, error))
 	if !ok {
-		errmsg := fmt.Sprintf("Invalid type - expected (%s) %s(candles []common.Candlestick, params []string) (common.FinancialIndicator, error)", filename, symbol)
+		errmsg := fmt.Sprintf("Invalid plugin, expected factory method: (%s) %s(candles []common.Candlestick, params []string) (common.FinancialIndicator, error)",
+			filename, symbol)
 		service.ctx.GetLogger().Errorf("[PluginService.CreateIndicator] %s", errmsg)
 		return nil, errors.New(errmsg)
 	}
@@ -100,13 +116,13 @@ func (service *DefaultPluginService) CreateIndicator(indicatorName string) (func
 }
 
 func (service *DefaultPluginService) CreateStrategy(strategyName string) (func(params *common.TradingStrategyParams) (common.TradingStrategy, error), error) {
-	strategyEntity, err := service.dao.Get(strategyName, STRATEGY_TYPE)
+	strategyEntity, err := service.dao.Get(strategyName, common.STRATEGY_PLUGIN_TYPE)
 	if err != nil {
 		service.ctx.GetLogger().Errorf("[PluginService.CreateStrategy] Error: %s", err.Error())
 		return nil, err
 	}
 	filename := strategyEntity.GetFilename()
-	lib, err := service.openPlugin(STRATEGY_PLUGIN, filename)
+	lib, err := service.openPlugin(PLUGINTYPE[common.STRATEGY_PLUGIN_TYPE], filename)
 	if err != nil {
 		service.ctx.GetLogger().Errorf("[PluginService.CreateStrategy] Error loading %s. %s", filename, err.Error())
 		return nil, err
@@ -121,8 +137,38 @@ func (service *DefaultPluginService) CreateStrategy(strategyName string) (func(p
 	}
 	impl, ok := strategy.(func(params *common.TradingStrategyParams) (common.TradingStrategy, error))
 	if !ok {
-		errmsg := fmt.Sprintf("Invalid type - expected (%s) %s(params *common.TradingStrategyParams) (common.TradingStrategy, error))", filename, symbol)
+		errmsg := fmt.Sprintf("Invalid plugin, expected factory method: (%s) %s(params *common.TradingStrategyParams) (common.TradingStrategy, error))",
+			filename, symbol)
 		service.ctx.GetLogger().Errorf("[PluginService.CreateStrategy] %s", errmsg)
+		return nil, errors.New(errmsg)
+	}
+	return impl, nil
+}
+
+func (service *DefaultPluginService) CreateExchange(exchangeName string) (func(ctx common.Context, userExchangeEntity entity.UserExchangeEntity) common.Exchange, error) {
+	exchangeEntity, err := service.dao.Get(exchangeName, common.EXCHANGE_PLUGIN_TYPE)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[PluginService.CreateExchange] Error loading exchange from database: %s", err.Error())
+		return nil, err
+	}
+	filename := exchangeEntity.GetFilename()
+	lib, err := service.openPlugin(PLUGINTYPE[common.EXCHANGE_PLUGIN_TYPE], filename)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[PluginService.CreateExchange] Error loading %s. %s", filename, err.Error())
+		return nil, err
+	}
+	symbol := fmt.Sprintf("Create%s", exchangeName)
+	service.ctx.GetLogger().Debugf("[PluginService.CreateExchange] Looking up exchange symbol %s", symbol)
+	exchange, err := lib.Lookup(symbol)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[PluginService.CreateExchange] Error looking up exchange symbol: %s", err.Error())
+		return nil, err
+	}
+	impl, ok := exchange.(func(ctx common.Context, userExchangeEntity entity.UserExchangeEntity) common.Exchange)
+	if !ok {
+		errmsg := fmt.Sprintf("Invalid plugin, expected factory method: (%s) %s(params *common.TradingStrategyParams) (common.TradingStrategy, error))",
+			filename, symbol)
+		service.ctx.GetLogger().Errorf("[PluginService.CreateExchange] %s", errmsg)
 		return nil, errors.New(errmsg)
 	}
 	return impl, nil
@@ -145,4 +191,21 @@ func (service *DefaultPluginService) openPlugin(which, name string) (*plugin.Plu
 		PLUGINS[name] = _lib
 		return PLUGINS[name], nil
 	}
+}
+
+func (service *DefaultPluginService) ListPlugins(pluginType string) ([]string, error) {
+	var plugins []string
+	path, _ := filepath.Abs(fmt.Sprintf("%s/%s", service.pluginRoot, PLUGINTYPE[pluginType]))
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		pieces := strings.Split(f.Name(), ".")
+		plugins = append(plugins, pieces[0])
+	}
+	return plugins, nil
 }

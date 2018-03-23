@@ -19,16 +19,38 @@ const (
 	STRATEGY_PLUGIN_TYPE  = "strategy"
 	EXCHANGE_PLUGIN_TYPE  = "exchange"
 	WALLET_PLUGIN_TYPE    = "wallet"
+	BUY_ORDER_TYPE        = "buy"
+	SELL_ORDER_TYPE       = "sell"
+	DEPOSIT_ORDER_TYPE    = "deposit"
+	WITHDRAWAL_ORDER_TYPE = "withdrawal"
 )
 
 type Transaction interface {
+	GetId() string
 	GetDate() time.Time
 	GetCurrencyPair() *CurrencyPair
 	GetType() string
-	GetSource() string
-	GetAmount() float64
-	GetFee() float64
-	GetHistoricalPrice() float64
+	GetNetwork() string
+	GetNetworkDisplayName() string
+	GetQuantity() string
+	GetQuantityCurrency() string
+	GetFiatQuantity() string
+	GetFiatQuantityCurrency() string
+	GetPrice() string
+	GetPriceCurrency() string
+	GetPriceString() string
+	GetFiatPrice() string
+	GetFiatPriceCurrency() string
+	GetFee() string
+	GetFeeCurrency() string
+	GetTotal() string
+	GetTotalCurrency() string
+	GetFiatFee() string
+	GetFiatFeeCurrency() string
+	GetFiatTotal() string
+	GetFiatTotalCurrency() string
+	GetOrigin() Transaction
+	String() string
 }
 
 type EthereumToken interface {
@@ -101,30 +123,6 @@ type Trade interface {
 	GetChartData() string
 }
 
-type Order interface {
-	GetId() string
-	GetExchange() string
-	GetDate() time.Time
-	GetType() string
-	GetCurrencyPair() *CurrencyPair
-	GetQuantity() float64
-	GetQuantityCurrency() string
-	GetPrice() float64
-	GetPriceCurrency() string
-	GetFee() float64
-	GetFeeCurrency() string
-	GetTotal() float64
-	GetTotalCurrency() string
-	GetHistoricalPrice() float64
-	GetHistoricalCurrency() string
-	String() string
-}
-
-type OrderPair interface {
-	GetBuyOrder() Order
-	GetSellOrder() Order
-}
-
 type Profit interface {
 	GetUserId() uint
 	GetTradeId() uint
@@ -169,18 +167,27 @@ type PeriodListener interface {
 	OnPeriodChange(candlestick *Candlestick)
 }
 
+type FiatPriceService interface {
+	GetPriceAt(currency string, date time.Time) (*Candlestick, error)
+}
+
 type Exchange interface {
 	GetName() string
+	GetDisplayName() string
 	GetBalances() ([]Coin, float64)
 	GetSummary() CryptoExchangeSummary
 	GetNetWorth() float64
 	GetTradingFee() float64
+	//GetCurrencies() []string
 	SubscribeToLiveFeed(currencyPair *CurrencyPair, price chan PriceChange)
 	GetPrice(currencyPair *CurrencyPair) float64
-	GetPriceHistory(currencyPair *CurrencyPair, start, end time.Time, granularity int) []Candlestick
-	GetOrderHistory(currencyPair *CurrencyPair) []Order
+	GetPriceHistory(currencyPair *CurrencyPair, start, end time.Time, granularity int) ([]Candlestick, error)
+	GetOrderHistory(currencyPair *CurrencyPair) []Transaction
+	GetDepositHistory() ([]Transaction, error)
+	GetWithdrawalHistory() ([]Transaction, error)
+	GetCurrencies() (map[string]*Currency, error)
 	FormattedCurrencyPair(currencyPair *CurrencyPair) string
-	ParseImport(file string) ([]Order, error)
+	ParseImport(file string) ([]Transaction, error)
 }
 
 type KeyPair interface {
@@ -195,6 +202,7 @@ type UserContext interface {
 	GetId() uint
 	GetUsername() string
 	GetLocalCurrency() string
+	GetFiatExchange() string
 	GetEtherbase() string
 	GetKeystore() string
 }
@@ -209,13 +217,15 @@ type UserCryptoExchange interface {
 
 type Coin interface {
 	GetCurrency() string
+	GetPrice() float64
+	GetExchange() string
 	GetBalance() float64
 	GetAvailable() float64
 	GetPending() float64
-	GetPrice() float64
 	GetAddress() string
 	GetTotal() float64
 	GetBTC() float64
+	GetUSD() float64
 	IsBitcoin() bool
 }
 
@@ -245,22 +255,6 @@ type Portfolio interface {
 
 type HttpWriter interface {
 	Write(w http.ResponseWriter, status int, response interface{})
-}
-
-type PriceHistory interface {
-	GetTime() int64
-	GetOpen() float64
-	GetHigh() float64
-	GetLow() float64
-	GetClose() float64
-	GetVolume() float64
-	GetMarketCap() int64
-}
-
-type PriceHistoryService interface {
-	GetPriceOn(currency string, day time.Time) PriceHistory
-	GetClosePriceOn(currency string, date time.Time) float64
-	GetPriceHistory(currency string) []PriceHistory
 }
 
 type TradingStrategyParams struct {

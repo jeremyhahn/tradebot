@@ -26,7 +26,6 @@ func (em *UserExchangeMapperImpl) MapEntityToDto(entity entity.UserExchangeEntit
 		Name:   entity.GetName(),
 		Key:    entity.GetKey(),
 		Secret: entity.GetSecret(),
-		URL:    entity.GetURL(),
 		Extra:  entity.GetExtra()}
 }
 
@@ -35,7 +34,6 @@ func (em *UserExchangeMapperImpl) MapEntityToViewModel(entity entity.UserExchang
 		Id:    entity.GetName(),
 		Name:  entity.GetName(),
 		Key:   entity.GetKey(),
-		URL:   entity.GetURL(),
 		Extra: entity.GetExtra()}
 }
 
@@ -43,6 +41,5 @@ func (em *UserExchangeMapperImpl) MapViewModelToEntity(vm viewmodel.UserCryptoEx
 	return &entity.UserCryptoExchange{
 		Name:  vm.Name,
 		Key:   vm.Key,
-		URL:   vm.URL,
 		Extra: vm.Extra}
 }

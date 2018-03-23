@@ -88,7 +88,7 @@ type AutoTradeService interface {
 
 type ChartService interface {
 	GetCurrencyPair(chart common.Chart) *common.CurrencyPair
-	GetExchange(chart common.Chart) common.Exchange
+	GetExchange(chart common.Chart) (common.Exchange, error)
 	Stream(chart common.Chart, candlesticks []common.Candlestick, strategyHandler func(price float64) error) error
 	StopStream(chart common.Chart)
 	GetChart(id uint) (common.Chart, error)
@@ -102,9 +102,11 @@ type ChartService interface {
 }
 
 type TradeService interface {
+	GetMapper() mapper.TradeMapper
 	Save(dto common.Trade)
 	GetLastTrade(chart common.Chart) common.Trade
-	GetMapper() mapper.TradeMapper
+	GetTradeHistory() []common.Transaction
+	GetTransactionMapper() mapper.TransactionMapper
 }
 
 type ProfitService interface {
@@ -114,14 +116,19 @@ type ProfitService interface {
 
 type ExchangeService interface {
 	CreateExchange(exchangeName string) (common.Exchange, error)
-	GetDisplayNames() []string
-	GetExchanges() []common.Exchange
-	GetExchange(name string) common.Exchange
+	GetDisplayNames() ([]string, error)
+	GetExchanges() ([]common.Exchange, error)
+	GetExchange(name string) (common.Exchange, error)
 	GetCurrencyPairs(exchangeName string) ([]common.CurrencyPair, error)
 }
 
-type OrderService interface {
-	GetMapper() mapper.OrderMapper
-	GetOrderHistory() []common.Order
-	ImportCSV(file, exchange string) ([]common.Order, error)
+type TransactionService interface {
+	GetMapper() mapper.TransactionMapper
+	GetTransactions() ([]common.Transaction, error)
+	GetOrderHistory() []common.Transaction
+	GetDepositHistory() []common.Transaction
+	GetWithdrawalHistory() []common.Transaction
+	GetImportedTransactions() []common.Transaction
+	ImportCSV(file, exchange string) ([]common.Transaction, error)
+	//GetSourceTransaction(targetTx common.Transaction, transactions *[]common.Transaction) (common.Transaction, error)
 }

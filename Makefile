@@ -17,15 +17,18 @@ deps:
 	go get "github.com/jinzhu/gorm/dialects/sqlite"
 	#go get "github.com/jinzhu/gorm/dialects/mysql"
 	go get "golang.org/x/text/encoding/unicode"
+	go get "github.com/patrickmn/go-cache"
 	go get "github.com/gorilla/websocket"
 	go get "github.com/gorilla/mux"
 	go get "github.com/codegangsta/negroni"
 	go get "github.com/dgrijalva/jwt-go"
 	go get "github.com/ethereum/go-ethereum"
+	go get "github.com/Zauberstuhl/go-coinbase"
 	go get "github.com/preichenberger/go-gdax"
 	go get "github.com/toorop/go-bittrex"
 	go get "github.com/adshao/go-binance"
 	go get "github.com/joho/godotenv"
+	go get "github.com/shopspring/decimal"
 
 certs:
 	mkdir -p keys/
@@ -54,6 +57,10 @@ indicators:
 	cd plugins/indicators/src && go build -buildmode=plugin -o ../bollinger_bands.so bollinger_bands.go sma.go
 	cd plugins/indicators/src && go build -buildmode=plugin -o ../macd.so macd.go ema.go
 	cd plugins/indicators/src && go build -buildmode=plugin -o ../obv.so obv.go
+	cd plugins/exchanges/src && go build -buildmode=plugin -o ../coinbase.so coinbase.go
+	cd plugins/exchanges/src && go build -buildmode=plugin -o ../gdax.so gdax.go
+	cd plugins/exchanges/src && go build -buildmode=plugin -o ../bittrex.so bittrex.go
+	cd plugins/exchanges/src && go build -buildmode=plugin -o ../binance.so binance.go
 
 strategies:
 	cd plugins/strategies/src && go build -buildmode=plugin -o ../default.so default.go
@@ -64,6 +71,7 @@ clean:
 	rm -rf keys/
 	cd plugins/indicators && rm -rf *.so
 	cd plugins/strategies && rm -rf *.so
+	cd plugins/exchanges && rm -rf *.so
 	rm -rf tradebot
 
 debugbuild: clean plugins
@@ -77,6 +85,7 @@ quickbuild:
 
 dockerbuild: clean deps certs plugins
 	go build
+	./docker-build.sh
 
 build: clean certs plugins test
 	go build

@@ -12,7 +12,9 @@ import 'app/css/style.css';
 import 'app/css/helper.css';
 import 'app/css/typography.css';
 import 'app/util/array.js'
+import 'app/util/date.js'
 import 'app/util/number.js'
+import 'app/util/string.js'
 
 import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
 import createMuiTheme from 'material-ui/styles/createMuiTheme'

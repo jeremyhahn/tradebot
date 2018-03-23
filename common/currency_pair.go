@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -11,12 +12,15 @@ type CurrencyPair struct {
 	LocalCurrency string `json:"local_currency"`
 }
 
-func NewCurrencyPair(currencyPair, localCurrency string) *CurrencyPair {
+func NewCurrencyPair(currencyPair, localCurrency string) (*CurrencyPair, error) {
 	pieces := strings.Split(currencyPair, "-")
+	if len(pieces) < 2 {
+		return nil, errors.New(fmt.Sprintf("[NewCurrencyPair] Invalid currency pair format: %s", currencyPair))
+	}
 	return &CurrencyPair{
 		Base:          pieces[0],
 		Quote:         pieces[1],
-		LocalCurrency: localCurrency}
+		LocalCurrency: localCurrency}, nil
 }
 
 func (cp *CurrencyPair) String() string {

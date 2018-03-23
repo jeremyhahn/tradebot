@@ -6,6 +6,7 @@ type UserContextDTO struct {
 	Id            uint   `json:"id"`
 	Username      string `json:"username"`
 	LocalCurrency string `json:"local_currency"`
+	FiatExchange  string `json:"fiat_exchange"`
 	Etherbase     string `json:"etherbase"`
 	Keystore      string `json:"keystore"`
 	common.UserContext
@@ -25,6 +26,10 @@ func (dto *UserContextDTO) GetUsername() string {
 
 func (dto *UserContextDTO) GetLocalCurrency() string {
 	return dto.LocalCurrency
+}
+
+func (dto *UserContextDTO) GetFiatExchange() string {
+	return dto.FiatExchange
 }
 
 func (dto *UserContextDTO) GetEtherbase() string {

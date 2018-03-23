@@ -69,9 +69,14 @@ func main() {
 	defer ctx.Close()
 
 	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
 	userMapper := mapper.NewUserMapper()
-
-	ethereumService, err := service.NewEthereumService(ctx, userDAO, userMapper, service.NewMarketCapService(ctx))
+	pluginMapper := mapper.NewPluginMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	marketcapService := service.NewMarketCapService(ctx)
+	pluginService := service.NewPluginService(ctx, pluginDAO, pluginMapper)
+	exchangeService := service.NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
+	ethereumService, err := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeService)
 	if err != nil {
 		ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 	}

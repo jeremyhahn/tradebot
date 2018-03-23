@@ -48,17 +48,32 @@ func (ws *WebServer) Start() {
 	router.HandleFunc("/api/v1/login", ws.jsonWebTokenService.GenerateToken)
 
 	// REST Handlers - Authentication Required
-	orderHistoryRestService := rest.NewOrderHistoryRestService(ws.jsonWebTokenService, jsonWriter)
 	exchangeRestService := rest.NewExchangeRestService(ws.jsonWebTokenService, jsonWriter)
 	userRestService := rest.NewUserRestService(ws.jsonWebTokenService, jsonWriter)
 	transactionRestService := rest.NewTransactionRestService(ws.jsonWebTokenService, jsonWriter)
-	router.Handle("/api/v1/orderhistory", negroni.New(
+	router.Handle("/api/v1/transactions", negroni.New(
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
-		negroni.Wrap(http.HandlerFunc(orderHistoryRestService.GetOrderHistory)),
+		negroni.Wrap(http.HandlerFunc(transactionRestService.GetTransactions)),
 	))
-	router.Handle("/api/v1/import", negroni.New(
+	router.Handle("/api/v1/transactions/orderhistory", negroni.New(
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
-		negroni.Wrap(http.HandlerFunc(orderHistoryRestService.Import)),
+		negroni.Wrap(http.HandlerFunc(transactionRestService.GetOrderHistory)),
+	))
+	router.Handle("/api/v1/transactions/desposits", negroni.New(
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(transactionRestService.GetDepositHistory)),
+	))
+	router.Handle("/api/v1/transactions/withdrawals", negroni.New(
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(transactionRestService.GetWithdrawalHistory)),
+	))
+	router.Handle("/api/v1/transactions/imported", negroni.New(
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(transactionRestService.GetImportedTransactions)),
+	))
+	router.Handle("/api/v1/transactions/import", negroni.New(
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(transactionRestService.Import)),
 	))
 	router.Handle("/api/v1/exchanges/names", negroni.New(
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
@@ -67,10 +82,6 @@ func (ws *WebServer) Start() {
 	router.Handle("/api/v1/user/exchanges", negroni.New(
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
 		negroni.Wrap(http.HandlerFunc(userRestService.GetExchanges)),
-	))
-	router.Handle("/api/v1/transactions", negroni.New(
-		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
-		negroni.Wrap(http.HandlerFunc(transactionRestService.GetTransactions)),
 	))
 
 	// Websocket Handlers

@@ -4,6 +4,7 @@ type User struct {
 	Id            uint   `gorm:"primary_key;AUTO_INCREMENT"`
 	Username      string `gorm:"type:varchar(100);unique_index"`
 	LocalCurrency string `gorm:"type:varchar(5)"`
+	FiatExchange  string
 	Etherbase     string `gorm:"type:varchar(160)"`
 	Keystore      string
 	Charts        []Chart
@@ -23,6 +24,10 @@ func (entity *User) GetUsername() string {
 
 func (entity *User) GetLocalCurrency() string {
 	return entity.LocalCurrency
+}
+
+func (entity *User) GetFiatExchange() string {
+	return entity.FiatExchange
 }
 
 func (entity *User) GetEtherbase() string {

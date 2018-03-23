@@ -8,8 +8,11 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/util"
+	"github.com/shopspring/decimal"
 )
 
 type RippleTx struct {
@@ -20,6 +23,7 @@ type RippleTx struct {
 }
 
 type RippleTransaction struct {
+	Hash string    `json:"hash"`
 	Date time.Time `json:"date"`
 	Tx   RippleTx  `json:"tx"`
 }
@@ -27,13 +31,6 @@ type RippleTransaction struct {
 type RippleResponse struct {
 	Result       string              `json:"result"`
 	Transactions []RippleTransaction `json:"transactions"`
-}
-
-type Ripple struct {
-	ctx              common.Context
-	client           http.Client
-	marketcapService MarketCapService
-	BlockExplorerService
 }
 
 type RippleWallet struct {
@@ -48,26 +45,37 @@ type RippleBalance struct {
 	Balances    []RippleWallet `json:"balances"`
 }
 
-func NewRipple(ctx common.Context, marketcapService MarketCapService) *Ripple {
+type Ripple struct {
+	ctx              common.Context
+	client           http.Client
+	userDAO          dao.UserDAO
+	marketcapService MarketCapService
+	BlockExplorerService
+}
+
+func NewRippleService(ctx common.Context, userDAO dao.UserDAO, marketcapService MarketCapService) BlockExplorerService {
 	client := http.Client{Timeout: time.Second * 2}
 	return &Ripple{
 		ctx:              ctx,
 		client:           client,
+		userDAO:          userDAO,
 		marketcapService: marketcapService}
 }
 
-func (r *Ripple) GetBalance(address string) common.UserCryptoWallet {
+func (r *Ripple) GetWallet(address string) (common.UserCryptoWallet, error) {
 	r.ctx.GetLogger().Debugf("[Ripple.GetBalance] Address: %s", address)
 	var balance float64
 	url := fmt.Sprintf("https://data.ripple.com/v2/accounts/%s/balances", address)
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
 		r.ctx.GetLogger().Errorf("[Ripple.GetBalance] %s", err.Error())
+		return nil, err
 	}
 	rb := RippleBalance{}
 	jsonErr := json.Unmarshal(body, &rb)
 	if jsonErr != nil {
 		r.ctx.GetLogger().Errorf("[Ripple.GetBalance] %s", jsonErr.Error())
+		return nil, jsonErr
 	}
 	if len(rb.Balances) <= 0 {
 		balance = 0.0
@@ -81,36 +89,70 @@ func (r *Ripple) GetBalance(address string) common.UserCryptoWallet {
 		Address:  address,
 		Balance:  balance,
 		Currency: "XRP",
-		Value:    f2 * balance}
+		Value:    f2 * balance}, nil
 }
 
-func (r *Ripple) GetTransactions(address string) ([]common.Transaction, error) {
+func (r *Ripple) GetTransactions() ([]common.Transaction, error) {
+	var transactions []common.Transaction
+	userEntity := &entity.User{Id: r.ctx.GetUser().GetId()}
+	for _, wallet := range r.userDAO.GetWallets(userEntity) {
+		txs, err := r.GetTransaction(wallet.GetAddress())
+		if err != nil {
+			return transactions, err
+		}
+		transactions = append(transactions, txs...)
+	}
+	return transactions, nil
+}
+
+func (r *Ripple) GetTransaction(address string) ([]common.Transaction, error) {
+	var transactions []common.Transaction
+	var rippleResponse RippleResponse
 	url := fmt.Sprintf("https://data.ripple.com/v2/accounts/%s/transactions", address)
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
 		r.ctx.GetLogger().Errorf("[Ripple.GetBalance] %s", err.Error())
 	}
-
-	var transactions []common.Transaction
-	var rippleResponse RippleResponse
 	jsonErr := json.Unmarshal(body, &rippleResponse)
 	if jsonErr != nil {
-		r.ctx.GetLogger().Errorf("[Ripple.GetTransactions] Error: %s", jsonErr.Error())
+		r.ctx.GetLogger().Errorf("[Ripple.GetTransactions] JSON unmarshal error: %s", jsonErr.Error())
 	}
-
 	for _, tx := range rippleResponse.Transactions {
 		var txType string
 		if tx.Tx.Destination == address {
-			txType = "deposit"
+			txType = common.DEPOSIT_ORDER_TYPE
 		} else {
-			txType = "withdrawl"
+			txType = common.WITHDRAWAL_ORDER_TYPE
 		}
-		amt, _ := strconv.ParseFloat(tx.Tx.Amount, 64)
+		amount := tx.Tx.Amount
+		if amount == "" {
+			amount = "0.0"
+		}
+		amt, err := decimal.NewFromString(amount)
+		if err != nil {
+			return nil, err
+		}
+		fee, err := decimal.NewFromString(tx.Tx.Fee)
+		if err != nil {
+			return nil, err
+		}
+		currencyPair := &common.CurrencyPair{
+			Base:          "XRP",
+			Quote:         "XRP",
+			LocalCurrency: r.ctx.GetUser().GetLocalCurrency()}
 		transactions = append(transactions, &dto.TransactionDTO{
-			Date:   tx.Date,
-			Amount: amt / 1000000,
-			Type:   txType})
+			Id:                 tx.Hash,
+			Date:               tx.Date,
+			CurrencyPair:       currencyPair,
+			Type:               txType,
+			Network:            "ripple",
+			NetworkDisplayName: "Ripple",
+			Quantity:           amt.Div(decimal.NewFromFloat(1000000)).StringFixed(8),
+			QuantityCurrency:   "XRP",
+			Fee:                fee.Div(decimal.NewFromFloat(1000000)).StringFixed(8),
+			FeeCurrency:        "XRP",
+			Total:              amt.StringFixed(8),
+			TotalCurrency:      "XRP"})
 	}
-
 	return transactions, nil
 }

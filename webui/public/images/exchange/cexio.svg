@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW X7 -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="7.5in" height="7.5in" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 7500 7500"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <style type="text/css">
+   <![CDATA[
+    .fil0 {fill:none}
+    .fil2 {fill:#36BBC8;fill-rule:nonzero}
+    .fil1 {fill:url(#id0)}
+   ]]>
+  </style>
+  <radialGradient id="id0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(0.999999 -5.08001E-006 5.08001E-006 1 0 0)" cx="3750" cy="3750" r="3133.33" fx="3750" fy="3750">
+   <stop offset="0" style="stop-opacity:1; stop-color:#265A7A"/>
+   <stop offset="1" style="stop-opacity:1; stop-color:#162B43"/>
+  </radialGradient>
+ </defs>
+ <g id="Layer_x0020_1">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <rect class="fil0" width="7500" height="7500"/>
+  <circle class="fil1" cx="3750" cy="3750" r="3100"/>
+  <g id="cex-logo.eps">
+   <path class="fil2" d="M3398 1958l1854 0c0,150 0,300 0,450 -538,0 -1076,0 -1613,0 -62,0 -124,-1 -186,1 -226,1 -452,59 -649,170 -239,133 -435,342 -554,589 -108,223 -150,475 -125,721 22,229 105,452 239,640 112,157 258,291 426,387 208,120 449,182 690,178 590,0 1181,0 1772,0 0,149 0,298 0,448l-1921 0c-254,-19 -505,-91 -729,-213 -303,-166 -557,-422 -721,-726 -130,-239 -201,-507 -213,-777l0 -150c12,-276 86,-549 220,-791 167,-304 425,-559 733,-721 239,-127 507,-196 777,-206zm-77 795c42,-6 84,-7 126,-11 194,0 389,0 583,0 40,38 79,77 116,117 112,110 222,222 332,334 -284,0 -569,0 -853,0 -70,0 -141,-2 -211,3 -132,11 -259,70 -351,165 -97,97 -156,232 -161,370 -4,115 28,231 92,327 72,109 183,192 308,229 64,20 131,24 198,23 323,0 646,0 969,0 -149,151 -302,298 -450,450 -195,0 -390,0 -585,0 -177,-4 -353,-56 -504,-150 -187,-115 -335,-294 -413,-500 -73,-192 -85,-406 -35,-605 53,-211 176,-403 346,-539 141,-114 313,-189 493,-213zm1151 -11c260,0 520,0 780,0 0,150 0,301 0,451 -110,0 -220,1 -330,0 -50,-44 -94,-95 -142,-142 -103,-102 -205,-206 -308,-309zm-1209 897c39,-70 117,-115 197,-114 449,0 898,0 1348,0 73,76 148,150 223,225 -76,76 -151,151 -227,227 -435,-1 -869,0 -1304,-1 -25,0 -49,2 -74,-2 -65,-9 -125,-48 -159,-105 -43,-68 -44,-160 -4,-230zm1200 1121c149,-151 301,-299 451,-450 112,0 225,0 338,0 0,150 0,300 0,450 -263,0 -526,0 -789,0z"/>
+  </g>
+ </g>
+</svg>

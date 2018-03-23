@@ -14,6 +14,76 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestPluginService_GetPlugins(t *testing.T) {
+	ctx := NewIntegrationTestContext()
+	pluginDAO := dao.NewPluginDAO(ctx)
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", pluginDAO, mapper)
+	exchanges, err := pluginService.GetPlugins(common.EXCHANGE_PLUGIN_TYPE)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, true, len(exchanges) == 4)
+	CleanupIntegrationTest()
+}
+
+func TestPluginService_CreatePlugins(t *testing.T) {
+	ctx := NewIntegrationTestContext()
+	pluginDAO := dao.NewPluginDAO(ctx)
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", pluginDAO, mapper)
+	exchanges, err := pluginService.GetPlugins(common.EXCHANGE_PLUGIN_TYPE)
+	for _, ex := range exchanges {
+		constructor, err := pluginService.CreateExchange(ex)
+		Exchange := constructor(ctx, &entity.UserCryptoExchange{
+			Key:    "abc123",
+			Secret: "$ecret!"})
+		assert.Nil(t, err)
+		assert.Equal(t, ex, Exchange.GetName())
+	}
+	assert.Equal(t, nil, err)
+	assert.Equal(t, true, len(exchanges) == 4)
+	CleanupIntegrationTest()
+}
+
+func TestPluginService_Exchange_CreateCoinbase(t *testing.T) {
+	ctx := NewIntegrationTestContext()
+	pluginDAO := dao.NewPluginDAO(ctx)
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "Coinbase",
+		Filename: "coinbase.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", pluginDAO, mapper)
+	constructor, err := pluginService.CreateExchange("Coinbase")
+	assert.Equal(t, nil, err)
+	assert.NotNil(t, constructor)
+
+	userExchangeEntity := &entity.UserCryptoExchange{
+		Name:   "coinbase",
+		Key:    "abc123",
+		Secret: "$ecret!"}
+
+	exchange := constructor(ctx, userExchangeEntity)
+	assert.Equal(t, "Coinbase", exchange.GetDisplayName())
+
+	CleanupIntegrationTest()
+}
+
+func TestPluginService_Exchange_ListExchanges(t *testing.T) {
+	ctx := NewIntegrationTestContext()
+	pluginDAO := dao.NewPluginDAO(ctx)
+	mapper := mapper.NewPluginMapper()
+	pluginService := CreatePluginService(ctx, "../plugins", pluginDAO, mapper)
+	plugins, err := pluginService.ListPlugins(common.EXCHANGE_PLUGIN_TYPE)
+	assert.Nil(t, err)
+	assert.Equal(t, true, len(plugins) == 4)
+	assert.Equal(t, "binance", plugins[0])
+	assert.Equal(t, "bittrex", plugins[1])
+	assert.Equal(t, "coinbase", plugins[2])
+	assert.Equal(t, "gdax", plugins[3])
+	CleanupIntegrationTest()
+}
+
 func TestPluginService_Indicator_ExampleIndicator(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	dao := dao.NewPluginDAO(ctx)

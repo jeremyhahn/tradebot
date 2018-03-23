@@ -6,6 +6,7 @@ type UserDTO struct {
 	Id            uint                        `json:"id"`
 	Username      string                      `json:"username"`
 	LocalCurrency string                      `json:"local_currency"`
+	FiatExchange  string                      `json:"fiat_exchange"`
 	Etherbase     string                      `json:"etherbase"`
 	Keystore      string                      `json:"keystore"`
 	Charts        []common.Chart              `json:"charts"`
@@ -29,6 +30,10 @@ func (dto *UserDTO) GetUsername() string {
 
 func (dto *UserDTO) GetLocalCurrency() string {
 	return dto.LocalCurrency
+}
+
+func (dto *UserDTO) GetFiatExchange() string {
+	return dto.FiatExchange
 }
 
 func (dto *UserDTO) GetEtherbase() string {

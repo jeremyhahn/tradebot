@@ -10,11 +10,12 @@ import (
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/util"
 	logging "github.com/op/go-logging"
+	"github.com/shopspring/decimal"
 )
 
 type BitcoinRawAddrTxItem struct {
-	Addr  string  `json:"addr"`
-	Value float64 `json:"value"`
+	Addr  string `json:"addr"`
+	Value int64  `json:"value"`
 }
 
 type BitcoinRawAddrTxInput struct {
@@ -132,17 +133,17 @@ func (b *BlockchainInfo) getTransactionsAt(address string, offset int) ([]common
 		for _, input := range tx.Inputs {
 			if input.PrevOut.Addr == address {
 				transactions = append(transactions, &dto.TransactionDTO{
-					Date:   time.Unix(tx.Time, 0),
-					Type:   "withdrawl",
-					Amount: input.PrevOut.Value / 100000000})
+					Date:     time.Unix(tx.Time, 0),
+					Type:     "withdrawl",
+					Quantity: decimal.New(input.PrevOut.Value, 8).StringFixed(8)})
 			}
 		}
 		for _, out := range tx.Out {
 			if out.Addr == address {
 				transactions = append(transactions, &dto.TransactionDTO{
-					Date:   time.Unix(tx.Time, 0),
-					Type:   "deposit",
-					Amount: out.Value / 100000000})
+					Date:     time.Unix(tx.Time, 0),
+					Type:     "deposit",
+					Quantity: decimal.New(out.Value, 8).StringFixed(8)}) // 100000000
 			}
 		}
 	}

@@ -28,11 +28,13 @@ func (restService *UserRestServiceImpl) createUserService(ctx common.Context) se
 	pluginDAO := dao.NewPluginDAO(ctx)
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
+	pluginMapper := mapper.NewPluginMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 	marketcapService := service.NewMarketCapService(ctx)
-	priceHistoryService := service.NewPriceHistoryService(ctx)
-	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService)
-	return service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper, priceHistoryService)
+	pluginService := service.NewPluginService(ctx, pluginDAO, pluginMapper)
+	exchangeService := service.NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
+	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeService)
+	return service.NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService, ethereumService, pluginService)
 }
 
 func (restService *UserRestServiceImpl) GetExchanges(w http.ResponseWriter, r *http.Request) {

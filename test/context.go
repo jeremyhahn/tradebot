@@ -29,7 +29,8 @@ func NewUnitTestContext() common.Context {
 		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,
-			LocalCurrency: "USD"}}
+			LocalCurrency: "USD",
+			FiatExchange:  "GDAX"}}
 }
 
 func NewIntegrationTestContext() common.Context {
@@ -78,17 +79,21 @@ func CreateIntegrationTestContext(dotEnvDir, appRoot string) common.Context {
 
 	var exchanges []entity.UserCryptoExchange
 	exchanges = append(exchanges, entity.UserCryptoExchange{
-		Name:   "gdax",
+		Name:   "Coinbase",
+		Key:    os.Getenv("COINBASE_APIKEY"),
+		Secret: os.Getenv("COINBASE_SECRET")})
+	exchanges = append(exchanges, entity.UserCryptoExchange{
+		Name:   "GDAX",
 		Key:    os.Getenv("GDAX_APIKEY"),
 		Secret: os.Getenv("GDAX_SECRET"),
 		Extra:  os.Getenv("GDAX_PASSPHRASE")})
 	exchanges = append(exchanges, entity.UserCryptoExchange{
-		Name:   "bittrex",
+		Name:   "Bittrex",
 		Key:    os.Getenv("BITTREX_APIKEY"),
 		Secret: os.Getenv("BITTREX_SECRET"),
 		Extra:  os.Getenv("BITTREX_EXTRA")})
 	exchanges = append(exchanges, entity.UserCryptoExchange{
-		Name:   "binance",
+		Name:   "Binance",
 		Key:    os.Getenv("BINANCE_APIKEY"),
 		Secret: os.Getenv("BINANCE_SECRET"),
 		Extra:  os.Getenv("BINANCE_EXTRA")})
@@ -99,6 +104,28 @@ func CreateIntegrationTestContext(dotEnvDir, appRoot string) common.Context {
 
 	userDAO := dao.NewUserDAO(TEST_CONTEXT)
 	userDAO.Save(&entity.User{Username: TEST_USERNAME, LocalCurrency: "USD", Exchanges: exchanges, Wallets: wallets})
+
+	pluginDAO := dao.NewPluginDAO(TEST_CONTEXT)
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "GDAX",
+		Filename: "gdax.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "Coinbase",
+		Filename: "coinbase.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "Bittrex",
+		Filename: "bittrex.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "Binance",
+		Filename: "binance.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
 
 	return TEST_CONTEXT
 }

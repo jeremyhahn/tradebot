@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW X7 -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="10in" height="10in" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 10000 10000"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <font id="FontID0" horiz-adv-x="777" font-variant="normal" style="fill-rule:nonzero" font-weight="900">
+	<font-face 
+		font-family="Arial Black">
+	</font-face>
+   <missing-glyph><path d="M0 0z"/></missing-glyph>
+   <glyph unicode="W" horiz-adv-x="1000"><path d="M0 715.999l210.001 0 75.4988 -399.5 110.668 399.5 208.332 0 111.5 -400.166 75.9997 400.166 209.001 0 -157.833 -715.999 -217.001 0 -125.665 450.834 -124.835 -450.834 -216.666 0 -159 715.999z"/></glyph>
+   <glyph unicode="E" horiz-adv-x="722"><path d="M73.0003 715.999l592.001 0 0 -152.999 -370 0 0 -114.001 343 0 0 -146.001 -343 0 0 -140.999 381 0 0 -162 -603.001 0 0 715.999z"/></glyph>
+   <glyph unicode="X" horiz-adv-x="777"><path d="M23.9995 715.999l244 0 126.835 -220.332 123.167 220.332 240.999 0 -222.499 -346.833 243.499 -369.166 -248.999 0 -140.501 230.001 -141.5 -230.001 -247 0 246.834 373.168 -224.834 342.832z"/></glyph>
+  </font>
+  <style type="text/css">
+   <![CDATA[
+    @font-face { font-family:"Arial Black";src:url("#FontID0") format(svg)}
+    .fil0 {fill:none}
+    .fil2 {fill:white}
+    .fil1 {fill:url(#id0)}
+    .fnt0 {font-weight:900;font-size:1949.19px;font-family:'Arial Black'}
+   ]]>
+  </style>
+  <linearGradient id="id0" gradientUnits="userSpaceOnUse" x1="5000" y1="7666" x2="5000" y2="2334">
+   <stop offset="0" style="stop-opacity:1; stop-color:#676E91"/>
+   <stop offset="1" style="stop-opacity:1; stop-color:#7B86C4"/>
+  </linearGradient>
+ </defs>
+ <g id="Layer_x0020_1">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <rect class="fil0" x="1250" y="1250" width="7500" height="7500"/>
+  <circle class="fil1" cx="5000" cy="5000" r="3100"/>
+  <g transform="matrix(0.982035 0 0 1 -2304.96 697.806)">
+   <text x="5000" y="5000"  class="fil2 fnt0">WEX</text>
+  </g>
+ </g>
+</svg>

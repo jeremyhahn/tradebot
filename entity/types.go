@@ -21,29 +21,28 @@ type PluginEntity interface {
 	GetType() string
 }
 
-type OrderEntity interface {
+type TransactionEntity interface {
 	GetId() uint
 	GetUserId() uint
 	GetDate() time.Time
-	GetExchange() string
+	GetNetwork() string
 	GetType() string
 	GetCurrency() string
-	GetQuantity() float64
+	GetQuantity() string
 	GetQuantityCurrency() string
-	GetPrice() float64
+	GetPrice() string
 	GetPriceCurrency() string
-	GetFee() float64
+	GetFee() string
 	GetFeeCurrency() string
-	GetTotal() float64
+	GetTotal() string
 	GetTotalCurrency() string
-	GetHistoricalPrice() float64
-	GetHistoricalCurrency() string
 }
 
 type UserEntity interface {
 	GetId() uint
 	GetUsername() string
 	GetLocalCurrency() string
+	GetFiatExchange() string
 	GetEtherbase() string
 	GetKeystore() string
 	GetWallets() []UserWallet
@@ -67,7 +66,6 @@ type UserTokenEntity interface {
 type UserExchangeEntity interface {
 	GetUserId() uint
 	GetName() string
-	GetURL() string
 	GetKey() string
 	GetSecret() string
 	GetExtra() string

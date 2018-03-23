@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW X7 -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="10in" height="10in" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 10000 10000"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <style type="text/css">
+   <![CDATA[
+    .fil0 {fill:none}
+    .fil4 {fill:black}
+    .fil3 {fill:#058C6C}
+    .fil1 {fill:#383838}
+    .fil2 {fill:silver}
+   ]]>
+  </style>
+ </defs>
+ <g id="Layer_x0020_1">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <rect class="fil0" x="1283" y="1217" width="7500" height="7500"/>
+  <circle class="fil1" cx="5000" cy="5000" r="3100"/>
+  <g id="logoInverse.svg">
+   <g id="Logo">
+    <g id="Artboard-3-Copy-2">
+     <g id="logo-1">
+      <g id="Group">
+       <g id="Group-3">
+        <g id="Group-2">
+         <polygon id="х" class="fil2" points="6840,4871 7124,4439 7310,4439 6936,4979 7353,5577 7158,5577 6835,5093 6516,5577 6324,5577 6738,4977 6360,4439 6553,4439 "/>
+         <path id="х_0" class="fil3" d="M6835 5093l-319 484 -192 0 414 -600 -378 -538 193 0 287 432 -5 222zm0 0z"/>
+         <rect id="Rectangle" class="fil2" x="5411" y="4416" width="760" height="178"/>
+         <rect id="Rectangle-Copy" class="fil2" x="5411" y="4907" width="760" height="178"/>
+         <rect id="Rectangle-Copy-2" class="fil2" x="5411" y="5398" width="760" height="178"/>
+         <polygon id="Triangle-2" class="fil3" points="6934,4978 6832,5096 6835,4866 "/>
+        </g>
+        <path id="tidex" class="fil2" d="M3926 5577l-161 0 0 -1150 161 0 0 1150zm279 -1150l395 0c73,0 147,10 221,32 73,22 140,56 199,102 60,47 108,107 145,179 37,73 55,160 55,262 0,98 -18,183 -55,255 -37,72 -85,132 -145,179 -59,47 -126,82 -199,106 -74,23 -148,35 -221,35l-395 0 0 -1150zm161 1008l201 0c70,0 134,-9 193,-29 59,-19 110,-48 152,-84 43,-37 76,-83 100,-137 24,-54 36,-115 36,-183 0,-72 -12,-135 -36,-189 -24,-54 -57,-99 -100,-135 -42,-37 -93,-64 -152,-83 -59,-19 -123,-29 -193,-29l-201 0 0 869z"/>
+        <g id="Group-4">
+         <polygon id="Path" class="fil4" points="3305,4427 3613,4427 3613,4568 3305,4568 "/>
+         <polygon id="Path_1" class="fil3" points="3244,5577 3084,5577 3084,4568 2715,4568 2715,4427 3244,4427 3244,4568 "/>
+        </g>
+        <g id="Group-5">
+         <polygon id="Rectangle-22" class="fil3" points="2647,4421 3238,4421 3461,4577 2647,4577 "/>
+         <polygon id="Rectangle-22_2" class="fil2" points="3238,4421 3684,4421 3684,4577 3453,4577 "/>
+         <rect id="Rectangle-22_3" class="fil3" transform="matrix(1.26187E-014 0.476455 -0.476455 1.26187E-014 3234.42 4498.34)" width="2278" height="327"/>
+        </g>
+       </g>
+      </g>
+     </g>
+    </g>
+   </g>
+  </g>
+ </g>
+</svg>

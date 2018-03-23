@@ -3,7 +3,6 @@ package entity
 type UserCryptoExchange struct {
 	UserId uint
 	Name   string `gorm:"primary_key"`
-	URL    string `gorm:"not null" sql:"type:varchar(255)"`
 	Key    string `gorm:"not null" sql:"type:varchar(255)"`
 	Secret string `gorm:"not null" sql:"type:text"`
 	Extra  string `gorm:"not null" sql:"type:varchar(255)"`
@@ -16,10 +15,6 @@ func (entity *UserCryptoExchange) GetUserId() uint {
 
 func (entity *UserCryptoExchange) GetName() string {
 	return entity.Name
-}
-
-func (entity *UserCryptoExchange) GetURL() string {
-	return entity.URL
 }
 
 func (entity *UserCryptoExchange) GetKey() string {

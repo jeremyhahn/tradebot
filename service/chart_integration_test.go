@@ -8,9 +8,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
-	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
-	"github.com/jeremyhahn/tradebot/exchange"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/viewmodel"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +36,7 @@ type MockFinancialIndicator_Chart struct {
 }
 
 type MockPriceHistoryService_Chart struct {
-	common.PriceHistoryService
+	common.FiatPriceService
 	mock.Mock
 }
 
@@ -276,9 +274,9 @@ func (mcs *MockExchange_Chart) FormattedCurrencyPair(currencyPair *common.Curren
 }
 
 func (mcs *MockExchange_Chart) GetPriceHistory(currencyPair *common.CurrencyPair,
-	start, end time.Time, granularity int) []common.Candlestick {
+	start, end time.Time, granularity int) ([]common.Candlestick, error) {
 
-	return createIntegrationTestCandles()
+	return createIntegrationTestCandles(), nil
 }
 
 func (mcs *MockExchange_Chart) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceChange chan common.PriceChange) {
@@ -304,31 +302,32 @@ func (mes *MockExchangeService_Chart) GetCurrencyPairs(exchangeName string) ([]c
 			LocalCurrency: "USD"}}, nil
 }
 
-func (mes *MockExchangeService_Chart) GetExchange(exchangeName string) common.Exchange {
-	return new(MockExchange_Chart)
+func (mes *MockExchangeService_Chart) GetExchange(exchangeName string) (common.Exchange, error) {
+	return new(MockExchange_Chart), nil
 }
 
 func (mes *MockExchangeService_Chart) GetUserExchanges() []viewmodel.UserCryptoExchange {
 	return nil
 }
 
-func (mes *MockExchangeService_Chart) GetDisplayNames() []string {
-	return []string{"Exchange 1", "Exchange 2", "Exchange 3"}
+func (mes *MockExchangeService_Chart) GetDisplayNames() ([]string, error) {
+	return []string{"Exchange 1", "Exchange 2", "Exchange 3"}, nil
 }
 
-func (mes *MockExchangeService_Chart) GetExchanges() []common.Exchange {
-	ctx := &common.Ctx{
-		User: &dto.UserDTO{
-			Id:            1,
-			Username:      TEST_USERNAME,
-			LocalCurrency: "USD"}}
-	testExchange := &entity.UserCryptoExchange{
-		Name:   "Test Exchange",
-		URL:    "https://www.example.com",
-		Key:    "ABC123",
-		Secret: "$ecret!",
-		Extra:  "Exchange specific data here"}
-	return []common.Exchange{exchange.NewGDAX(ctx, testExchange, new(MockPriceHistoryService_Chart))}
+func (mes *MockExchangeService_Chart) GetExchanges() ([]common.Exchange, error) {
+	/*
+		ctx := &common.Ctx{
+			User: &dto.UserDTO{
+				Id:            1,
+				Username:      TEST_USERNAME,
+				LocalCurrency: "USD"}}
+		testExchange := &entity.UserCryptoExchange{
+			Name:   "Test Exchange",
+			Key:    "ABC123",
+			Secret: "$ecret!",
+			Extra:  "Exchange specific data here"}
+	*/
+	return []common.Exchange{}, nil
 }
 
 func (mes *MockIndicatorService_Chart) GetChartIndicator(chart common.Chart, name string, candles []common.Candlestick) (common.FinancialIndicator, error) {

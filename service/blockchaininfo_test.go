@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/test"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -42,19 +43,20 @@ func TestBlockchainInfo_GetTransactions(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, transactions)
 
-	totalWithdrawl := 0.0
-	totalDeposit := 0.0
+	totalWithdrawl := decimal.NewFromFloat(0.0)
+	totalDeposit := decimal.NewFromFloat(0.0)
 
 	for _, tx := range transactions {
+		qty, _ := decimal.NewFromString(tx.GetQuantity())
 		if tx.GetType() == "deposit" {
-			totalDeposit += tx.GetAmount()
+			totalDeposit = totalDeposit.Add(qty)
 		} else if tx.GetType() == "withdrawl" {
-			totalWithdrawl += tx.GetAmount()
+			totalWithdrawl = totalWithdrawl.Add(qty)
 		}
 		assert.Equal(t, true, tx.GetDate().Before(time.Now()))
 	}
-	assert.Equal(t, true, totalDeposit > 0)
-	assert.Equal(t, true, totalWithdrawl > 0)
+	assert.Equal(t, true, totalDeposit.GreaterThan(decimal.NewFromFloat(0)))
+	assert.Equal(t, true, totalWithdrawl.GreaterThan(decimal.NewFromFloat(0)))
 
 	test.CleanupIntegrationTest()
 }

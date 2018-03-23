@@ -1,3 +1,5 @@
+// +build integration
+
 package service
 
 import (
@@ -22,6 +24,10 @@ var TEST_USERNAME = "test"
 var database = common.CreateDatabase("/tmp", "service-", true)
 
 func NewIntegrationTestContext() common.Context {
+	return CreateIntegrationTestContext("../.env", "../")
+}
+
+func CreateIntegrationTestContext(dotEnvDir, appRoot string) common.Context {
 
 	TEST_LOCK.Lock()
 
@@ -29,12 +35,15 @@ func NewIntegrationTestContext() common.Context {
 	logging.SetBackend(backend)
 	logger := logging.MustGetLogger(common.APPNAME)
 
-	err := godotenv.Load("../.env")
+	err := godotenv.Load(dotEnvDir)
 	if err != nil {
 		panic("Error loading test environment from .env")
 	}
 
-	appRoot := "../"
+	if address := os.Getenv("BTC_ADDRESS"); address == "" {
+		panic("Unable to load BTC_ADDRESS environment variable")
+	}
+
 	database.MigrateCoreDB()
 	database.MigratePriceDB()
 
@@ -48,7 +57,8 @@ func NewIntegrationTestContext() common.Context {
 		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,
-			LocalCurrency: "USD"},
+			LocalCurrency: "USD",
+			FiatExchange:  "GDAX"},
 		IPC:      fmt.Sprintf("%stest/ethereum/blockchain/geth.ipc", appRoot),
 		Keystore: fmt.Sprintf("%stest/ethereum/blockchain/keystore", appRoot)}
 
@@ -62,23 +72,49 @@ func NewIntegrationTestContext() common.Context {
 
 	var exchanges []entity.UserCryptoExchange
 	exchanges = append(exchanges, entity.UserCryptoExchange{
-		Name:   "gdax",
+		Name:   "Coinbase",
+		Key:    os.Getenv("COINBASE_APIKEY"),
+		Secret: os.Getenv("COINBASE_SECRET")})
+	exchanges = append(exchanges, entity.UserCryptoExchange{
+		Name:   "GDAX",
 		Key:    os.Getenv("GDAX_APIKEY"),
 		Secret: os.Getenv("GDAX_SECRET"),
 		Extra:  os.Getenv("GDAX_PASSPHRASE")})
 	exchanges = append(exchanges, entity.UserCryptoExchange{
-		Name:   "bittrex",
+		Name:   "Bittrex",
 		Key:    os.Getenv("BITTREX_APIKEY"),
 		Secret: os.Getenv("BITTREX_SECRET"),
 		Extra:  os.Getenv("BITTREX_EXTRA")})
 	exchanges = append(exchanges, entity.UserCryptoExchange{
-		Name:   "binance",
+		Name:   "Binance",
 		Key:    os.Getenv("BINANCE_APIKEY"),
 		Secret: os.Getenv("BINANCE_SECRET"),
 		Extra:  os.Getenv("BINANCE_EXTRA")})
 
 	userDAO := dao.NewUserDAO(TEST_CONTEXT)
 	userDAO.Save(&entity.User{Username: TEST_USERNAME, LocalCurrency: "USD", Exchanges: exchanges, Wallets: wallets})
+
+	pluginDAO := dao.NewPluginDAO(TEST_CONTEXT)
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "GDAX",
+		Filename: "gdax.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "Coinbase",
+		Filename: "coinbase.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "Bittrex",
+		Filename: "bittrex.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "Binance",
+		Filename: "binance.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
 
 	return TEST_CONTEXT
 }

@@ -7,19 +7,28 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/test"
-	"github.com/jeremyhahn/tradebot/util"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEtherScan_GetWallet(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
-	service, err := NewEtherscanService(ctx, dao.NewUserDAO(ctx), mapper.NewUserMapper(),
-		NewMarketCapService(ctx), NewPriceHistoryService(ctx))
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userDAO := dao.NewUserDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	pluginMapper := mapper.NewPluginMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	pluginService := NewPluginService(ctx, pluginDAO, pluginMapper)
+	exchangeService := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
+	fiatPriceService, err := NewFiatPriceService(ctx, exchangeService)
+	assert.Nil(t, err)
+	service, err := NewEtherscanService(ctx, userDAO, userMapper, NewMarketCapService(ctx), fiatPriceService)
 	assert.Nil(t, err)
 
 	wallet, err := service.GetWallet(os.Getenv("ETH_ADDRESS"))
@@ -40,12 +49,17 @@ func TestEtherScanService_GetTransactions(t *testing.T) {
 	userDAO := dao.NewUserDAO(ctx)
 	pluginDAO := dao.NewPluginDAO(ctx)
 	userMapper := mapper.NewUserMapper()
+	pluginMapper := mapper.NewPluginMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 	marketcapService := NewMarketCapService(ctx)
-	priceHistoryService := NewPriceHistoryService(ctx)
-	ethereumService, _ := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
-	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService,
-		ethereumService, userMapper, userExchangeMapper, priceHistoryService)
+	pluginService := NewPluginService(ctx, pluginDAO, pluginMapper)
+	exchangeService := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
+	fiatPriceService, err := NewFiatPriceService(ctx, exchangeService)
+	assert.Nil(t, err)
+	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeService)
+	assert.Nil(t, err)
+	userService := NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
+		ethereumService, pluginService)
 
 	userService.CreateWallet(&dto.UserCryptoWalletDTO{
 		Address:  os.Getenv("ETH_ADDRESS"),
@@ -56,8 +70,7 @@ func TestEtherScanService_GetTransactions(t *testing.T) {
 		ContractAddress: os.Getenv("TOKEN_ADDRESS"),
 		WalletAddress:   os.Getenv("ETH_ADDRESS")})
 
-	etherscanService, err := NewEtherscanService(ctx, userDAO, userMapper, marketcapService,
-		NewPriceHistoryService(ctx))
+	etherscanService, err := NewEtherscanService(ctx, userDAO, userMapper, marketcapService, fiatPriceService)
 	assert.Nil(t, err)
 
 	transactions, err := etherscanService.GetTransactions()
@@ -65,29 +78,35 @@ func TestEtherScanService_GetTransactions(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, transactions)
 
-	totalDeposit := 0.0
-	totalWithdrawl := 0.0
-	totalFees := 0.0
+	var totalDeposit, totalWithdrawl, totalFees decimal.Decimal
 
 	for _, tx := range transactions {
-		if tx.GetType() == "Deposit" {
-			totalDeposit += tx.GetAmount()
-		} else if tx.GetType() == "Withdrawl" {
-			totalWithdrawl += tx.GetAmount()
-			totalFees += tx.GetFee()
+		qty, err := decimal.NewFromString(tx.GetQuantity())
+		if err != nil {
+			panic(err)
+		}
+		if tx.GetType() == common.DEPOSIT_ORDER_TYPE {
+			totalDeposit = totalDeposit.Add(qty)
+		} else if tx.GetType() == common.WITHDRAWAL_ORDER_TYPE {
+			fee, err := decimal.NewFromString(tx.GetFee())
+			if err != nil {
+				panic(err)
+			}
+			totalWithdrawl = totalWithdrawl.Add(qty)
+			totalFees = totalFees.Add(fee)
 		}
 		assert.Equal(t, true, tx.GetDate().Before(time.Now()))
 	}
-	assert.Equal(t, true, totalDeposit > 0)
-	assert.Equal(t, true, totalWithdrawl > 0)
 
-	txSum := totalDeposit - totalWithdrawl - totalFees
+	assert.Equal(t, true, totalDeposit.GreaterThan(decimal.NewFromFloat(0)))
+	assert.Equal(t, true, totalWithdrawl.GreaterThan(decimal.NewFromFloat(0)))
 
+	txSum := totalDeposit.Sub(totalWithdrawl).Sub(totalFees)
 	wallet, err := etherscanService.GetWallet(walletAddress)
 	assert.Nil(t, err)
 
-	actual := util.TruncateFloat(wallet.GetBalance(), 8)
-	expected := util.TruncateFloat(txSum, 8)
+	actual := decimal.NewFromFloat(wallet.GetBalance()).StringFixed(8)
+	expected := txSum.StringFixed(8)
 	assert.Equal(t, actual, expected)
 
 	test.CleanupIntegrationTest()
@@ -96,8 +115,17 @@ func TestEtherScanService_GetTransactions(t *testing.T) {
 func TestEtherScan_GetToken(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
+	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	pluginMapper := mapper.NewPluginMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	pluginService := NewPluginService(ctx, pluginDAO, pluginMapper)
+	exchangeService := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
+	fiatPriceService, err := NewFiatPriceService(ctx, exchangeService)
+
 	service, err := NewEtherscanService(ctx, dao.NewUserDAO(ctx), mapper.NewUserMapper(),
-		NewMarketCapService(ctx), NewPriceHistoryService(ctx))
+		NewMarketCapService(ctx), fiatPriceService)
 	assert.Nil(t, err)
 
 	token, err := service.GetToken(os.Getenv("ETH_ADDRESS"), os.Getenv("TOKEN_ADDRESS"))
@@ -112,8 +140,18 @@ func TestEtherScan_GetToken(t *testing.T) {
 func TestEtherScanService_GetTokenTransactions(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
+	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	pluginMapper := mapper.NewPluginMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	pluginService := NewPluginService(ctx, pluginDAO, pluginMapper)
+	exchangeService := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
+	fiatPriceService, err := NewFiatPriceService(ctx, exchangeService)
+	assert.Nil(t, err)
+
 	service, err := NewEtherscanService(ctx, dao.NewUserDAO(ctx), mapper.NewUserMapper(),
-		NewMarketCapService(ctx), NewPriceHistoryService(ctx))
+		NewMarketCapService(ctx), fiatPriceService)
 	assert.Nil(t, err)
 
 	transactions, err := service.GetTokenTransactions(os.Getenv("TOKEN_INTERNAL_ADDRESS"))

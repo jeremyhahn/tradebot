@@ -54,24 +54,22 @@ func (ph *PortfolioHandler) OnConnect(w http.ResponseWriter, r *http.Request) {
 		ctx.GetLogger().Errorf("[PortfolioHandler.stream] Error: Unable to retrieve context from JsonWebTokenService")
 		return
 	}
-
 	userDAO := dao.NewUserDAO(ctx)
 	pluginDAO := dao.NewPluginDAO(ctx)
-
 	userMapper := mapper.NewUserMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
-
+	pluginMapper := mapper.NewPluginMapper()
 	marketcapService := service.NewMarketCapService(ctx)
-	priceHistoryService := service.NewPriceHistoryService(ctx)
-	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService)
+	pluginService := service.NewPluginService(ctx, pluginDAO, pluginMapper)
+	exchangeService := service.NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
+	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeService)
 	if err != nil {
 		ctx.GetLogger().Errorf("[PortfolioHandler.stream] Error: %s", err.Error())
 		return
 	}
-
-	userService := service.NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper, priceHistoryService)
+	userService := service.NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
+		ethereumService, pluginService)
 	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService, ethereumService)
-
 	client := &PortfolioClient{
 		hub:              ph.hub,
 		conn:             conn,

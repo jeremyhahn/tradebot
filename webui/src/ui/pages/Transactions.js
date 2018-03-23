@@ -21,18 +21,22 @@ import FileDownload from 'material-ui-icons/FileDownload';
 import FilterListIcon from 'material-ui-icons/FilterList';
 import { lighten } from 'material-ui/styles/colorManipulator';
 import Loading from 'app/components/Loading';
+import ImportDialog from 'app/components/dialogs/Import';
 import withAuth from 'app/components/withAuth';
 import AuthService from 'app/components/AuthService';
+import {CopyToClipboard} from 'react-copy-to-clipboard';
+import Snackbar from 'material-ui/Snackbar';
+import Slide from 'material-ui/transitions/Slide';
 
 const columnData = [
-  { id: 'date', numeric: false, disablePadding: true, label: 'Date' },
+  { id: 'date', numeric: false, disablePadding: false, label: 'Date' },
   { id: 'type', numeric: false, disablePadding: false, label: 'Type' },
   { id: 'currency', numeric: false, disablePadding: false, label: 'Currency' },
-  { id: 'source', numeric: false, disablePadding: false, label: 'Source' },
-  { id: 'amount', numeric: true, disablePadding: false, label: 'Amount' },
+  { id: 'network', numeric: false, disablePadding: false, label: 'Network' },
+  { id: 'quantity', numeric: true, disablePadding: false, label: 'Quantity' },
+  { id: 'price', numeric: true, disablePadding: false, label: 'Price' },
   { id: 'fee', numeric: true, disablePadding: false, label: 'Fee' },
   { id: 'total', numeric: true, disablePadding: false, label: 'Total' },
-  { id: 'historical_price', numeric: true, disablePadding: false, label: 'Historical Price' },
 ];
 
 class TransactionsHead extends React.Component {
@@ -107,6 +111,11 @@ const styles = theme => ({
     height: '16px',
     float: 'right'
   },
+  networkIcon: {
+    paddingLeft: '5px',
+    height: '20px',
+    width: '48px'
+  },
   loadingContainer: {
     marginTop: '68px'
   },
@@ -134,9 +143,15 @@ class Transactions extends React.Component {
       selected: [],
       data: [],
       page: 0,
-      rowsPerPage: 10
+      rowsPerPage: 10,
+      copied: false,
+      copiedValue: ''
     }
+    this.importDialogHandler = this.importDialogHandler.bind(this)
+    this.handleImportDialogClose = this.handleImportDialogClose.bind(this)
+    this.appendImportData = this.appendImportData.bind(this)
     this.fetchTransactions = this.fetchTransactions.bind(this)
+    this.snackbarClose = this.snackbarClose.bind(this)
   }
 
   handleRequestSort = (event, property) => {
@@ -183,7 +198,42 @@ class Transactions extends React.Component {
   }
 
   currencyIcon(currency) {
+    if(currency == undefined) {
+      return "images/crypto/128/default.png"
+    }
     return "images/crypto/128/" + currency.toLowerCase() + ".png";
+  }
+
+  networkIcon(currency) {
+    if(currency == undefined) {
+      return "images/exchange/default.png"
+    }
+    return "images/exchange/" + currency.toLowerCase() + ".svg";
+  }
+
+  snackbarClose() {
+    this.setState({copied: false})
+  }
+
+  snackbarTransitionUp(props) {
+    return <Slide direction="up" {...props} />;
+  }
+
+  appendImportData(newData) {
+    console.log(newData)
+    this.setState({
+      data: this.state.data.concat(newData),
+      order: 'desc'
+    })
+    this.handleRequestSort(null, 'date')
+  }
+
+  importDialogHandler() {
+    this.setState({importDialog: true})
+  }
+
+  handleImportDialogClose() {
+    this.setState({importDialog: false})
   }
 
   render() {
@@ -200,6 +250,9 @@ class Transactions extends React.Component {
         }
         <div className={classes.tableWrapper}>
           <Toolbar>
+            <Button className={classes.buttonText} size="small" color="inherit" onClick={this.importDialogHandler}>
+              Import <FileUpload className={classes.leftIcon} />
+            </Button>
             <Button className={classes.buttonText} size="small" color="inherit">
               Statement <FileDownload className={classes.leftIcon} />
             </Button>
@@ -218,43 +271,67 @@ class Transactions extends React.Component {
                 const isSelected = this.isSelected(n.id);
                 return (
                   <TableRow key={n.id}>
-                    <TableCell padding="none">{n.date}</TableCell>
+                    <TableCell padding="none">{new Date(n.date).customFormat()}</TableCell>
+
                     <TableCell>{n.type}</TableCell>
+
                     <TableCell>{n.currency_pair.base}-{n.currency_pair.quote}</TableCell>
-                    <TableCell>{n.source}</TableCell>
-                    <TableCell numeric>{n.amount.formatCurrency(n.amount_currency)}
-                      <img className={classes.currencyIcon}
-                         src={this.currencyIcon(n.amount_currency)}
-                         title={n.amount_currency + " - " + (n.amount * n.historical_price).formatCurrency(n.historical_currency)} />
+
+                    <TableCell>{n.network_display_name}</TableCell>
+
+                    <TableCell numeric>{n.quantity.formatCurrency(n.quantity_currency)}
+                      {(n.fiat_quantity != "0.00" && n.fiat_quantity != "") &&
+                      <CopyToClipboard text={n.fiat_quantity} onCopy={()=>this.setState({copied: true, copiedValue: n.fiat_quantity})}>
+                        <img className={classes.currencyIcon}
+                           src={this.currencyIcon(n.quantity_currency)}
+                           title={n.fiat_quantity_currency + " " + n.fiat_quantity.formatCurrency(n.fiat_quantity_currency)} />
+                      </CopyToClipboard>
+                      ||
+                      <img className={classes.currencyIcon} src={this.currencyIcon(n.quantity_currency)} title={n.quantity_currency} />
+                      }
                     </TableCell>
+
+                    <TableCell numeric>{n.price.formatCurrency(n.price_currency)}
+                      <img className={classes.currencyIcon} src={this.currencyIcon(n.price_currency)} title={n.price_currency} />
+                    </TableCell>
+
                     <TableCell numeric>{n.fee.formatCurrency(n.fee_currency)}
-                      <img className={classes.currencyIcon}
+                      {(n.fiat_fee != "0.00" && n.fiat_fee != "") &&
+                      <CopyToClipboard text={n.fiat_fee} onCopy={()=>this.setState({copied: true, copiedValue: n.fiat_fee})}>
+                        <img className={classes.currencyIcon}
                            src={this.currencyIcon(n.fee_currency)}
-                           title={n.fee_currency} />
+                           title={n.fiat_fee_currency + " " + n.fiat_fee.formatCurrency(n.fiat_fee_currency)} />
+                      </CopyToClipboard>
+                      ||
+                      <img className={classes.currencyIcon} src={this.currencyIcon(n.fee_currency)} title={n.fee_currency} />
+                      }
                     </TableCell>
+
                     <TableCell numeric>{n.total.formatCurrency(n.total_currency)}
-                      <img className={classes.currencyIcon}
-                           src={this.currencyIcon(n.total_currency)}
-                           title={n.total_currency} />
+                      {(n.fiat_total != "0.00" && n.fiat_total != "") &&
+                      <CopyToClipboard text={n.fiat_total} onCopy={()=>this.setState({copied: true, copiedValue: n.fiat_total})}>
+                        <img className={classes.currencyIcon}
+                           src={this.currencyIcon(n.total_currency)}  // fiat_total_currency
+                           title={n.fiat_total_currency + " " + n.fiat_total.formatCurrency(n.fiat_total_currency)} />
+                      </CopyToClipboard>
+                      ||
+                      <img className={classes.currencyIcon} src={this.currencyIcon(n.total_currency)} title={n.total_currency} />
+                      }
                     </TableCell>
-                    <TableCell numeric>{n.historical_price.formatCurrency(n.historical_currency)}
-                      <img className={classes.currencyIcon}
-                           src={this.currencyIcon(n.historical_currency)}
-                           title={n.historical_currency} />
-                    </TableCell>
+
                   </TableRow>
                 );
               })}
               {emptyRows > 0 && (
                 <TableRow style={{ height: 49 * emptyRows }}>
-                  <TableCell colSpan={6} />
+                  <TableCell colSpan={8} />
                 </TableRow>
               )}
             </TableBody>
             <TableFooter>
               <TableRow>
                 <TablePagination
-                  colSpan={6}
+                  colSpan={8}
                   count={data.length}
                   rowsPerPage={rowsPerPage}
                   page={page}
@@ -271,6 +348,16 @@ class Transactions extends React.Component {
             </TableFooter>
           </Table>
         </div>
+        <ImportDialog open={this.state.importDialog} onClose={this.handleImportDialogClose} addData={this.appendImportData} />
+        <Snackbar
+          open={this.state.copied}
+          onClose={this.snackbarClose}
+          autoHideDuration={2000}
+          transition={this.snackbarTransitionUp}
+          SnackbarContentProps={{
+            'aria-describedby': 'message-id',
+          }}
+          message={<span id="message-id">{this.state.copiedValue} copied to clipboard</span>}/>
       </Paper>
     );
   }

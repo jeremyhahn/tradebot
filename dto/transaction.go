@@ -8,23 +8,38 @@ import (
 )
 
 type TransactionDTO struct {
-	Date               time.Time            `json:"date"`
-	CurrencyPair       *common.CurrencyPair `json:"currency_pair"`
-	Type               string               `json:"type"`
-	Source             string               `json:"source"`
-	Amount             float64              `json:"amount"`
-	AmountCurrency     string               `json:"amount_currency"`
-	Fee                float64              `json:"fee"`
-	FeeCurrency        string               `json:"fee_currency"`
-	Total              float64              `json:"total"`
-	TotalCurrency      string               `json:"total_currency"`
-	HistoricalPrice    float64              `json:"historical_price"`
-	HistoricalCurrency string               `json:"historical_currency"`
-	common.Transaction
+	Id                   string               `json:"id"`
+	Date                 time.Time            `json:"date"`
+	CurrencyPair         *common.CurrencyPair `json:"currency_pair"`
+	Type                 string               `json:"type"`
+	Network              string               `json:"network"`
+	NetworkDisplayName   string               `json:"network_display_name"`
+	Quantity             string               `json:"quantity"`
+	QuantityCurrency     string               `json:"quantity_currency"`
+	FiatQuantity         string               `json:"fiat_quantity"`
+	FiatQuantityCurrency string               `json:"fiat_quantity_currency"`
+	Price                string               `json:"price"`
+	PriceCurrency        string               `json:"price_currency"`
+	FiatPrice            string               `json:"fiat_price"`
+	FiatPriceCurrency    string               `json:"fiat_price_currency"`
+	Fee                  string               `json:"fee"`
+	FeeCurrency          string               `json:"fee_currency"`
+	FiatFee              string               `json:"fiat_fee"`
+	FiatFeeCurrency      string               `json:"fiat_fee_currency"`
+	Total                string               `json:"total"`
+	TotalCurrency        string               `json:"total_currency"`
+	FiatTotal            string               `json:"fiat_total"`
+	FiatTotalCurrency    string               `json:"fiat_total_currency"`
+	Origin               common.Transaction   `json:"origin"`
+	common.Transaction   `json:"-"`
 }
 
 func NewTransactionDTO() common.Transaction {
 	return &TransactionDTO{}
+}
+
+func (t *TransactionDTO) GetId() string {
+	return t.Id
 }
 
 func (t *TransactionDTO) GetDate() time.Time {
@@ -39,19 +54,47 @@ func (t *TransactionDTO) GetType() string {
 	return t.Type
 }
 
-func (t *TransactionDTO) GetSource() string {
-	return t.Source
+func (t *TransactionDTO) GetNetwork() string {
+	return t.Network
 }
 
-func (t *TransactionDTO) GetAmount() float64 {
-	return t.Amount
+func (t *TransactionDTO) GetNetworkDisplayName() string {
+	return t.NetworkDisplayName
 }
 
-func (t *TransactionDTO) GetAmountCurrency() string {
-	return t.AmountCurrency
+func (t *TransactionDTO) GetQuantity() string {
+	return t.Quantity
 }
 
-func (t *TransactionDTO) GetFee() float64 {
+func (t *TransactionDTO) GetQuantityCurrency() string {
+	return t.QuantityCurrency
+}
+
+func (t *TransactionDTO) GetFiatQuantity() string {
+	return t.FiatQuantity
+}
+
+func (t *TransactionDTO) GetFiatQuantityCurrency() string {
+	return t.FiatQuantityCurrency
+}
+
+func (t *TransactionDTO) GetPrice() string {
+	return t.Price
+}
+
+func (t *TransactionDTO) GetPriceCurrency() string {
+	return t.PriceCurrency
+}
+
+func (t *TransactionDTO) GetFiatPrice() string {
+	return t.FiatPrice
+}
+
+func (t *TransactionDTO) GetFiatPriceCurrency() string {
+	return t.FiatPriceCurrency
+}
+
+func (t *TransactionDTO) GetFee() string {
 	return t.Fee
 }
 
@@ -59,7 +102,15 @@ func (t *TransactionDTO) GetFeeCurrency() string {
 	return t.FeeCurrency
 }
 
-func (t *TransactionDTO) GetTotal() float64 {
+func (t *TransactionDTO) GetFiatFee() string {
+	return t.FiatFee
+}
+
+func (t *TransactionDTO) GetFiatFeeCurrency() string {
+	return t.FiatFeeCurrency
+}
+
+func (t *TransactionDTO) GetTotal() string {
 	return t.Total
 }
 
@@ -67,15 +118,19 @@ func (t *TransactionDTO) GetTotalCurrency() string {
 	return t.TotalCurrency
 }
 
-func (t *TransactionDTO) GetHistoricalPrice() float64 {
-	return t.HistoricalPrice
+func (t *TransactionDTO) GetFiatTotal() string {
+	return t.FiatTotal
 }
 
-func (t *TransactionDTO) GetHistoricalCurrency() string {
-	return t.HistoricalCurrency
+func (t *TransactionDTO) GetFiatTotalCurrency() string {
+	return t.FiatTotalCurrency
+}
+
+func (t *TransactionDTO) GetOrigin() common.Transaction {
+	return t.Origin
 }
 
 func (t *TransactionDTO) String() string {
-	return fmt.Sprintf("[TransactionDTO] Date: %s, Amount: %f, Currency: %s, Type: %s, Source: %s, Amount: %.8f, Fee: %.8f, Total: %.8f, historicalPrice: %f",
-		t.Date, t.Amount, t.CurrencyPair, t.Type, t.Source, t.Amount, t.Fee, t.Total, t.HistoricalPrice)
+	return fmt.Sprintf("[TransactionDTO] Id: %s, Date: %s, CurrencyPair: %s, Type: %s, Network: %s, Quantity: %s, Fee: %s, Total: %s, Origin: %s",
+		t.Id, t.Date, t.CurrencyPair, t.Type, t.Network, t.Quantity, t.Fee, t.Total, t.Origin)
 }

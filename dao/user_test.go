@@ -84,7 +84,6 @@ func TestUserDAO_CreateGetUserExchange(t *testing.T) {
 		Name:   "Test Exchange",
 		Key:    "ABC123",
 		Secret: "$ecret!",
-		URL:    "https://www.example.com",
 		Extra:  "Anything specific to this exchange can be stored here"}
 
 	err := userDAO.CreateExchange(userExchange)
@@ -95,7 +94,6 @@ func TestUserDAO_CreateGetUserExchange(t *testing.T) {
 	assert.Equal(t, nil, exErr)
 	assert.Equal(t, userExchange.UserId, persisted.GetUserId())
 	assert.Equal(t, userExchange.Name, persisted.GetName())
-	assert.Equal(t, userExchange.URL, persisted.GetURL())
 	assert.Equal(t, userExchange.Key, persisted.GetKey())
 	assert.Equal(t, userExchange.Secret, persisted.GetSecret())
 	assert.Equal(t, userExchange.Extra, persisted.GetExtra())

@@ -14,15 +14,17 @@ import (
 func TestPortfolioService_Build(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	marketcapService := NewMarketCapService(ctx)
-
 	pluginDAO := dao.NewPluginDAO(ctx)
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
+	pluginMapper := mapper.NewPluginMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
-	priceHistoryService := NewPriceHistoryService(ctx)
-	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
+	pluginService := CreatePluginService(ctx, "../plugins/", pluginDAO, pluginMapper)
+	exchangeservice := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
+	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeservice)
 	assert.Nil(t, err)
-	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper, priceHistoryService)
+	userService := NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
+		ethereumService, pluginService)
 
 	service := NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 	currencyPair := &common.CurrencyPair{
@@ -45,11 +47,14 @@ func TestPortfolioService_Stream(t *testing.T) {
 	pluginDAO := dao.NewPluginDAO(ctx)
 	userDAO := dao.NewUserDAO(ctx)
 	userMapper := mapper.NewUserMapper()
+	pluginMapper := mapper.NewPluginMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
-	priceHistoryService := NewPriceHistoryService(ctx)
-	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService)
+	pluginService := CreatePluginService(ctx, "../plugins/", pluginDAO, pluginMapper)
+	exchangeservice := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
+	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeservice)
 	assert.Nil(t, err)
-	userService := NewUserService(ctx, userDAO, pluginDAO, marketcapService, ethereumService, userMapper, userExchangeMapper, priceHistoryService)
+	userService := NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
+		ethereumService, pluginService)
 
 	service := NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 	currencyPair := &common.CurrencyPair{

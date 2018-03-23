@@ -38,7 +38,8 @@ func NewIntegrationTestContext() common.Context {
 		User: &dto.UserDTO{
 			Id:            1,
 			Username:      TEST_USERNAME,
-			LocalCurrency: "USD"}}
+			LocalCurrency: "USD",
+			FiatExchange:  "GDAX"}}
 
 	userDAO := NewUserDAO(TEST_CONTEXT)
 	userDAO.Save(&entity.User{Username: TEST_USERNAME, LocalCurrency: "USD"})
