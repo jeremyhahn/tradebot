@@ -40,7 +40,7 @@ func (ws *WebServer) Start() {
 
 	router := mux.NewRouter()
 	jsonWriter := common.NewJsonWriter()
-	fs := http.FileServer(http.Dir("webui/public"))
+	fs := http.FileServer(http.Dir("webapp/public"))
 
 	// REST Handlers - Public Access
 	registrationService := rest.NewRegisterRestService(ws.ctx, ws.authService, jsonWriter)
@@ -83,6 +83,10 @@ func (ws *WebServer) Start() {
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
 		negroni.Wrap(http.HandlerFunc(userRestService.GetExchanges)),
 	))
+	router.Handle("/api/v1/user/exchange/{id}", negroni.New(
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(userRestService.DeleteExchanges)),
+	)).Methods("POST") // JWT library doesn't support DELETE requests - https://github.com/dgrijalva/jwt-go/issues/253
 
 	// Websocket Handlers
 	router.HandleFunc("/ws/portfolio", func(w http.ResponseWriter, r *http.Request) {

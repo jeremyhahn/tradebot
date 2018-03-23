@@ -92,6 +92,16 @@ func (service *DefaultUserService) GetConfiguredExchanges() []common.UserCryptoE
 	return exchanges
 }
 
+func (service *DefaultUserService) DeleteExchange(exchangeName string) error {
+	user := service.ctx.GetUser()
+	userEntity := service.userMapper.MapUserDtoToEntity(user)
+	userExchange, _ := service.userDAO.GetExchange(userEntity, exchangeName)
+	if userExchange != nil {
+		return service.userDAO.DeleteExchange(userExchange)
+	}
+	return errors.New("Exchange not found")
+}
+
 func (service *DefaultUserService) GetExchangeSummary(currencyPair *common.CurrencyPair) ([]common.CryptoExchangeSummary, error) {
 	user := service.ctx.GetUser()
 	service.ctx.GetLogger().Debugf("[UserService.GetExchangeSummary] %+v, %+v", user, currencyPair)

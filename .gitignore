@@ -4,8 +4,8 @@ node_modules/
 npm-debug.log
 debug
 **/debug.test
-webui/yarn-error.log
-webui/public/scripts
+webapp/yarn-error.log
+webapp/public/scripts
 **/*.so
 keys/*
 test/ethereum/blockchain/*

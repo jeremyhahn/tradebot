@@ -23,6 +23,7 @@ type UserDAO interface {
 	GetExchanges(user entity.UserEntity) []entity.UserCryptoExchange
 	GetExchange(user entity.UserEntity, exchangeName string) (entity.UserExchangeEntity, error)
 	CreateExchange(userExchange entity.UserExchangeEntity) error
+	DeleteExchange(userExchange entity.UserExchangeEntity) error
 	CreateToken(userToken entity.UserTokenEntity) error
 	CreateWallet(userWallet entity.UserWalletEntity) error
 }
@@ -158,6 +159,14 @@ func (dao *UserDAOImpl) GetExchange(user entity.UserEntity, exchangeName string)
 func (dao *UserDAOImpl) CreateExchange(userExchange entity.UserExchangeEntity) error {
 	if err := dao.ctx.GetCoreDB().Create(userExchange).Error; err != nil {
 		dao.ctx.GetLogger().Errorf("[UserDAO.CreateExchange] Error:%s", err.Error())
+		return err
+	}
+	return nil
+}
+
+func (dao *UserDAOImpl) DeleteExchange(userExchange entity.UserExchangeEntity) error {
+	if err := dao.ctx.GetCoreDB().Delete(userExchange).Error; err != nil {
+		dao.ctx.GetLogger().Errorf("[UserDAO.DeleteExchange] Error:%s", err.Error())
 		return err
 	}
 	return nil

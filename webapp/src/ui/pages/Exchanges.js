@@ -24,15 +24,8 @@ import withAuth from 'app/components/withAuth';
 import AuthService from 'app/components/AuthService';
 import NewExchangeDialog from 'app/components/dialogs/NewExchange';
 
-let counter = 0;
-function createData(name, calories, fat, carbs, protein) {
-  counter += 1;
-  return { id: counter, name, calories, fat, carbs, protein };
-}
-
 const columnData = [
   { id: 'name', numeric: false, disablePadding: true, label: 'Name' },
-  { id: 'url', numeric: false, disablePadding: false, label: 'URL' },
   { id: 'key', numeric: false, disablePadding: false, label: 'API Key' },
   { id: 'extra', numeric: false, disablePadding: false, label: 'Extra' },
 ];
@@ -62,18 +55,15 @@ class ExchangeTableHead extends React.Component {
                 key={column.id}
                 numeric={column.numeric}
                 padding={column.disablePadding ? 'none' : 'default'}
-                sortDirection={orderBy === column.id ? order : false}
-              >
+                sortDirection={orderBy === column.id ? order : false}>
                 <Tooltip
                   title="Sort"
                   placement={column.numeric ? 'bottom-end' : 'bottom-start'}
-                  enterDelay={300}
-                >
+                  enterDelay={300}>
                   <TableSortLabel
                     active={orderBy === column.id}
                     direction={order}
-                    onClick={this.createSortHandler(column.id)}
-                  >
+                    onClick={this.createSortHandler(column.id)}>
                     {column.label}
                   </TableSortLabel>
                 </Tooltip>
@@ -139,7 +129,7 @@ let ExchangeTableToolbar = props => {
       <div className={classes.spacer} />
       <div className={classes.actions}>
         {numSelected > 0 ? (
-          <Tooltip title="Delete">
+          <Tooltip title="Delete" onClick={props.deleteExchangeHandler}>
             <IconButton aria-label="Delete">
               <DeleteIcon />
             </IconButton>
@@ -191,16 +181,14 @@ class ExchangeTable extends React.Component {
       newExchangeDialog: false
     };
 		this.Auth = new AuthService();
+    this.getUserExchanges = this.getUserExchanges.bind(this)
 		this.handleNewExchange = this.handleNewExchange.bind(this)
+    this.handleDeleteExchange = this.handleDeleteExchange.bind(this)
     this.onNewExchangeDialogClose = this.onNewExchangeDialogClose.bind(this)
   }
 
 	componentDidMount() {
-		  this.Auth.getUserExchanges()
-		  .then(function(response) {
-				console.log(response)
-				this.setState({data: response.payload})
-			}.bind(this))
+		this.getUserExchanges()
 	}
 
   handleRequestSort = (event, property) => {
@@ -256,9 +244,33 @@ class ExchangeTable extends React.Component {
     this.setState({ rowsPerPage: event.target.value });
   };
 
+  getUserExchanges() {
+    this.Auth.getUserExchanges()
+    .then(function(response) {
+      console.log(response)
+      this.setState({data: response.payload})
+    }.bind(this))
+  }
+
 	handleNewExchange() {
 		this.setState({newExchangeDialog: true})
 	}
+
+  handleDeleteExchange() {
+    const { selected } = this.state;
+    this.Auth.deleteUserExchange(selected)
+      .then(function (response) {
+        console.log(response);
+        if(response.data.success) {
+            // TODO: replace with local splice
+          this.getUserExchanges()
+          this.setState({selected: []});
+        }
+        else {
+          console.error(response.data.payload)
+        }
+      }.bind(this))
+  }
 
   onNewExchangeDialogClose() {
     this.setState({newExchangeDialog: false})
@@ -276,7 +288,8 @@ class ExchangeTable extends React.Component {
         <NewExchangeDialog open={this.state.newExchangeDialog} onClose={this.onNewExchangeDialogClose} />
         <ExchangeTableToolbar
 				  numSelected={selected.length}
-				  newExchangeHandler={this.handleNewExchange} />
+				  newExchangeHandler={this.handleNewExchange}
+          deleteExchangeHandler={this.handleDeleteExchange} />
         <div className={classes.tableWrapper}>
           <Table className={classes.table}>
             <ExchangeTableHead
@@ -304,7 +317,6 @@ class ExchangeTable extends React.Component {
                       <Checkbox checked={isSelected} />
                     </TableCell>
                     <TableCell padding="none">{n.name}</TableCell>
-                    <TableCell padding="none">{n.url}</TableCell>
                     <TableCell padding="none">{n.key}</TableCell>
                     <TableCell padding="none">{n.extra}</TableCell>
                   </TableRow>

@@ -28,7 +28,7 @@ class Settings extends React.Component {
 	constructor(props) {
 		super(props);
 		this.state = {
-			loading: true
+			loading: false
 		}
 		this.Auth = new AuthService();
 	}

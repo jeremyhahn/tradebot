@@ -74,7 +74,7 @@ func TestUserDAO_Update(t *testing.T) {
 	CleanupIntegrationTest()
 }
 
-func TestUserDAO_CreateGetUserExchange(t *testing.T) {
+func TestUserDAO_CreateGetDeleteUserExchange(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 	userDAO := NewUserDAO(ctx)
 	mapper := mapper.NewUserMapper()
@@ -97,6 +97,11 @@ func TestUserDAO_CreateGetUserExchange(t *testing.T) {
 	assert.Equal(t, userExchange.Key, persisted.GetKey())
 	assert.Equal(t, userExchange.Secret, persisted.GetSecret())
 	assert.Equal(t, userExchange.Extra, persisted.GetExtra())
+
+	userDAO.DeleteExchange(userExchange)
+	persisted, err = userDAO.GetExchange(userContext, "Test Exchange")
+	assert.Equal(t, "User exchange not found: Test Exchange", err.Error())
+	assert.Nil(t, persisted)
 
 	CleanupIntegrationTest()
 }

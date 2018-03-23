@@ -219,12 +219,12 @@ func (service *JsonWebTokenServiceImpl) Validate(w http.ResponseWriter, r *http.
 			service.contexts[claims.Id] = nil
 			JWT_CONTEXT_LOCK.Unlock()
 
-			service.ctx.GetLogger().Errorf("[JsonWebTokenService.Validate] Invalid token")
+			service.ctx.GetLogger().Errorf("[JsonWebTokenService.Validate] Invalid token: %s", token.Raw)
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
 		}
 	} else {
 		errmsg := "Invalid request. JSON Web Token required"
-		service.ctx.GetLogger().Errorf("[JsonWebTokenService.Validate] %s", err.Error())
+		service.ctx.GetLogger().Errorf("[JsonWebTokenService.Validate] Error: %s", err.Error())
 		http.Error(w, errmsg, http.StatusBadRequest)
 	}
 }

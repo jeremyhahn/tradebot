@@ -1,5 +1,5 @@
 import decode from 'jwt-decode';
-import axios, { post } from 'axios';
+import axios from 'axios';
 
 export default class AuthService {
 
@@ -59,7 +59,7 @@ export default class AuthService {
       if(this.loggedIn()) {
           config.headers['Authorization'] = 'Bearer ' + this.getToken()
       }
-      return post(`${this.domain}/transactions/import`, formData, config)
+      return axios.post(`${this.domain}/transactions/import`, formData, config)
     }
 
     getExchangeNames() {
@@ -76,6 +76,23 @@ export default class AuthService {
       }).then(res => {
           return Promise.resolve(res)
       })
+    }
+
+    deleteUserExchange(exchangeName) {
+console.log("deleting user exchange")
+      const config = {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'multipart/form-data'
+          }
+      }
+      if(this.loggedIn()) {
+
+console.log("logged in!")
+
+          config.headers['Authorization'] = 'Bearer ' + this.getToken()
+      }
+      return axios.post(`${this.domain}/user/exchange/${exchangeName}`, null, config)
     }
 
     loggedIn() {

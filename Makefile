@@ -73,6 +73,7 @@ clean:
 	cd plugins/strategies && rm -rf *.so
 	cd plugins/exchanges && rm -rf *.so
 	rm -rf tradebot
+	cd webapp && yarn clean
 
 debugbuild: clean plugins
 	go build -gcflags "-N -l"
@@ -87,5 +88,8 @@ dockerbuild: clean deps certs plugins
 	go build
 	./docker-build.sh
 
-build: clean certs plugins test
+webapp:
+	cd webui && npm i && yarn build:dev
+
+build: clean certs plugins test webui
 	go build
