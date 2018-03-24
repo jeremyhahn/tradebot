@@ -7,13 +7,16 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
+	"github.com/jeremyhahn/tradebot/util"
 	"github.com/jeremyhahn/tradebot/viewmodel"
 )
 
 type UserRestService interface {
 	GetExchanges(w http.ResponseWriter, r *http.Request)
+	CreateExchange(w http.ResponseWriter, r *http.Request)
 	DeleteExchanges(w http.ResponseWriter, r *http.Request)
 }
 
@@ -57,6 +60,36 @@ func (restService *UserRestServiceImpl) GetExchanges(w http.ResponseWriter, r *h
 	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
 		Success: true,
 		Payload: viewModels})
+}
+
+func (restService *UserRestServiceImpl) CreateExchange(w http.ResponseWriter, r *http.Request) {
+	ctx, err := restService.middlewareService.CreateContext(w, r)
+	if err != nil {
+		RestError(w, r, err, restService.jsonWriter)
+		return
+	}
+	defer ctx.Close()
+	ctx.GetLogger().Debugf("[UserRestServiceImpl.CreateExchange]")
+	userService := restService.createUserService(ctx)
+
+	util.DUMP(ctx.GetUser())
+
+	userCryptoExchange, err := userService.CreateExchange(&dto.UserCryptoExchangeDTO{
+		UserID: ctx.GetUser().GetId(),
+		Name:   r.FormValue("name"),
+		Key:    r.FormValue("key"),
+		Secret: r.FormValue("secret"),
+		Extra:  r.FormValue("extra")})
+	if err != nil {
+		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
+			Success: false,
+			Payload: err.Error()})
+		return
+	}
+	ctx.GetLogger().Debugf("[UserRestServiceImpl.CreateExchange]")
+	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
+		Success: true,
+		Payload: userCryptoExchange})
 }
 
 func (restService *UserRestServiceImpl) DeleteExchanges(w http.ResponseWriter, r *http.Request) {

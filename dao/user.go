@@ -139,7 +139,7 @@ func (dao *UserDAOImpl) GetToken(user entity.UserEntity, symbol string) entity.U
 
 func (dao *UserDAOImpl) GetExchanges(user entity.UserEntity) []entity.UserCryptoExchange {
 	var exchanges []entity.UserCryptoExchange
-	if err := dao.ctx.GetCoreDB().Model(user).Related(&exchanges).Error; err != nil {
+	if err := dao.ctx.GetCoreDB().Order("name asc").Model(user).Related(&exchanges).Error; err != nil {
 		dao.ctx.GetLogger().Errorf("[UserDAO.GetExchanges] Error: %s", err.Error())
 	}
 	return exchanges

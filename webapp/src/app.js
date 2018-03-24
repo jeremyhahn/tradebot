@@ -55,7 +55,7 @@ render(
 	<BrowserRouter history={browserHistory}>
 	<MuiThemeProvider theme={muiTheme}>
 		<DefaultLayout>
-			<Route exact path="/" component={ Portfolio } />
+			<Route exact path="/" component={ Exchanges } />
 			<Switch>
 				<Route exact path="/portfolio" component={ Portfolio } />
         <Route exact path="/transactions" component={ Transactions } />

@@ -114,24 +114,24 @@ func (service *EtherscanServiceImpl) GetWallet(address string) (common.UserCrypt
 	url := fmt.Sprintf("%s?module=account&action=balance&address=0x%s&tag=latest&apikey=%s",
 		service.endpoint, address, service.apiKeyToken)
 
-	service.ctx.GetLogger().Debugf("[EtherscanService.GetBalance] url: %s", url)
+	service.ctx.GetLogger().Debugf("[EtherscanService.GetWallet] url: %s", url)
 
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetBalance] Error: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EtherscanService.GetWallet] Error: %s", err.Error())
 		return nil, err
 	}
 
 	response := EtherScanResponse{}
 	jsonErr := json.Unmarshal(body, &response)
 	if jsonErr != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetBalance] %s", jsonErr.Error())
+		service.ctx.GetLogger().Errorf("[EtherscanService.GetWallet] %s", jsonErr.Error())
 		return nil, jsonErr
 	}
 
 	result, err := strconv.ParseFloat(response.Result, 64)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetBalance] Float conversation error: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EtherscanService.GetWallet] Float conversation error: %s", err.Error())
 		return nil, err
 	}
 

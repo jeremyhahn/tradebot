@@ -3,20 +3,20 @@ package dto
 import "github.com/jeremyhahn/tradebot/common"
 
 type UserCryptoExchangeDTO struct {
-	Name   string `json:"name"`
-	URL    string `json:"url"`
-	Key    string `json:"key"`
-	Secret string `json:"secret"`
-	Extra  string `json:"extra"`
-	common.UserCryptoExchange
+	UserID                    uint   `json:"-"`
+	Name                      string `json:"name"`
+	Key                       string `json:"key"`
+	Secret                    string `json:"secret"`
+	Extra                     string `json:"extra"`
+	common.UserCryptoExchange `json:"-"`
+}
+
+func (dto *UserCryptoExchangeDTO) GetUserID() uint {
+	return dto.UserID
 }
 
 func (dto *UserCryptoExchangeDTO) GetName() string {
 	return dto.Name
-}
-
-func (dto *UserCryptoExchangeDTO) GetURL() string {
-	return dto.URL
 }
 
 func (dto *UserCryptoExchangeDTO) GetKey() string {

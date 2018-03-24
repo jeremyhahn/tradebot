@@ -80,6 +80,7 @@ type UserService interface {
 	GetAllTokens() ([]common.EthereumToken, error)
 	CreateToken(token common.EthereumToken) error
 	CreateWallet(wallet common.UserCryptoWallet) error
+	CreateExchange(userCryptoExchange common.UserCryptoExchange) (common.UserCryptoExchange, error)
 	DeleteExchange(exchangeName string) error
 }
 

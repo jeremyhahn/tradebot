@@ -64,7 +64,7 @@ type UserTokenEntity interface {
 }
 
 type UserExchangeEntity interface {
-	GetUserId() uint
+	GetUserID() uint
 	GetName() string
 	GetKey() string
 	GetSecret() string

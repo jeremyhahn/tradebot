@@ -1,7 +1,7 @@
 package entity
 
 type UserCryptoExchange struct {
-	UserId uint
+	UserID uint
 	Name   string `gorm:"primary_key"`
 	Key    string `gorm:"not null" sql:"type:varchar(255)"`
 	Secret string `gorm:"not null" sql:"type:text"`
@@ -9,8 +9,8 @@ type UserCryptoExchange struct {
 	UserExchangeEntity
 }
 
-func (entity *UserCryptoExchange) GetUserId() uint {
-	return entity.UserId
+func (entity *UserCryptoExchange) GetUserID() uint {
+	return entity.UserID
 }
 
 func (entity *UserCryptoExchange) GetName() string {

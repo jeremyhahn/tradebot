@@ -92,6 +92,12 @@ func (service *DefaultUserService) GetConfiguredExchanges() []common.UserCryptoE
 	return exchanges
 }
 
+func (service *DefaultUserService) CreateExchange(userCryptoExchange common.UserCryptoExchange) (common.UserCryptoExchange, error) {
+	entity := service.userExchangeMapper.MapDtoToEntity(userCryptoExchange)
+	err := service.userDAO.CreateExchange(entity)
+	return userCryptoExchange, err
+}
+
 func (service *DefaultUserService) DeleteExchange(exchangeName string) error {
 	user := service.ctx.GetUser()
 	userEntity := service.userMapper.MapUserDtoToEntity(user)

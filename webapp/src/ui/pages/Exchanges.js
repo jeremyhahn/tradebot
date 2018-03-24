@@ -185,6 +185,7 @@ class ExchangeTable extends React.Component {
 		this.handleNewExchange = this.handleNewExchange.bind(this)
     this.handleDeleteExchange = this.handleDeleteExchange.bind(this)
     this.onNewExchangeDialogClose = this.onNewExchangeDialogClose.bind(this)
+    this.appendExchange = this.appendExchange.bind(this)
   }
 
 	componentDidMount() {
@@ -272,6 +273,18 @@ class ExchangeTable extends React.Component {
       }.bind(this))
   }
 
+  appendExchange(newData) {
+    console.log(newData)
+    /*
+    this.setState({
+      data: this.state.data.concat(newData),
+      orderBy: 'desc'
+    })
+    this.handleRequestSort(null, 'name')
+    */
+    this.getUserExchanges()
+  }
+
   onNewExchangeDialogClose() {
     this.setState({newExchangeDialog: false})
   }
@@ -285,7 +298,7 @@ class ExchangeTable extends React.Component {
 
     return (
       <Paper className={classes.root}>
-        <NewExchangeDialog open={this.state.newExchangeDialog} onClose={this.onNewExchangeDialogClose} />
+        <NewExchangeDialog open={this.state.newExchangeDialog} onClose={this.onNewExchangeDialogClose} addData={this.appendExchange} />
         <ExchangeTableToolbar
 				  numSelected={selected.length}
 				  newExchangeHandler={this.handleNewExchange}

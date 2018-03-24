@@ -63,6 +63,19 @@ export default class AuthService {
       return axios.post(`${this.domain}/transactions/import`, formData, config)
     }
 
+    createExchange(formData) {
+      const config = {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'multipart/form-data'
+          }
+      }
+      if(this.loggedIn()) {
+          config.headers['Authorization'] = 'Bearer ' + this.getToken()
+      }
+      return axios.post(`${this.domain}/user/exchange`, formData, config)
+    }
+
     getExchangeNames() {
       return this.fetch(`${this.domain}/exchanges/names`, {
           method: 'GET'
@@ -80,7 +93,6 @@ export default class AuthService {
     }
 
     deleteUserExchange(exchangeName) {
-console.log("deleting user exchange")
       const config = {
           headers: {
             'Accept': 'application/json',
@@ -88,9 +100,6 @@ console.log("deleting user exchange")
           }
       }
       if(this.loggedIn()) {
-
-console.log("logged in!")
-
           config.headers['Authorization'] = 'Bearer ' + this.getToken()
       }
       return axios.post(`${this.domain}/user/exchange/${exchangeName}`, null, config)

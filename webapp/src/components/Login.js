@@ -53,7 +53,6 @@ class Login extends Component {
        .then(res => {
          console.log(res.token.length)
           if(res.token.length) {
-console.log('navigating to /orders')
             //this.props.history.replace('/orders');
             location.href = '/exchanges'
 

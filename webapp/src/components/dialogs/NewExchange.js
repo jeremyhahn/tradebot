@@ -34,12 +34,15 @@ class NewExchangeDialog extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      file: null,
       exchange: "",
-      exchanges: []
+      exchanges: [],
+      name: "",
+      key: "",
+      secret: "",
+      extra: ""
     }
     this.onFormSubmit = this.onFormSubmit.bind(this)
-    this.onChange = this.onChange.bind(this)
+    this.handleChange = this.handleChange.bind(this)
     this.Auth = new AuthService();
   }
 
@@ -55,25 +58,23 @@ class NewExchangeDialog extends React.Component {
 
   handleChange = (event, value) => {
     this.setState({[event.target.name]: event.target.value});
-  };
+  }
 
   onFormSubmit(e) {
     e.preventDefault()
     var _this = this
     const formData = new FormData();
-    formData.append('csv', this.state.file)
-    formData.append('exchange', this.state.exchange)
-    this.Auth.importOrders(formData)
+    formData.append('name', this.state.exchange)
+    formData.append('key', this.state.key)
+    formData.append('secret', this.state.secret)
+    formData.append('extra', this.state.extra)
+    this.Auth.createExchange(formData)
       .then((response) => {
         if(response.data.success) {
           _this.props.onClose()
           _this.props.addData(response.data.payload)
         }
     })
-  }
-
-  onChange(e) {
-    this.setState({file: e.target.files[0] })
   }
 
   render() {
@@ -107,18 +108,10 @@ class NewExchangeDialog extends React.Component {
                   <TextField
                     required
                     id="key"
-                    label="Required"
-                    defaultValue="API Key"
-                    className={classes.textField}
-                    margin="normal"
-                  />
-                </FormControl>
-                <FormControl className={classes.formControl} fullWidth={true}>
-                  <TextField
-                    required
-                    id="url"
-                    label="Required"
-                    defaultValue="URL"
+                    name="key"
+                    label="API Key"
+                    placeholder="API Key"
+                    onChange={this.handleChange}
                     className={classes.textField}
                     margin="normal"
                   />
@@ -127,8 +120,10 @@ class NewExchangeDialog extends React.Component {
                   <TextField
                     required
                     id="secret"
-                    label="Required"
-                    defaultValue="API Secret"
+                    name="secret"
+                    label="API Secret"
+                    placeholder="API Secret"
+                    onChange={this.handleChange}
                     className={classes.textField}
                     margin="normal"
                   />
@@ -137,8 +132,10 @@ class NewExchangeDialog extends React.Component {
                   <TextField
                     required
                     id="extra"
-                    label="Required"
-                    defaultValue="Extra"
+                    name="extra"
+                    label="Extra"
+                    placeholder="Extra"
+                    onChange={this.handleChange}
                     className={classes.textField}
                     margin="normal"
                   />

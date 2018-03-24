@@ -208,6 +208,7 @@ type UserContext interface {
 }
 
 type UserCryptoExchange interface {
+	GetUserID() uint
 	GetName() string
 	GetKey() string
 	GetURL() string

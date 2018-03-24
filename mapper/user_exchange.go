@@ -9,6 +9,7 @@ import (
 
 type UserExchangeMapper interface {
 	MapDtoToViewModel(dto common.UserCryptoExchange) *viewmodel.UserCryptoExchange
+	MapDtoToEntity(userCryptoExchange common.UserCryptoExchange) entity.UserExchangeEntity
 	MapEntityToDto(entity entity.UserExchangeEntity) common.UserCryptoExchange
 	MapEntityToViewModel(entity entity.UserExchangeEntity) *viewmodel.UserCryptoExchange
 	MapViewModelToEntity(vm viewmodel.UserCryptoExchange) entity.UserExchangeEntity
@@ -22,8 +23,18 @@ func NewUserExchangeMapper() UserExchangeMapper {
 	return &UserExchangeMapperImpl{}
 }
 
+func (em *UserExchangeMapperImpl) MapDtoToEntity(userCryptoExchange common.UserCryptoExchange) entity.UserExchangeEntity {
+	return &entity.UserCryptoExchange{
+		UserID: userCryptoExchange.GetUserID(),
+		Name:   userCryptoExchange.GetName(),
+		Key:    userCryptoExchange.GetKey(),
+		Secret: userCryptoExchange.GetSecret(),
+		Extra:  userCryptoExchange.GetExtra()}
+}
+
 func (em *UserExchangeMapperImpl) MapEntityToDto(entity entity.UserExchangeEntity) common.UserCryptoExchange {
 	return &dto.UserCryptoExchangeDTO{
+		UserID: entity.GetUserID(),
 		Name:   entity.GetName(),
 		Key:    entity.GetKey(),
 		Secret: entity.GetSecret(),
