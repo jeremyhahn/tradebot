@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/util"
 	"github.com/shopspring/decimal"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type EtherScanTx struct {
@@ -79,16 +81,32 @@ func NewEtherscanService(ctx common.Context, userDAO dao.UserDAO, userMapper map
 }
 
 func (service *EtherscanServiceImpl) Login(username, password string) (common.UserContext, error) {
-	return &dto.UserContextDTO{
-		Id:            1,
-		Username:      username,
-		LocalCurrency: "USD",
-		Etherbase:     username,
-		Keystore:      password}, nil
+	userEntity, err := service.userDAO.GetByName(username)
+	if err != nil && err.Error() != "record not found" {
+		return nil, errors.New("Invalid username/password")
+	}
+	if err != nil {
+		return nil, err
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(userEntity.GetKeystore()), []byte(password))
+	if err != nil {
+		return nil, errors.New("Invalid username/password")
+	}
+	return service.userMapper.MapUserEntityToDto(userEntity), nil
 }
 
 func (service *EtherscanServiceImpl) Register(username, password string) error {
-	return nil
+	_, err := service.userDAO.GetByName(username)
+	if err != nil && err.Error() != "record not found" {
+		service.ctx.GetLogger().Errorf("[EtherscanService.Register] %s", err.Error())
+		return errors.New(fmt.Sprintf("Unexpected error: %s", err.Error()))
+	}
+	encrypted, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return service.userDAO.Save(&entity.User{
+		Username:      username,
+		LocalCurrency: "USD",
+		Etherbase:     "etherscan",
+		Keystore:      string(encrypted)})
 }
 
 func (service *EtherscanServiceImpl) GetAccounts() ([]common.UserContext, error) {

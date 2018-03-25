@@ -29,6 +29,7 @@ deps:
 	go get "github.com/adshao/go-binance"
 	go get "github.com/joho/godotenv"
 	go get "github.com/shopspring/decimal"
+	go get "golang.org/x/crypto/bcrypt"
 
 certs:
 	mkdir -p keys/
