@@ -1,7 +1,7 @@
 package entity
 
 type UserCryptoExchange struct {
-	UserID uint
+	UserID uint   `gorm:"primary_key"`
 	Name   string `gorm:"primary_key"`
 	Key    string `gorm:"not null" sql:"type:varchar(255)"`
 	Secret string `gorm:"not null" sql:"type:text"`
