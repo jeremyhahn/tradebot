@@ -265,6 +265,7 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 			for _, order := range ledger {
 				if order.Type == "match" {
 					matches[fmt.Sprintf("%.8f", order.Amount)] = order
+					GDAX_RATELIMITER.RespectRateLimit()
 					o, err := _gdax.gdax.GetOrder(order.Details.OrderId)
 					if err != nil {
 						_gdax.ctx.GetLogger().Errorf("[GDAX.getDepositWithdrawalHistory] Error retrieving order: %s", err.Error())
