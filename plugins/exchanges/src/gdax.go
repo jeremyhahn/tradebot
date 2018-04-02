@@ -126,16 +126,17 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.T
 		transactions := txs.(*[]common.Transaction)
 		return *transactions
 	}
-	GDAX_RATELIMITER.RespectRateLimit()
 	_gdax.logger.Debug("[GDAX.GetOrderHistory] Getting order history")
 	var orders []common.Transaction
 	var ledger []gdax.LedgerEntry
 	orderIds := make(map[string]bool)
+	GDAX_RATELIMITER.RespectRateLimit()
 	accounts, err := _gdax.gdax.GetAccounts()
 	if err != nil {
 		_gdax.logger.Errorf("[GDAX.GetOrderHistory] %s", err.Error())
 	}
 	for _, a := range accounts {
+		GDAX_RATELIMITER.RespectRateLimit()
 		cursor := _gdax.gdax.ListAccountLedger(a.Id)
 		for cursor.HasMore {
 			if err := cursor.NextPage(&ledger); err != nil {
@@ -149,6 +150,7 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.T
 					continue
 				}
 				orderIds[e.Details.OrderId] = true
+				GDAX_RATELIMITER.RespectRateLimit()
 				order, err := _gdax.gdax.GetOrder(e.Details.OrderId)
 				if err != nil {
 					_gdax.ctx.GetLogger().Errorf("[GDAX.GetOrderHistory] Error retrieving order: %s", err.Error())
@@ -256,6 +258,7 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 		return nil, err
 	}
 	for _, a := range accounts {
+		GDAX_RATELIMITER.RespectRateLimit()
 		cursor := _gdax.gdax.ListAccountLedger(a.Id)
 		for cursor.HasMore {
 			if err := cursor.NextPage(&ledger); err != nil {
@@ -389,6 +392,7 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 				continue
 			}
 		} else {
+			GDAX_RATELIMITER.RespectRateLimit()
 			po, err := _gdax.gdax.GetOrder(transferMatch.Details.OrderId)
 			if err != nil {
 				_gdax.ctx.GetLogger().Errorf("[GDAX.GetOrderHistory] Error retrieving purchase order: %s", err.Error())
@@ -474,6 +478,7 @@ func (_gdax *GDAX) GetCurrencies() (map[string]*common.Currency, error) {
 		return *currencies, nil
 	}
 	_gdax.ctx.GetLogger().Debugf("[GDAX.GetCurrencies] Retrieving GDAX currencies")
+	GDAX_RATELIMITER.RespectRateLimit()
 	currencies, err := _gdax.gdax.GetCurrencies()
 	if err != nil {
 		_gdax.ctx.GetLogger().Errorf("[GDAX.GetCurrencies] Error: %s", err.Error())
@@ -540,6 +545,7 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, decimal.Decimal) {
 		if a.Currency != _gdax.ctx.GetUser().GetLocalCurrency() {
 			currency := fmt.Sprintf("%s-%s", a.Currency, _gdax.ctx.GetUser().GetLocalCurrency())
 			_gdax.logger.Debugf("[GDAX.GetBalances] Getting balances for %s", currency)
+			GDAX_RATELIMITER.RespectRateLimit()
 			ticker, err := _gdax.gdax.GetTicker(currency)
 			if err != nil {
 				_gdax.logger.Errorf("[GDAX.GetBalances] %s", err.Error())
