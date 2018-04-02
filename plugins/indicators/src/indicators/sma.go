@@ -1,16 +1,19 @@
 package indicators
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
+)
 
 type SimpleMovingAverage interface {
-	Add(candle *common.Candlestick) float64
+	Add(candle *common.Candlestick) decimal.Decimal
 	GetCandlesticks() []common.Candlestick
-	GetAverage() float64
+	GetAverage() decimal.Decimal
 	GetSize() int
-	GetPrices() []float64
-	GetGainsAndLosses() (float64, float64)
+	GetPrices() []decimal.Decimal
+	GetGainsAndLosses() (decimal.Decimal, decimal.Decimal)
 	GetCount() int
 	GetIndex() int
-	Sum() float64
+	Sum() decimal.Decimal
 	common.FinancialIndicator
 }

@@ -15,7 +15,7 @@ type PortfolioClient struct {
 	hub              *PortfolioHub
 	conn             *websocket.Conn
 	send             chan common.Portfolio
-	marketcapService service.MarketCapService
+	marketcapService common.MarketCapService
 	userService      service.UserService
 	portfolioService service.PortfolioService
 }

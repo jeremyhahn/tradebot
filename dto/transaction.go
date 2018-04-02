@@ -30,7 +30,6 @@ type TransactionDTO struct {
 	TotalCurrency        string               `json:"total_currency"`
 	FiatTotal            string               `json:"fiat_total"`
 	FiatTotalCurrency    string               `json:"fiat_total_currency"`
-	Origin               common.Transaction   `json:"origin"`
 	common.Transaction   `json:"-"`
 }
 
@@ -126,11 +125,7 @@ func (t *TransactionDTO) GetFiatTotalCurrency() string {
 	return t.FiatTotalCurrency
 }
 
-func (t *TransactionDTO) GetOrigin() common.Transaction {
-	return t.Origin
-}
-
 func (t *TransactionDTO) String() string {
-	return fmt.Sprintf("[TransactionDTO] Id: %s, Date: %s, CurrencyPair: %s, Type: %s, Network: %s, Quantity: %s, Fee: %s, Total: %s, Origin: %s",
-		t.Id, t.Date, t.CurrencyPair, t.Type, t.Network, t.Quantity, t.Fee, t.Total, t.Origin)
+	return fmt.Sprintf("[TransactionDTO] Id: %s, Date: %s, CurrencyPair: %s, Type: %s, Network: %s, Quantity: %s, QuantityCurrency: %s, FiatQuantity: %s,  FiatQuantityCurrency: %s, Price: %s, PriceCurrency: %s, FiatPrice: %s, FiatPriceCurrency: %s, Fee: %s, FeeCurrency: %s, FiatFee: %s, FiatFeeCurrency: %s, Total: %s, TotalCurrency: %s, FiatTotal: %s, FiatTotalCurrency: %s",
+		t.Id, t.Date, t.CurrencyPair, t.Type, t.Network, t.Quantity, t.QuantityCurrency, t.FiatQuantity, t.FiatQuantityCurrency, t.Price, t.PriceCurrency, t.FiatPrice, t.FiatPriceCurrency, t.Fee, t.FeeCurrency, t.FiatFee, t.FiatFeeCurrency, t.Total, t.TotalCurrency, t.FiatTotal, t.FiatTotalCurrency)
 }

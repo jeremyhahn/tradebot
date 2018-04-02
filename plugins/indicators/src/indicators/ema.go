@@ -1,17 +1,20 @@
 package indicators
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
+)
 
 type ExponentialMovingAverage interface {
-	Add(candle *common.Candlestick) float64
+	Add(candle *common.Candlestick) decimal.Decimal
 	GetCandlesticks() []common.Candlestick
 	GetSize() int
 	GetCount() int
 	GetIndex() int
-	GetAverage() float64
-	GetPrices() []float64
-	Sum() float64
-	GetMultiplier() float64
-	GetGainsAndLosses() (float64, float64)
+	GetAverage() decimal.Decimal
+	GetPrices() []decimal.Decimal
+	Sum() decimal.Decimal
+	GetMultiplier() decimal.Decimal
+	GetGainsAndLosses() (decimal.Decimal, decimal.Decimal)
 	common.FinancialIndicator
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,7 +28,7 @@ func TestFiatPrice(t *testing.T) {
 	atDate := time.Now().Add(-5 * time.Hour)
 	candlestick, err := fiatPriceService.GetPriceAt("BTC", atDate)
 	assert.Nil(t, err)
-	assert.Equal(t, true, candlestick.Close > 0)
+	assert.Equal(t, true, candlestick.Close.GreaterThan(decimal.NewFromFloat(0)))
 
 	CleanupIntegrationTest()
 }

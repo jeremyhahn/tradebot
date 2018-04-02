@@ -6,6 +6,7 @@ import (
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/shopspring/decimal"
 )
 
 type DefaultTradeService struct {
@@ -37,6 +38,16 @@ func (ts *DefaultTradeService) Save(dto common.Trade) {
 func (ts *DefaultTradeService) GetLastTrade(chart common.Chart) common.Trade {
 	daoChart := &entity.Chart{Id: chart.GetId()}
 	entity := ts.tradeDAO.GetLastTrade(daoChart)
+	amount, err := decimal.NewFromString(entity.GetAmount())
+	if err != nil {
+		ts.ctx.GetLogger().Errorf("[TradeService.GetLastTrade] Error parsing amount decimal into string. Amount: %s",
+			entity.GetAmount())
+	}
+	price, err := decimal.NewFromString(entity.GetPrice())
+	if err != nil {
+		ts.ctx.GetLogger().Errorf("[TradeService.GetLastTrade] Error parsing price decimal into string. Price: %s",
+			entity.GetPrice())
+	}
 	return &dto.TradeDTO{
 		Id:        entity.GetId(),
 		UserId:    ts.ctx.GetUser().GetId(),
@@ -46,8 +57,8 @@ func (ts *DefaultTradeService) GetLastTrade(chart common.Chart) common.Trade {
 		Type:      entity.GetType(),
 		Base:      entity.GetBase(),
 		Quote:     entity.GetQuote(),
-		Amount:    entity.GetAmount(),
-		Price:     entity.GetPrice(),
+		Amount:    amount,
+		Price:     price,
 		ChartData: entity.GetChartData()}
 }
 

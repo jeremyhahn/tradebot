@@ -19,6 +19,7 @@ import Tooltip from 'material-ui/Tooltip';
 import FileUpload from 'material-ui-icons/FileUpload';
 import FileDownload from 'material-ui-icons/FileDownload';
 import FilterListIcon from 'material-ui-icons/FilterList';
+import Refresh from 'material-ui-icons/Refresh';
 import { lighten } from 'material-ui/styles/colorManipulator';
 import Loading from 'app/components/Loading';
 import ImportDialog from 'app/components/dialogs/Import';
@@ -34,7 +35,7 @@ const columnData = [
   { id: 'currency', numeric: false, disablePadding: false, label: 'Currency' },
   { id: 'network', numeric: false, disablePadding: false, label: 'Network' },
   { id: 'quantity', numeric: true, disablePadding: false, label: 'Quantity' },
-  { id: 'price', numeric: true, disablePadding: false, label: 'Price' },
+  { id: 'price', numeric: true, disablePadding: false, label: 'Unit Price' },
   { id: 'fee', numeric: true, disablePadding: false, label: 'Fee' },
   { id: 'total', numeric: true, disablePadding: false, label: 'Total' },
 ];
@@ -145,13 +146,17 @@ class Transactions extends React.Component {
       page: 0,
       rowsPerPage: 10,
       copied: false,
-      copiedValue: ''
+      copiedValue: '',
+      infoMessage: '',
+      syncDisabled: false
     }
     this.importDialogHandler = this.importDialogHandler.bind(this)
     this.handleImportDialogClose = this.handleImportDialogClose.bind(this)
     this.appendImportData = this.appendImportData.bind(this)
     this.fetchTransactions = this.fetchTransactions.bind(this)
+    this.syncTransactions = this.syncTransactions.bind(this)
     this.snackbarClose = this.snackbarClose.bind(this)
+    this.infoSnackbarClose = this.infoSnackbarClose.bind(this)
   }
 
   handleRequestSort = (event, property) => {
@@ -197,6 +202,29 @@ class Transactions extends React.Component {
       }.bind(this))
   }
 
+  syncTransactions() {
+    this.state.syncDisabled = true
+    this.state.loading = true
+    this.Auth.syncTransactions()
+      .then(function (response) {
+        console.log(response);
+        this.state.syncDisabled = false
+        this.state.loading = false
+        if(response.success) {
+          /*
+          var numTxs = response.payload.length
+          if(numTxs) {
+            this.setState({
+              infoSnackbar: true,
+              infoMessage: 'Added ' + numTxs + ' new transactions'
+            })
+            this.fetchTransactions()
+          }*/
+          this.fetchTransactions()
+        }
+      }.bind(this))
+  }
+
   currencyIcon(currency) {
     if(currency == undefined) {
       return "images/crypto/128/default.png"
@@ -219,13 +247,19 @@ class Transactions extends React.Component {
     return <Slide direction="up" {...props} />;
   }
 
+  infoSnackbarClose() {
+    this.setState({infoSnackbar: false})
+  }
+
   appendImportData(newData) {
     console.log(newData)
+    /*
     this.setState({
       data: this.state.data.concat(newData),
       order: 'desc'
     })
-    this.handleRequestSort(null, 'date')
+    this.handleRequestSort(null, 'date')*/
+    this.fetchTransactions()
   }
 
   importDialogHandler() {
@@ -245,7 +279,7 @@ class Transactions extends React.Component {
       <Paper className={classes.root}>
         {this.state.loading &&
           <div className={classes.loadingContainer}>
-            <Loading text="Loading transactions..." />
+            <Loading text="Downloading transactions..." />
           </div>
         }
         <div className={classes.tableWrapper}>
@@ -255,6 +289,9 @@ class Transactions extends React.Component {
             </Button>
             <Button className={classes.buttonText} size="small" color="inherit">
               Statement <FileDownload className={classes.leftIcon} />
+            </Button>
+            <Button disabled={this.state.syncDisabled} className={classes.buttonText} size="small" color="inherit" onClick={this.syncTransactions}>
+              API Sync <Refresh className={classes.leftIcon} />
             </Button>
           </Toolbar>
           <Table className={classes.table}>
@@ -292,7 +329,15 @@ class Transactions extends React.Component {
                     </TableCell>
 
                     <TableCell numeric>{n.price.formatCurrency(n.price_currency)}
+                      {(n.fiat_price != "0.00" && n.fiat_price != "") &&
+                      <CopyToClipboard text={n.fiat_price} onCopy={()=>this.setState({copied: true, copiedValue: n.fiat_price})}>
+                        <img className={classes.currencyIcon}
+                           src={this.currencyIcon(n.price_currency)}
+                           title={n.fiat_price_currency + " " + n.fiat_price.formatCurrency(n.fiat_price_currency) + " per coin"} />
+                      </CopyToClipboard>
+                      ||
                       <img className={classes.currencyIcon} src={this.currencyIcon(n.price_currency)} title={n.price_currency} />
+                      }
                     </TableCell>
 
                     <TableCell numeric>{n.fee.formatCurrency(n.fee_currency)}
@@ -358,6 +403,15 @@ class Transactions extends React.Component {
             'aria-describedby': 'message-id',
           }}
           message={<span id="message-id">{this.state.copiedValue} copied to clipboard</span>}/>
+        <Snackbar
+          open={this.state.infoSnackbar}
+          onClose={this.infoSnackbarClose}
+          autoHideDuration={2000}
+          transition={this.snackbarTransitionUp}
+          SnackbarContentProps={{
+            'aria-info': 'info-id',
+          }}
+          message={<span id="info-id">{this.state.infoMessage}</span>}/>
       </Paper>
     );
   }

@@ -1,16 +1,14 @@
-package service
+package main
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
-	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/util"
 	"github.com/shopspring/decimal"
 )
@@ -33,6 +31,11 @@ type RippleResponse struct {
 	Transactions []RippleTransaction `json:"transactions"`
 }
 
+type RippleExchangeRate struct {
+	Result string `json:"result"`
+	Rate   string `json:"rate"`
+}
+
 type RippleWallet struct {
 	Balance  string `json:"value"`
 	Currency string `json:"currency"`
@@ -49,66 +52,105 @@ type Ripple struct {
 	ctx              common.Context
 	client           http.Client
 	userDAO          dao.UserDAO
-	marketcapService MarketCapService
-	BlockExplorerService
+	marketcapService common.MarketCapService
+	params           *common.WalletParams
+	endpoint         string
+	common.Wallet
 }
 
-func NewRippleService(ctx common.Context, userDAO dao.UserDAO, marketcapService MarketCapService) BlockExplorerService {
+var XRPWALLET_RATELIMITER = common.NewRateLimiter(5, 1)
+
+func CreateXrpWallet(params *common.WalletParams) common.Wallet {
 	client := http.Client{Timeout: time.Second * 2}
 	return &Ripple{
-		ctx:              ctx,
+		ctx:              params.Context,
 		client:           client,
-		userDAO:          userDAO,
-		marketcapService: marketcapService}
+		marketcapService: params.MarketCapService,
+		params:           params,
+		endpoint:         "https://data.ripple.com/v2"}
 }
 
-func (r *Ripple) GetWallet(address string) (common.UserCryptoWallet, error) {
-	r.ctx.GetLogger().Debugf("[Ripple.GetBalance] Address: %s", address)
-	var balance float64
-	url := fmt.Sprintf("https://data.ripple.com/v2/accounts/%s/balances", address)
+func (r *Ripple) GetPrice() decimal.Decimal {
+	XRPWALLET_RATELIMITER.RespectRateLimit()
+	marketcap := r.marketcapService.GetMarket("XRP")
+	usd, err := decimal.NewFromString(marketcap.PriceUSD)
+	if err != nil {
+		r.ctx.GetLogger().Errorf("[RippleWallet.GetPrice] Error parsing price string into decimal: %s", err.Error())
+		return decimal.NewFromFloat(0)
+	}
+	return usd.Truncate(2)
+	/*
+		url := fmt.Sprintf("%s/exchange_rates/%s+%s/XRP", r.endpoint,
+			r.ctx.GetUser().GetLocalCurrency(), r.params.Address)
+		_, body, err := util.HttpRequest(url)
+		if err != nil {
+			r.ctx.GetLogger().Errorf("[RippleWallet.GetPrice] Error: %s", err.Error())
+		}
+		exRate := RippleExchangeRate{}
+		jsonErr := json.Unmarshal(body, &exRate)
+		if jsonErr != nil {
+			r.ctx.GetLogger().Errorf("[RippleWallet.GetPrice] %s", jsonErr.Error())
+		}
+		price, err := decimal.NewFromString(exRate.Rate)
+		if err != nil {
+			r.ctx.GetLogger().Errorf("[RippleWallet.GetPrice] Error parsing rate string into decimal: %s", err.Error())
+			return decimal.NewFromFloat(0)
+		}
+		return price
+	*/
+}
+
+func (r *Ripple) GetWallet() (common.UserCryptoWallet, error) {
+	XRPWALLET_RATELIMITER.RespectRateLimit()
+	r.ctx.GetLogger().Debugf("[Ripple.GetBalance] Address: %s", r.params.Address)
+	balance := decimal.NewFromFloat(0)
+	url := fmt.Sprintf("https://data.ripple.com/v2/accounts/%s/balances", r.params.Address)
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
-		r.ctx.GetLogger().Errorf("[Ripple.GetBalance] %s", err.Error())
+		r.ctx.GetLogger().Errorf("[Ripple.GetWallet] %s", err.Error())
 		return nil, err
 	}
 	rb := RippleBalance{}
 	jsonErr := json.Unmarshal(body, &rb)
 	if jsonErr != nil {
-		r.ctx.GetLogger().Errorf("[Ripple.GetBalance] %s", jsonErr.Error())
+		r.ctx.GetLogger().Errorf("[Ripple.GetWallet] %s", jsonErr.Error())
 		return nil, jsonErr
 	}
-	if len(rb.Balances) <= 0 {
-		balance = 0.0
-	} else {
-		f, _ := strconv.ParseFloat(rb.Balances[0].Balance, 64)
-		balance = f
+	if len(rb.Balances) > 0 {
+		dec, err := decimal.NewFromString(rb.Balances[0].Balance)
+		if err != nil {
+			r.ctx.GetLogger().Errorf("[Ripple.GetWallet] Error converting balance to decimal: %s", err.Error())
+		}
+		balance = dec
 	}
 	marketcap := r.marketcapService.GetMarket("XRP")
-	f2, _ := strconv.ParseFloat(marketcap.PriceUSD, 64)
+	priceUSD, err := decimal.NewFromString(marketcap.PriceUSD)
 	return &dto.UserCryptoWalletDTO{
-		Address:  address,
-		Balance:  balance,
+		Address:  r.params.Address,
+		Balance:  balance.Truncate(8),
 		Currency: "XRP",
-		Value:    f2 * balance}, nil
+		Value:    priceUSD.Mul(balance).Truncate(2)}, nil
 }
 
+/*
 func (r *Ripple) GetTransactions() ([]common.Transaction, error) {
 	var transactions []common.Transaction
 	userEntity := &entity.User{Id: r.ctx.GetUser().GetId()}
 	for _, wallet := range r.userDAO.GetWallets(userEntity) {
-		txs, err := r.GetTransaction(wallet.GetAddress())
+		txs, err := r.getTransactionsFor(wallet.GetAddress())
 		if err != nil {
 			return transactions, err
 		}
 		transactions = append(transactions, txs...)
 	}
 	return transactions, nil
-}
+}*/
 
-func (r *Ripple) GetTransaction(address string) ([]common.Transaction, error) {
+func (r *Ripple) GetTransactions() ([]common.Transaction, error) {
+	XRPWALLET_RATELIMITER.RespectRateLimit()
 	var transactions []common.Transaction
 	var rippleResponse RippleResponse
-	url := fmt.Sprintf("https://data.ripple.com/v2/accounts/%s/transactions", address)
+	url := fmt.Sprintf("https://data.ripple.com/v2/accounts/%s/transactions", r.params.Address)
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
 		r.ctx.GetLogger().Errorf("[Ripple.GetBalance] %s", err.Error())
@@ -119,7 +161,7 @@ func (r *Ripple) GetTransaction(address string) ([]common.Transaction, error) {
 	}
 	for _, tx := range rippleResponse.Transactions {
 		var txType string
-		if tx.Tx.Destination == address {
+		if tx.Tx.Destination == r.params.Address {
 			txType = common.DEPOSIT_ORDER_TYPE
 		} else {
 			txType = common.WITHDRAWAL_ORDER_TYPE

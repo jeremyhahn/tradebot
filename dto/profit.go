@@ -1,16 +1,19 @@
 package dto
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
+)
 
 type ProfitDTO struct {
-	UserId   uint    `json:"id"`
-	TradeId  uint    `json:"trade_id"`
-	Quantity float64 `json:"quantity"`
-	Bought   float64 `json:"bought"`
-	Sold     float64 `json:"sold"`
-	Fee      float64 `json:"fee"`
-	Tax      float64 `json:"tax"`
-	Total    float64 `json:"total"`
+	UserId   uint            `json:"id"`
+	TradeId  uint            `json:"trade_id"`
+	Quantity decimal.Decimal `json:"quantity"`
+	Bought   decimal.Decimal `json:"bought"`
+	Sold     decimal.Decimal `json:"sold"`
+	Fee      decimal.Decimal `json:"fee"`
+	Tax      decimal.Decimal `json:"tax"`
+	Total    decimal.Decimal `json:"total"`
 	common.Profit
 }
 
@@ -26,26 +29,26 @@ func (dto *ProfitDTO) GetTradeId() uint {
 	return dto.TradeId
 }
 
-func (dto *ProfitDTO) GetQuantity() float64 {
+func (dto *ProfitDTO) GetQuantity() decimal.Decimal {
 	return dto.Quantity
 }
 
-func (dto *ProfitDTO) GetBought() float64 {
+func (dto *ProfitDTO) GetBought() decimal.Decimal {
 	return dto.Bought
 }
 
-func (dto *ProfitDTO) GetSold() float64 {
+func (dto *ProfitDTO) GetSold() decimal.Decimal {
 	return dto.Sold
 }
 
-func (dto *ProfitDTO) GetFee() float64 {
+func (dto *ProfitDTO) GetFee() decimal.Decimal {
 	return dto.Fee
 }
 
-func (dto *ProfitDTO) GetTax() float64 {
+func (dto *ProfitDTO) GetTax() decimal.Decimal {
 	return dto.Tax
 }
 
-func (dto *ProfitDTO) GetTotal() float64 {
+func (dto *ProfitDTO) GetTotal() decimal.Decimal {
 	return dto.Total
 }

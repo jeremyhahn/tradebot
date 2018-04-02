@@ -2,6 +2,7 @@ package mapper
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -22,8 +23,7 @@ type DefaultTransactionMapper struct {
 }
 
 func NewTransactionMapper(ctx common.Context) TransactionMapper {
-	return &DefaultTransactionMapper{
-		ctx: ctx}
+	return &DefaultTransactionMapper{ctx: ctx}
 }
 
 func (mapper *DefaultTransactionMapper) MapTransactionEntityToDto(entity entity.TransactionEntity) common.Transaction {
@@ -37,39 +37,49 @@ func (mapper *DefaultTransactionMapper) MapTransactionEntityToDto(entity entity.
 		CurrencyPair:         currencyPair,
 		Quantity:             entity.GetQuantity(),
 		QuantityCurrency:     entity.GetQuantityCurrency(),
-		FiatQuantity:         "0.00",
-		FiatQuantityCurrency: "N/A",
+		FiatQuantity:         entity.GetFiatQuantity(),
+		FiatQuantityCurrency: entity.GetFiatQuantityCurrency(),
 		Price:                entity.GetPrice(),
 		PriceCurrency:        entity.GetPriceCurrency(),
-		FiatPrice:            "0.00",
-		FiatPriceCurrency:    "N/A",
+		FiatPrice:            entity.GetFiatPrice(),
+		FiatPriceCurrency:    entity.GetFiatPriceCurrency(),
 		Fee:                  entity.GetFee(),
 		FeeCurrency:          entity.GetFeeCurrency(),
-		FiatFee:              "0.00",
-		FiatFeeCurrency:      "N/A",
+		FiatFee:              entity.GetFiatFee(),
+		FiatFeeCurrency:      entity.GetFiatFeeCurrency(),
 		Total:                entity.GetTotal(),
 		TotalCurrency:        entity.GetTotalCurrency(),
-		FiatTotal:            "0.00",
-		FiatTotalCurrency:    "N/A"}
+		FiatTotal:            entity.GetFiatTotal(),
+		FiatTotalCurrency:    entity.GetFiatTotalCurrency()}
 }
 
 func (mapper *DefaultTransactionMapper) MapTransactionDtoToEntity(dto common.Transaction) entity.TransactionEntity {
-	id := mapper.ctx.GetUser().GetId()
+	id, _ := strconv.ParseUint(dto.GetId(), 10, 64)
+	userId := mapper.ctx.GetUser().GetId()
 	return &entity.Transaction{
-		Id:               id,
-		UserId:           id,
-		Date:             dto.GetDate(),
-		Network:          dto.GetNetwork(),
-		Type:             dto.GetType(),
-		Currency:         dto.GetCurrencyPair().String(),
-		Quantity:         dto.GetQuantity(),
-		QuantityCurrency: dto.GetQuantityCurrency(),
-		Price:            dto.GetPrice(),
-		PriceCurrency:    dto.GetPriceCurrency(),
-		Fee:              dto.GetFee(),
-		FeeCurrency:      dto.GetFeeCurrency(),
-		Total:            dto.GetTotal(),
-		TotalCurrency:    dto.GetTotalCurrency()}
+		Id:                   uint(id),
+		UserId:               userId,
+		Date:                 dto.GetDate(),
+		Currency:             dto.GetCurrencyPair().String(),
+		Type:                 dto.GetType(),
+		Network:              dto.GetNetwork(),
+		NetworkDisplayName:   dto.GetNetworkDisplayName(),
+		Quantity:             dto.GetQuantity(),
+		QuantityCurrency:     dto.GetQuantityCurrency(),
+		FiatQuantity:         dto.GetFiatQuantity(),
+		FiatQuantityCurrency: dto.GetFiatQuantityCurrency(),
+		Price:                dto.GetPrice(),
+		PriceCurrency:        dto.GetPriceCurrency(),
+		FiatPrice:            dto.GetFiatPrice(),
+		FiatPriceCurrency:    dto.GetFiatPriceCurrency(),
+		Fee:                  dto.GetFee(),
+		FeeCurrency:          dto.GetFeeCurrency(),
+		FiatFee:              dto.GetFiatFee(),
+		FiatFeeCurrency:      dto.GetFiatFeeCurrency(),
+		Total:                dto.GetTotal(),
+		TotalCurrency:        dto.GetTotalCurrency(),
+		FiatTotal:            dto.GetFiatTotal(),
+		FiatTotalCurrency:    dto.GetFiatTotalCurrency()}
 }
 
 func (mapper *DefaultTransactionMapper) MapTransactionDtoToViewModel(dto common.Transaction) viewmodel.Transaction {

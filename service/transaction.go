@@ -5,6 +5,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 )
 
@@ -33,9 +34,34 @@ func (service *TransactionServiceImpl) GetMapper() mapper.TransactionMapper {
 	return service.mapper
 }
 
-func (service *TransactionServiceImpl) GetTransactions() ([]common.Transaction, error) {
-	service.ctx.GetLogger().Debugf("[TransactionService.GetTransactions] Retrieving transaction history for: %s",
-		service.ctx.GetUser().GetUsername())
+func (service *TransactionServiceImpl) isUnique(needle common.Transaction, haystack *[]common.Transaction,
+	persisted *[]entity.Transaction) (bool, error) {
+	for _, persistedTx := range *persisted {
+		for _, tx := range *haystack {
+
+			service.ctx.GetLogger().Debugf("Comparing network %s to %s", tx.GetNetwork(), persistedTx.GetNetwork())
+			service.ctx.GetLogger().Debugf("Comparing date %s to %s", tx.GetDate(), persistedTx.GetDate())
+			service.ctx.GetLogger().Debugf("Comparing quantity %s to %s", tx.GetQuantity(), persistedTx.GetQuantity())
+			service.ctx.GetLogger().Debugf("Comparing total %s to %s", tx.GetTotal(), persistedTx.GetTotal())
+
+			if tx.GetNetwork() == persistedTx.GetNetwork() &&
+				tx.GetDate() == persistedTx.GetDate() &&
+				tx.GetQuantity() == persistedTx.GetQuantity() &&
+				tx.GetTotal() == persistedTx.GetTotal() {
+				return false, nil
+			}
+		}
+	}
+	return true, nil
+}
+
+func (service *TransactionServiceImpl) Synchronize() ([]common.Transaction, error) {
+	service.ctx.GetLogger().Debugf("[TransactionService.Synchronize] Synchronizing transaction history for: %s", service.ctx.GetUser().GetUsername())
+	var synchronized []common.Transaction
+	persisted, err := service.dao.Find()
+	if err != nil {
+		return synchronized, err
+	}
 	transactions, err := service.ethereumService.GetTransactions()
 	if err != nil {
 		return nil, err
@@ -44,8 +70,42 @@ func (service *TransactionServiceImpl) GetTransactions() ([]common.Transaction, 
 	transactions = append(transactions, service.GetImportedTransactions()...)
 	transactions = append(transactions, service.GetDepositHistory()...)
 	transactions = append(transactions, service.GetWithdrawalHistory()...)
-	service.sort(&transactions)
-	return transactions, nil
+	service.Sort(&transactions)
+	for _, tx := range transactions {
+		if unique, err := service.isUnique(tx, &transactions, &persisted); err != nil {
+			return synchronized, err
+		} else {
+			if unique {
+				//tx2 := tx.(*dto.TransactionDTO)
+				//tx2.Id = "0"
+				err := service.dao.Create(service.mapper.MapTransactionDtoToEntity(tx))
+				if err != nil {
+					return nil, err
+				}
+				synchronized = append(synchronized, tx)
+			}
+		}
+	}
+	return synchronized, nil
+}
+
+func (service *TransactionServiceImpl) GetHistory() ([]common.Transaction, error) {
+	service.ctx.GetLogger().Debugf("[TransactionService.GetHistory] Retrieving transaction history for %s.",
+		service.ctx.GetUser().GetUsername())
+	entities, err := service.dao.Find()
+	if err != nil {
+		return nil, err
+	}
+	size := len(entities)
+	if size > 0 {
+		transactions := make([]common.Transaction, size)
+		for i, entity := range entities {
+			transactions[i] = service.mapper.MapTransactionEntityToDto(&entity)
+		}
+		service.Sort(&transactions)
+		return transactions, nil
+	}
+	return service.Synchronize()
 }
 
 func (service *TransactionServiceImpl) GetOrderHistory() []common.Transaction {
@@ -81,7 +141,6 @@ func (service *TransactionServiceImpl) GetOrderHistory() []common.Transaction {
 			txs = append(txs, history...)
 		}
 	}
-	service.sort(&txs)
 	return txs
 }
 
@@ -101,7 +160,6 @@ func (service *TransactionServiceImpl) GetDepositHistory() []common.Transaction 
 		}
 		txs = append(txs, deposits...)
 	}
-	service.sort(&txs)
 	return txs
 }
 
@@ -121,7 +179,6 @@ func (service *TransactionServiceImpl) GetWithdrawalHistory() []common.Transacti
 		}
 		txs = append(txs, withdrawals...)
 	}
-	service.sort(&txs)
 	return txs
 }
 
@@ -135,7 +192,6 @@ func (service *TransactionServiceImpl) GetImportedTransactions() []common.Transa
 			txs = append(txs, service.mapper.MapTransactionEntityToDto(&entity))
 		}
 	}
-	service.sort(&txs)
 	return txs
 }
 
@@ -156,45 +212,9 @@ func (service *TransactionServiceImpl) ImportCSV(file, exchangeName string) ([]c
 	return txDTOs, nil
 }
 
-func (service *TransactionServiceImpl) sort(txs *[]common.Transaction) {
-	service.ctx.GetLogger().Debug("[TransactionService.sort] Sorting transactions")
+func (service *TransactionServiceImpl) Sort(txs *[]common.Transaction) {
+	service.ctx.GetLogger().Debugf("[TransactionService.sort] Sorting %d transactions", len(*txs))
 	sort.Slice(*txs, func(i, j int) bool {
 		return (*txs)[i].GetDate().After((*txs)[j].GetDate())
 	})
 }
-
-/*
-func (service *TransactionServiceImpl) GetSourceTransaction(targetTx common.Transaction,
-	transactions *[]common.Transaction) (common.Transaction, error) {
-	var candidates []common.Transaction
-	for _, sourceTx := range *transactions {
-		if targetTx.GetNetwork() == sourceTx.GetNetwork() || sourceTx.GetType() != common.BUY_ORDER_TYPE {
-			continue
-		}
-		if sourceTx.GetCurrencyPair().Base != targetTx.GetCurrencyPair().Quote {
-			continue
-		}
-		if sourceTx.GetDate().After(targetTx.GetDate()) {
-			continue
-		}
-		if sourceTx.GetNetwork() == "GDAX" {
-			service.ctx.GetLogger().Debugf(
-				"[TransactionService].GetSourceTransaction] Comparing requested transaction %+v against historical transaction %s",
-				targetTx, sourceTx)
-		}
-		if sourceTx.GetDate().Before(targetTx.GetDate()) || sourceTx.GetDate().Equal(targetTx.GetDate()) {
-			if sourceTx.GetQuantity() == targetTx.GetTotal() && sourceTx.GetCurrencyPair().Base == targetTx.GetCurrencyPair().Quote {
-				candidates = append(candidates, targetTx)
-			}
-		}
-	}
-	if len(candidates) == 0 {
-		service.ctx.GetLogger().Errorf("[TransactionService].GetSourceTransaction] No source transaction found for: %+v", targetTx)
-		return nil, errors.New("Source transaction not found")
-	}
-	if len(candidates) > 1 { // TODO: Create configurable conflict resolution strategy
-		service.ctx.GetLogger().Warningf("[TransactionService].GetSourceTransaction] Found multiple source price candidates for transaction: %+v", targetTx)
-	}
-	service.ctx.GetLogger().Debugf("[TransactionService].GetSourceTransaction] Returning source transaction %+v", candidates[0])
-	return candidates[0], nil
-}*/

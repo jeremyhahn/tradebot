@@ -8,6 +8,7 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,8 +24,10 @@ func TestPortfolioService_Build(t *testing.T) {
 	exchangeservice := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
 	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeservice)
 	assert.Nil(t, err)
+
+	walletService := NewWalletService(ctx, pluginService)
 	userService := NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
-		ethereumService, pluginService)
+		ethereumService, exchangeservice, walletService)
 
 	service := NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 	currencyPair := &common.CurrencyPair{
@@ -36,7 +39,7 @@ func TestPortfolioService_Build(t *testing.T) {
 	assert.Equal(t, uint(1), portfolio.GetUser().GetId())
 	assert.Equal(t, true, len(portfolio.GetExchanges()) > 0)
 	assert.Equal(t, true, len(portfolio.GetWallets()) > 0)
-	assert.Equal(t, true, portfolio.GetNetWorth() > 0)
+	assert.Equal(t, true, portfolio.GetNetWorth().GreaterThan(decimal.NewFromFloat(0)))
 	CleanupIntegrationTest()
 }
 
@@ -53,8 +56,10 @@ func TestPortfolioService_Stream(t *testing.T) {
 	exchangeservice := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
 	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeservice)
 	assert.Nil(t, err)
+
+	walletService := NewWalletService(ctx, pluginService)
 	userService := NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
-		ethereumService, pluginService)
+		ethereumService, exchangeservice, walletService)
 
 	service := NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 	currencyPair := &common.CurrencyPair{
@@ -71,6 +76,6 @@ func TestPortfolioService_Stream(t *testing.T) {
 	assert.Equal(t, uint(1), portfolio.GetUser().GetId())
 	assert.Equal(t, true, len(portfolio.GetExchanges()) > 0)
 	assert.Equal(t, true, len(portfolio.GetWallets()) > 0)
-	assert.Equal(t, true, portfolio.GetNetWorth() > 0)
+	assert.Equal(t, true, portfolio.GetNetWorth().GreaterThan(decimal.NewFromFloat(0)))
 	CleanupIntegrationTest()
 }

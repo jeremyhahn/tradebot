@@ -26,7 +26,6 @@ func NewPortfolioHandler(logger *logging.Logger, hub *PortfolioHub, middlewareSe
 }
 
 func (ph *PortfolioHandler) OnConnect(w http.ResponseWriter, r *http.Request) {
-	var user dto.UserContextDTO
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -41,19 +40,22 @@ func (ph *PortfolioHandler) OnConnect(w http.ResponseWriter, r *http.Request) {
 		ph.logger.Error("[PortfolioHandler.onConnect] Unable to establish webservice connection")
 		return
 	}
+	var user dto.UserContextDTO
 	err = conn.ReadJSON(&user)
 	if err != nil {
 		ph.logger.Errorf("[PortfolioHandler.onConnect] webservice Read Error: %v", err)
 		conn.Close()
 		return
 	}
-	ph.logger.Debug("[PortfolioHandler.onConnect] Accepting connection from ", conn.RemoteAddr())
 
 	ctx := ph.middlewareService.GetContext(user.GetId())
 	if ctx == nil {
 		ctx.GetLogger().Errorf("[PortfolioHandler.stream] Error: Unable to retrieve context from JsonWebTokenService")
 		return
 	}
+
+	ph.logger.Debug("[PortfolioHandler.onConnect] Accepting connection from ", conn.RemoteAddr())
+
 	userDAO := dao.NewUserDAO(ctx)
 	pluginDAO := dao.NewPluginDAO(ctx)
 	userMapper := mapper.NewUserMapper()
@@ -67,8 +69,9 @@ func (ph *PortfolioHandler) OnConnect(w http.ResponseWriter, r *http.Request) {
 		ctx.GetLogger().Errorf("[PortfolioHandler.stream] Error: %s", err.Error())
 		return
 	}
+	walletService := service.NewWalletService(ctx, pluginService)
 	userService := service.NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
-		ethereumService, pluginService)
+		ethereumService, exchangeService, walletService)
 	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 	client := &PortfolioClient{
 		hub:              ph.hub,

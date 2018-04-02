@@ -83,8 +83,8 @@ func createIntegrationTestChart(ctx common.Context) entity.ChartEntity {
 			Exchange:  "Test",
 			Date:      time.Now(),
 			Type:      "buy",
-			Amount:    2,
-			Price:     10000,
+			Amount:    "2",
+			Price:     "10000",
 			ChartData: "test-trade-1"},
 		entity.Trade{
 			UserId:    ctx.GetUser().GetId(),
@@ -93,8 +93,8 @@ func createIntegrationTestChart(ctx common.Context) entity.ChartEntity {
 			Exchange:  "Test",
 			Date:      time.Now(),
 			Type:      "sell",
-			Amount:    2,
-			Price:     12000,
+			Amount:    "2",
+			Price:     "12000",
 			ChartData: "test-trade-2"}}
 
 	chart := &entity.Chart{

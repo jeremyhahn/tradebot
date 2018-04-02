@@ -10,7 +10,6 @@ import (
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
-	"github.com/jeremyhahn/tradebot/util"
 	"github.com/jeremyhahn/tradebot/viewmodel"
 )
 
@@ -41,7 +40,9 @@ func (restService *UserRestServiceImpl) createUserService(ctx common.Context) se
 	pluginService := service.NewPluginService(ctx, pluginDAO, pluginMapper)
 	exchangeService := service.NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
 	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeService)
-	return service.NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService, ethereumService, pluginService)
+	walletService := service.NewWalletService(ctx, pluginService)
+	return service.NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
+		ethereumService, exchangeService, walletService)
 }
 
 func (restService *UserRestServiceImpl) GetExchanges(w http.ResponseWriter, r *http.Request) {
@@ -71,9 +72,6 @@ func (restService *UserRestServiceImpl) CreateExchange(w http.ResponseWriter, r 
 	defer ctx.Close()
 	ctx.GetLogger().Debugf("[UserRestServiceImpl.CreateExchange]")
 	userService := restService.createUserService(ctx)
-
-	util.DUMP(ctx.GetUser())
-
 	userCryptoExchange, err := userService.CreateExchange(&dto.UserCryptoExchangeDTO{
 		UserID: ctx.GetUser().GetId(),
 		Name:   r.FormValue("name"),

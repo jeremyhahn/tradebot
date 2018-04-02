@@ -3,16 +3,17 @@ package main
 import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
+	"github.com/shopspring/decimal"
 )
 
 type OBVImpl struct {
 	name          string
 	displayName   string
-	lastVolume    float64
-	lastPrice     float64
-	volume        float64
-	liveVolume    float64
-	lastLivePrice float64
+	lastVolume    decimal.Decimal
+	lastPrice     decimal.Decimal
+	volume        decimal.Decimal
+	liveVolume    decimal.Decimal
+	lastLivePrice decimal.Decimal
 	indicators.OnBalanceVolume
 }
 
@@ -24,28 +25,30 @@ func CreateOnBalanceVolume(candlesticks []common.Candlestick, params []string) (
 	obv := &OBVImpl{
 		name:        "OnBalanceVolume",
 		displayName: "On Balance Volume (OBV)",
-		lastVolume:  0.0,
-		lastPrice:   0.0,
-		volume:      0.0}
+		lastVolume:  decimal.NewFromFloat(0),
+		lastPrice:   decimal.NewFromFloat(0),
+		volume:      decimal.NewFromFloat(0)}
 	for _, c := range candlesticks {
 		obv.OnPeriodChange(&c)
 	}
 	return obv, nil
 }
 
-func (obv *OBVImpl) GetValue() float64 {
+func (obv *OBVImpl) GetValue() decimal.Decimal {
 	return obv.volume
 }
 
-func (obv *OBVImpl) Calculate(price float64) float64 {
-	if obv.lastPrice == 0 && obv.lastVolume == 0 {
+func (obv *OBVImpl) Calculate(price decimal.Decimal) decimal.Decimal {
+	zero := decimal.NewFromFloat(0)
+	one := decimal.NewFromFloat(1)
+	if obv.lastPrice.Equals(zero) && obv.lastVolume.Equals(zero) {
 		obv.lastLivePrice = price
-		return 0.0
+		return zero
 	}
-	if price > obv.lastLivePrice {
-		obv.liveVolume += 1
-	} else if price < obv.lastLivePrice {
-		obv.liveVolume -= 1
+	if price.GreaterThan(obv.lastLivePrice) {
+		obv.liveVolume = obv.lastVolume.Add(one)
+	} else if price.LessThan(obv.lastLivePrice) {
+		obv.liveVolume = obv.liveVolume.Sub(one)
 	}
 	obv.lastLivePrice = price
 	return obv.liveVolume
@@ -53,14 +56,15 @@ func (obv *OBVImpl) Calculate(price float64) float64 {
 
 func (obv *OBVImpl) OnPeriodChange(candle *common.Candlestick) {
 	//fmt.Printf("[OBV] OnPeriodChange: %+v\n", candle)
-	if obv.lastPrice == 0 && obv.lastVolume == 0 {
+	one := decimal.NewFromFloat(1)
+	if obv.lastPrice.Equals(one) && obv.lastVolume.Equals(one) {
 		obv.lastPrice = candle.Close
 		return
 	}
-	if candle.Close > obv.lastPrice {
-		obv.volume += candle.Volume
-	} else if candle.Close < obv.lastPrice {
-		obv.volume -= candle.Volume
+	if candle.Close.LessThan(obv.lastPrice) {
+		obv.volume = obv.volume.Add(candle.Volume)
+	} else if candle.Close.LessThan(obv.lastPrice) {
+		obv.volume = obv.volume.Sub(candle.Volume)
 	}
 	obv.lastPrice = candle.Close
 	obv.liveVolume = obv.volume

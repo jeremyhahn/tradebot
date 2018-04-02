@@ -16,6 +16,7 @@ Decentralized cryptocurrency trading platform with portfolio, accounting / tax r
 
 
 ## Roadmap
+* Support LILO, dollar value, average cost, and specific identification tax reporting strategies
 * Decentralized trading protocol
 * Feature voting / bounties
 * Marketplace for custom trading strategies and indicators

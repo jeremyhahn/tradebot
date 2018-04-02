@@ -5,11 +5,14 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/jeremyhahn/tradebot/test"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTradeMapper(t *testing.T) {
-	mapper := NewTradeMapper()
+	ctx := test.NewUnitTestContext()
+	mapper := NewTradeMapper(ctx)
 	dto := &dto.TradeDTO{
 		Id:        1,
 		ChartId:   1,
@@ -19,8 +22,8 @@ func TestTradeMapper(t *testing.T) {
 		Exchange:  "Test",
 		Date:      time.Now(),
 		Type:      "buy",
-		Price:     10000.0,
-		Amount:    2.5,
+		Price:     decimal.NewFromFloat(10000.0),
+		Amount:    decimal.NewFromFloat(2.5),
 		ChartData: "{}"}
 
 	entity := mapper.MapTradeDtoToEntity(dto)
@@ -33,8 +36,8 @@ func TestTradeMapper(t *testing.T) {
 	assert.Equal(t, dto.GetExchange(), entity.GetExchangeName())
 	assert.Equal(t, dto.GetDate(), entity.GetDate())
 	assert.Equal(t, dto.GetType(), entity.GetType())
-	assert.Equal(t, dto.GetPrice(), entity.GetPrice())
-	assert.Equal(t, dto.GetAmount(), entity.GetAmount())
+	assert.Equal(t, dto.GetPrice().String(), entity.GetPrice())
+	assert.Equal(t, dto.GetAmount().String(), entity.GetAmount())
 	assert.Equal(t, dto.GetChartData(), entity.GetChartData())
 
 	mappedDTO := mapper.MapTradeEntityToDto(entity)
@@ -47,8 +50,8 @@ func TestTradeMapper(t *testing.T) {
 	assert.Equal(t, entity.GetExchangeName(), mappedDTO.GetExchange())
 	assert.Equal(t, entity.GetDate(), mappedDTO.GetDate())
 	assert.Equal(t, entity.GetType(), mappedDTO.GetType())
-	assert.Equal(t, entity.GetPrice(), mappedDTO.GetPrice())
-	assert.Equal(t, entity.GetAmount(), mappedDTO.GetAmount())
+	assert.Equal(t, entity.GetPrice(), mappedDTO.GetPrice().String())
+	assert.Equal(t, entity.GetAmount(), mappedDTO.GetAmount().String())
 	assert.Equal(t, entity.GetChartData(), mappedDTO.GetChartData())
 
 }

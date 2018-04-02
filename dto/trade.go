@@ -4,20 +4,21 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
 )
 
 type TradeDTO struct {
-	Id        uint      `json:"id"`
-	ChartId   uint      `json:"chart_id"`
-	UserId    uint      `json:"user_id"`
-	Base      string    `json:"base"`
-	Quote     string    `json:"quote"`
-	Exchange  string    `json:"exchange"`
-	Date      time.Time `json:"date"`
-	Type      string    `json:"type"`
-	Price     float64   `json:"price"`
-	Amount    float64   `json:"amount"`
-	ChartData string    `json:"chart_data"`
+	Id        uint            `json:"id"`
+	ChartId   uint            `json:"chart_id"`
+	UserId    uint            `json:"user_id"`
+	Base      string          `json:"base"`
+	Quote     string          `json:"quote"`
+	Exchange  string          `json:"exchange"`
+	Date      time.Time       `json:"date"`
+	Type      string          `json:"type"`
+	Price     decimal.Decimal `json:"price"`
+	Amount    decimal.Decimal `json:"amount"`
+	ChartData string          `json:"chart_data"`
 	common.Trade
 }
 
@@ -57,11 +58,11 @@ func (dto *TradeDTO) GetType() string {
 	return dto.Type
 }
 
-func (dto *TradeDTO) GetPrice() float64 {
+func (dto *TradeDTO) GetPrice() decimal.Decimal {
 	return dto.Price
 }
 
-func (dto *TradeDTO) GetAmount() float64 {
+func (dto *TradeDTO) GetAmount() decimal.Decimal {
 	return dto.Amount
 }
 

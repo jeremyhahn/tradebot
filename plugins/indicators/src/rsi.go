@@ -3,11 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
+	"github.com/shopspring/decimal"
 )
 
 type RelativeStrengthIndexParams struct {
@@ -21,12 +21,12 @@ type RelativeStrengthIndexImpl struct {
 	name        string
 	displayName string
 	sma         indicators.SimpleMovingAverage
-	oscillator  float64
-	u           float64
-	d           float64
-	avgU        float64
-	avgD        float64
-	lastPrice   float64
+	oscillator  decimal.Decimal
+	u           decimal.Decimal
+	d           decimal.Decimal
+	avgU        decimal.Decimal
+	avgD        decimal.Decimal
+	lastPrice   decimal.Decimal
 	indicators.RelativeStrengthIndex
 }
 
@@ -53,7 +53,7 @@ func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) 
 		return nil, err
 	}
 	sma := smaIndicator.(indicators.SimpleMovingAverage)
-	lastPrice := 0.0
+	var lastPrice decimal.Decimal
 	if candleLen > 0 {
 		lastPrice = candles[candleLen-1].Close
 	}
@@ -61,11 +61,11 @@ func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) 
 		name:        "RelativeStrengthIndex",
 		displayName: "Relative Strength Index (RSI)",
 		sma:         sma,
-		oscillator:  0,
-		u:           0.0,
-		d:           0.0,
-		avgU:        0.0,
-		avgD:        0.0,
+		oscillator:  decimal.NewFromFloat(0),
+		u:           decimal.NewFromFloat(0),
+		d:           decimal.NewFromFloat(0),
+		avgU:        decimal.NewFromFloat(0),
+		avgD:        decimal.NewFromFloat(0),
 		lastPrice:   lastPrice,
 		params: &RelativeStrengthIndexParams{
 			Period:     period,
@@ -79,32 +79,41 @@ func CreateRelativeStrengthIndex(candles []common.Candlestick, params []string) 
 	return rsi, nil
 }
 
-func (rsi *RelativeStrengthIndexImpl) Calculate(price float64) float64 {
-	var oscillator float64
+func (rsi *RelativeStrengthIndexImpl) Calculate(price decimal.Decimal) decimal.Decimal {
+	var oscillator decimal.Decimal
 	curU := rsi.u
 	curD := rsi.d
 	avgU := rsi.avgU
 	avgD := rsi.avgD
 	u, d := rsi.sma.GetGainsAndLosses()
-	difference := price - rsi.lastPrice
-	if difference < 0 {
-		d += math.Abs(difference)
-		curD = math.Abs(difference)
-		curU = 0
+	zero := decimal.NewFromFloat(0)
+	difference := price.Sub(rsi.lastPrice)
+	if difference.LessThan(zero) {
+		d = d.Add(difference.Abs())
+		curD = difference.Abs()
+		curU = decimal.NewFromFloat(0)
 	} else {
-		u += difference
+		u = u.Add(difference)
 		curU = difference
-		curD = 0
+		curD = decimal.NewFromFloat(0)
 	}
-	if avgU > 0 && avgD > 0 {
-		avgU = ((avgU*float64(rsi.params.Period-1) + curU) / float64(rsi.params.Period))
-		avgD = ((avgD*float64(rsi.params.Period-1) + curD) / float64(rsi.params.Period))
+	decPeriod := decimal.NewFromFloat(float64(rsi.params.Period))
+	one := decimal.NewFromFloat(1)
+	if avgU.GreaterThan(zero) && avgD.GreaterThan(zero) {
+		//avgU = ((avgU*float64(rsi.params.Period-1) + curU) / float64(rsi.params.Period))
+		//avgD = ((avgD*float64(rsi.params.Period-1) + curD) / float64(rsi.params.Period))
+		avgU = avgU.Mul(decPeriod.Sub(one).Add(curU)).Div(decPeriod)
+		avgD = avgD.Mul(decPeriod.Sub(one).Add(curD)).Div(decPeriod)
 	} else {
-		avgU = u / float64(rsi.params.Period)
-		avgD = d / float64(rsi.params.Period)
+		//avgU = u / float64(rsi.params.Period)
+		//avgD = d / float64(rsi.params.Period)
+		avgU = u.Div(decPeriod)
+		avgD = d.Div(decPeriod)
 	}
-	rs := avgU / avgD
-	oscillator = (100 - (100 / (1 + rs)))
+	rs := avgU.Div(avgD)
+	//oscillator = (100 - (100 / (1 + rs)))
+	hundred := decimal.NewFromFloat(100)
+	oscillator = hundred.Sub(hundred.Div(one.Add(rs)))
 	return oscillator
 }
 
@@ -112,26 +121,36 @@ func (rsi *RelativeStrengthIndexImpl) OnPeriodChange(candle *common.Candlestick)
 	//fmt.Println("[RSI] OnPeriodChange: %s", candle.ToString())
 	rsi.sma.Add(candle)
 	u, d := rsi.sma.GetGainsAndLosses()
-	difference := candle.Close - rsi.lastPrice
-	if difference < 0 {
-		d += math.Abs(difference)
-		rsi.d = math.Abs(difference)
-		rsi.u = 0
+	difference := candle.Close.Sub(rsi.lastPrice)
+	zero := decimal.NewFromFloat(0)
+	one := decimal.NewFromFloat(1)
+	if difference.LessThan(zero) {
+		d = d.Add(difference.Abs())
+		rsi.d = difference.Abs()
+		rsi.u = decimal.NewFromFloat(0)
 	} else {
-		u += difference
+		u = u.Add(difference)
 		rsi.u = difference
-		rsi.d = 0
+		rsi.d = decimal.NewFromFloat(0)
 	}
-	if rsi.avgU > 0 && rsi.avgD > 0 {
-		rsi.avgU = ((rsi.avgU*float64(rsi.params.Period-1) + rsi.u) / float64(rsi.params.Period))
-		rsi.avgD = ((rsi.avgD*float64(rsi.params.Period-1) + rsi.d) / float64(rsi.params.Period))
+	decPeriod := decimal.NewFromFloat(float64(rsi.params.Period))
+	if rsi.avgU.GreaterThan(zero) && rsi.avgD.GreaterThan(zero) {
+		//rsi.avgU = ((rsi.avgU*float64(rsi.params.Period-1) + rsi.u) / float64(rsi.params.Period))
+		//rsi.avgD = ((rsi.avgD*float64(rsi.params.Period-1) + rsi.d) / float64(rsi.params.Period))
+		rsi.avgU = rsi.avgU.Mul(decPeriod.Sub(one).Add(rsi.u)).Div(decPeriod)
+		rsi.avgD = rsi.avgD.Mul(decPeriod.Sub(one).Add(rsi.d)).Div(decPeriod)
 	} else {
-		rsi.avgU = u / float64(rsi.params.Period)
-		rsi.avgD = d / float64(rsi.params.Period)
+		//rsi.avgU = u / float64(rsi.params.Period)
+		//rsi.avgD = d / float64(rsi.params.Period)
+		rsi.avgU = u.Div(decPeriod)
+		rsi.avgD = d.Div(decPeriod)
 	}
-	rs := rsi.avgU / rsi.avgD
-	rsi.oscillator = (100 - (100 / (1 + rs)))
+	//rs := rsi.avgU / rsi.avgD
+	rs := rsi.avgU.Div(rsi.avgD)
 	rsi.lastPrice = candle.Close
+	//rsi.oscillator = (100 - (100 / (1 + rs)))
+	hundred := decimal.NewFromFloat(100)
+	rsi.oscillator = hundred.Sub(hundred.Div(one.Add(rs)))
 }
 
 func (rsi *RelativeStrengthIndexImpl) GetName() string {
@@ -153,14 +172,14 @@ func (rsi *RelativeStrengthIndexImpl) GetParameters() []string {
 		fmt.Sprintf("%f", rsi.params.OverSold)}
 }
 
-func (rsi *RelativeStrengthIndexImpl) GetValue() float64 {
+func (rsi *RelativeStrengthIndexImpl) GetValue() decimal.Decimal {
 	return rsi.oscillator
 }
 
-func (rsi *RelativeStrengthIndexImpl) IsOverSold(rsiValue float64) bool {
-	return rsiValue < rsi.params.OverSold
+func (rsi *RelativeStrengthIndexImpl) IsOverSold(rsiValue decimal.Decimal) bool {
+	return rsiValue.LessThan(decimal.NewFromFloat(rsi.params.OverSold))
 }
 
-func (rsi *RelativeStrengthIndexImpl) IsOverBought(rsiValue float64) bool {
-	return rsiValue > rsi.params.OverBought
+func (rsi *RelativeStrengthIndexImpl) IsOverBought(rsiValue decimal.Decimal) bool {
+	return rsiValue.GreaterThan(decimal.NewFromFloat(rsi.params.OverBought))
 }

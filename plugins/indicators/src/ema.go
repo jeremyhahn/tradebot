@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
+	"github.com/shopspring/decimal"
 )
 
 type ExponentialMovingAverageImpl struct {
@@ -14,12 +14,12 @@ type ExponentialMovingAverageImpl struct {
 	displayName  string
 	size         int
 	candlesticks []common.Candlestick
-	prices       []float64
+	prices       []decimal.Decimal
 	count        int
 	index        int
-	average      float64
-	last         float64
-	multiplier   float64
+	average      decimal.Decimal
+	last         decimal.Decimal
+	multiplier   decimal.Decimal
 	indicators.ExponentialMovingAverage
 }
 
@@ -34,49 +34,50 @@ func CreateExponentialMovingAverage(candles []common.Candlestick, params []strin
 		params = temp.GetDefaultParameters()
 	}
 	size, _ := strconv.ParseInt(params[0], 10, 64)
-	var prices []float64
-	var total float64
+	var prices []decimal.Decimal
+	var total decimal.Decimal
 	for _, c := range candles {
 		prices = append(prices, c.Close)
-		total = total + c.Close
+		total = total.Add(c.Close)
 	}
 	ema := &ExponentialMovingAverageImpl{
 		name:         "ExponentialMovingAverage",
 		displayName:  "Exponential Moving Average (EMA)",
-		prices:       make([]float64, size),
+		prices:       make([]decimal.Decimal, size),
 		size:         int(size),
 		candlesticks: candles,
 		index:        0,
 		count:        0,
-		average:      0.0,
-		last:         0.0,
-		multiplier:   1}
+		average:      decimal.NewFromFloat(0),
+		last:         decimal.NewFromFloat(0),
+		multiplier:   decimal.NewFromFloat(1)}
 	candleLen := len(candles)
-	if candleLen > 0 && candles[0].Close > 0 {
+	if candleLen > 0 && candles[0].Close.GreaterThan(decimal.NewFromFloat(0)) {
+		decSize := decimal.NewFromFloat(float64(size))
 		ema.prices = prices
 		ema.count = candleLen
 		ema.index = candleLen - 1
-		ema.average = total / float64(size)
-		ema.last = total / float64(size)
-		ema.multiplier = 2 / (float64(size) + 1)
+		ema.average = total.Div(decSize)
+		ema.last = total.Div(decSize)
+		ema.multiplier = decimal.NewFromFloat(2).Div(decSize).Add(decimal.NewFromFloat(1))
 	}
 	return ema, nil
 }
 
-func (ema *ExponentialMovingAverageImpl) Add(candle *common.Candlestick) float64 {
+func (ema *ExponentialMovingAverageImpl) Add(candle *common.Candlestick) decimal.Decimal {
 	if ema.count == ema.size {
 		ema.index = (ema.index + 1) % ema.size
 		ema.prices[ema.index] = candle.Close
-		step1 := candle.Close - ema.last
-		step2 := step1 * ema.multiplier
-		ema.average = step2 + ema.last
+		step1 := candle.Close.Sub(ema.last)
+		step2 := step1.Mul(ema.multiplier)
+		ema.average = step2.Add(ema.last)
 		ema.last = ema.average
 	} else if ema.count != 0 && ema.count < ema.size {
 		ema.index = (ema.index + 1) % ema.size
 		ema.prices[ema.index] = candle.Close
-		step1 := candle.Close - ema.last
-		step2 := step1 * ema.multiplier
-		ema.average = step2 + ema.last
+		step1 := candle.Close.Sub(ema.last)
+		step2 := step1.Mul(ema.multiplier)
+		ema.average = step2.Add(ema.last)
 		ema.last = ema.average
 		ema.count++
 	} else {
@@ -92,11 +93,11 @@ func (ema *ExponentialMovingAverageImpl) GetCandlesticks() []common.Candlestick 
 	return ema.candlesticks
 }
 
-func (ema *ExponentialMovingAverageImpl) GetPrices() []float64 {
+func (ema *ExponentialMovingAverageImpl) GetPrices() []decimal.Decimal {
 	return ema.prices
 }
 
-func (ema *ExponentialMovingAverageImpl) GetAverage() float64 {
+func (ema *ExponentialMovingAverageImpl) GetAverage() decimal.Decimal {
 	return ema.average
 }
 
@@ -111,30 +112,30 @@ func (ema *ExponentialMovingAverageImpl) GetIndex() int {
 	return ema.index
 }
 
-func (ema *ExponentialMovingAverageImpl) Sum() float64 {
-	var i float64
+func (ema *ExponentialMovingAverageImpl) Sum() decimal.Decimal {
+	var i decimal.Decimal
 	for _, price := range ema.prices {
-		i += price
+		i = i.Add(price)
 	}
 	return i
 }
 
-func (ema *ExponentialMovingAverageImpl) GetMultiplier() float64 {
+func (ema *ExponentialMovingAverageImpl) GetMultiplier() decimal.Decimal {
 	return ema.multiplier
 }
 
-func (ema *ExponentialMovingAverageImpl) GetGainsAndLosses() (float64, float64) {
-	var u, d float64
+func (ema *ExponentialMovingAverageImpl) GetGainsAndLosses() (decimal.Decimal, decimal.Decimal) {
+	var u, d decimal.Decimal
 	if len(ema.candlesticks) <= 0 {
-		return 0.0, 0.0
+		return decimal.NewFromFloat(0), decimal.NewFromFloat(0)
 	}
 	var lastClose = ema.candlesticks[0].Close
 	for _, c := range ema.candlesticks {
-		difference := (c.Close - lastClose)
-		if difference < 0 {
-			d += math.Abs(difference)
+		difference := (c.Close.Sub(lastClose))
+		if difference.LessThan(decimal.NewFromFloat(0)) {
+			d = d.Add(difference.Abs())
 		} else {
-			u += difference
+			u = u.Add(difference)
 		}
 		lastClose = c.Close
 	}

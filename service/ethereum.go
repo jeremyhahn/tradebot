@@ -15,7 +15,7 @@ type EthereumServiceImpl struct {
 }
 
 func NewEthereumService(ctx common.Context, userDAO dao.UserDAO, userMapper mapper.UserMapper,
-	marketcapService MarketCapService, exchangeService ExchangeService) (EthereumService, error) {
+	marketcapService common.MarketCapService, exchangeService ExchangeService) (EthereumService, error) {
 
 	var service *EthereumServiceImpl
 	if ctx.GetEthereumMode() == "native" {
@@ -28,13 +28,13 @@ func NewEthereumService(ctx common.Context, userDAO dao.UserDAO, userMapper mapp
 			userDAO:         userDAO,
 			userMapper:      userMapper,
 			ethereumService: gethService.(EthereumService)}
-		//} else if ctx.GetEthereumMode() == "etherscan" {
 	} else {
 		fiatPriceService, err := NewFiatPriceService(ctx, exchangeService)
 		if err != nil {
 			return nil, err
 		}
-		etherscanService, err := NewEtherscanService(ctx, userDAO, userMapper, marketcapService, fiatPriceService)
+		localAuthService := NewLocalAuthService(ctx, userDAO, userMapper)
+		etherscanService, err := NewEthereumWebClient(ctx, userDAO, localAuthService, marketcapService, fiatPriceService)
 		if err != nil {
 			return nil, err
 		}

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -88,20 +87,19 @@ func (geth *GethServiceImpl) GetWallet(address string) (common.UserCryptoWallet,
 	if err != nil {
 		return nil, err
 	}
-	fBalance, _ := new(big.Float).SetInt(balance).Float64()
 	return &dto.UserCryptoWalletDTO{
 		Address:  address,
-		Balance:  fBalance,
+		Balance:  decimal.NewFromBigInt(balance, 64),
 		Currency: "ETH",
-		Value:    0}, nil
+		Value:    decimal.NewFromFloat(0)}, nil
 }
 
-func (geth *GethServiceImpl) Authenticate(address, passphrase string) error {
-	acct := accounts.Account{Address: ethcommon.HexToAddress(address)}
-	return geth.keystore.Unlock(acct, passphrase)
+func (geth *GethServiceImpl) GetTransactions() ([]common.Transaction, error) {
+	var transactions []common.Transaction
+	return transactions, nil
 }
 
-func (geth *GethServiceImpl) GetTransactions(contractAddress string) ([]common.Transaction, error) {
+func (geth *GethServiceImpl) GetTransactionsFor(address string) ([]common.Transaction, error) {
 	var transactions []common.Transaction
 	return transactions, nil
 }
@@ -158,15 +156,10 @@ func (geth *GethServiceImpl) GetToken(walletAddress string, contractAddress stri
 	}
 	tokenMul := decimal.NewFromFloat(float64(0.1)).Pow(decimal.NewFromFloat(float64(tokenDecimals)))
 	tokenCorrected := tokenBalance.Mul(tokenMul)
-	fBalance, exact := tokenCorrected.Float64()
-	if !exact {
-		geth.ctx.GetLogger().Warningf("[GethService.GetToken] Error: tokenBalance float conversion not exact")
-	}
-
 	return &dto.EthereumTokenDTO{
 		Name:            name,
 		Symbol:          symbol,
-		Balance:         fBalance,
+		Balance:         tokenCorrected,
 		Decimals:        tokenDecimals,
 		EthBalance:      ethCorrected.String(),
 		ContractAddress: contractAddress,
@@ -176,6 +169,11 @@ func (geth *GethServiceImpl) GetToken(walletAddress string, contractAddress stri
 func (geth *GethServiceImpl) GetTokenTransactions(contractAddress string) ([]common.Transaction, error) {
 	var transactions []common.Transaction
 	return transactions, nil
+}
+
+func (geth *GethServiceImpl) Authenticate(address, passphrase string) error {
+	acct := accounts.Account{Address: ethcommon.HexToAddress(address)}
+	return geth.keystore.Unlock(acct, passphrase)
 }
 
 func (geth *GethServiceImpl) Login(username, password string) (common.UserContext, error) {

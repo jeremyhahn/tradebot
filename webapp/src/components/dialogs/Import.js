@@ -109,7 +109,7 @@ class ImportDialog extends React.Component {
             </DialogContent>
             <DialogActions>
               <Button onClick={this.props.onClose} color="primary">Cancel</Button>
-              <Button type="submit" label="submit" color="primary">Upload</Button>
+              <Button type="submit" label="submit" color="primary" onClick={this.props.onClose}>Upload</Button>
             </DialogActions>
           </form>
         </Dialog>

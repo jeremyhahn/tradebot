@@ -4,12 +4,12 @@ type Profit struct {
 	Id       uint `gorm:"primary_key"`
 	UserId   uint `gorm:"unique_index:idx_profit"`
 	TradeId  uint `gorm:"foreign_key;unique_index:idx_profit"`
-	Quantity float64
-	Bought   float64
-	Sold     float64
-	Fee      float64
-	Tax      float64
-	Total    float64
+	Quantity string
+	Bought   string
+	Sold     string
+	Fee      string
+	Tax      string
+	Total    string
 	ProfitEntity
 }
 
@@ -25,26 +25,26 @@ func (entity *Profit) GetTradeId() uint {
 	return entity.TradeId
 }
 
-func (entity *Profit) GetQuantity() float64 {
+func (entity *Profit) GetQuantity() string {
 	return entity.Quantity
 }
 
-func (entity *Profit) GetBought() float64 {
+func (entity *Profit) GetBought() string {
 	return entity.Bought
 }
 
-func (entity *Profit) GetSold() float64 {
+func (entity *Profit) GetSold() string {
 	return entity.Sold
 }
 
-func (entity *Profit) GetFee() float64 {
+func (entity *Profit) GetFee() string {
 	return entity.Fee
 }
 
-func (entity *Profit) GetTax() float64 {
+func (entity *Profit) GetTax() string {
 	return entity.Tax
 }
 
-func (entity *Profit) GetTotal() float64 {
+func (entity *Profit) GetTotal() string {
 	return entity.Total
 }

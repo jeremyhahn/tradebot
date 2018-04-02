@@ -3,20 +3,29 @@ package entity
 import "time"
 
 type Transaction struct {
-	Id               uint      `gorm:"primary_key"`
-	UserId           uint      `gorm:"unique_index:idx_txhistory"`
-	Date             time.Time `gorm:"unique_index:idx_txhistory"`
-	Network          string    `gorm:"unique_index:idx_txhistory"`
-	Type             string
-	Currency         string `gorm:"unique_index:idx_txhistory"`
-	Quantity         string `gorm:"type:varchar(64)"`
-	QuantityCurrency string `gorm:"type:varchar(6)"`
-	Price            string `gorm:"type:varchar(64)"`
-	PriceCurrency    string `gorm:"type:varchar(6)"`
-	Fee              string `gorm:"type:varchar(64)"`
-	FeeCurrency      string `gorm:"type:varchar(6)"`
-	Total            string `gorm:"type:varchar(64);unique_index:idx_txhistory"`
-	TotalCurrency    string `gorm:"type:varchar(6)"`
+	Id                   uint `gorm:"primary_key;AUTO_INCREMENT"`
+	UserId               uint
+	Date                 time.Time
+	Currency             string `gorm:"type:varchar(10)"`
+	Type                 string `gorm:"type:varchar(64)"`
+	Network              string `gorm:"type:varchar(200)"`
+	NetworkDisplayName   string `gorm:"type:varchar(200)"`
+	Quantity             string `gorm:"type:varchar(64)"`
+	QuantityCurrency     string `gorm:"type:varchar(6)"`
+	FiatQuantity         string `gorm:"type:varchar(64)"`
+	FiatQuantityCurrency string `gorm:"type:varchar(6)"`
+	Price                string `gorm:"type:varchar(64)"`
+	PriceCurrency        string `gorm:"type:varchar(6)"`
+	FiatPrice            string `gorm:"type:varchar(64)"`
+	FiatPriceCurrency    string `gorm:"type:varchar(6)"`
+	Fee                  string `gorm:"type:varchar(64)"`
+	FeeCurrency          string `gorm:"type:varchar(6)"`
+	FiatFee              string `gorm:"type:varchar(64)"`
+	FiatFeeCurrency      string `gorm:"type:varchar(6)"`
+	Total                string `gorm:"type:varchar(64)"`
+	TotalCurrency        string `gorm:"type:varchar(6)"`
+	FiatTotal            string `gorm:"type:varchar(64)"`
+	FiatTotalCurrency    string `gorm:"type:varchar(6)"`
 	TransactionEntity
 }
 
@@ -32,20 +41,36 @@ func (tx *Transaction) GetDate() time.Time {
 	return tx.Date
 }
 
-func (tx *Transaction) GetNetwork() string {
-	return tx.Network
+func (tx *Transaction) GetCurrency() string {
+	return tx.Currency
 }
 
 func (tx *Transaction) GetType() string {
 	return tx.Type
 }
 
-func (tx *Transaction) GetCurrency() string {
-	return tx.Currency
+func (tx *Transaction) GetNetwork() string {
+	return tx.Network
+}
+
+func (tx *Transaction) GetNetworkDisplayName() string {
+	return tx.NetworkDisplayName
 }
 
 func (tx *Transaction) GetQuantity() string {
 	return tx.Quantity
+}
+
+func (tx *Transaction) GetQuantityCurrency() string {
+	return tx.QuantityCurrency
+}
+
+func (tx *Transaction) GetFiatQuantity() string {
+	return tx.FiatQuantity
+}
+
+func (tx *Transaction) GetFiatQuantityCurrency() string {
+	return tx.FiatQuantityCurrency
 }
 
 func (tx *Transaction) GetPrice() string {
@@ -56,12 +81,28 @@ func (tx *Transaction) GetPriceCurrency() string {
 	return tx.PriceCurrency
 }
 
+func (tx *Transaction) GetFiatPrice() string {
+	return tx.FiatPrice
+}
+
+func (tx *Transaction) GetFiatPriceCurrency() string {
+	return tx.FiatPriceCurrency
+}
+
 func (tx *Transaction) GetFee() string {
 	return tx.Fee
 }
 
 func (tx *Transaction) GetFeeCurrency() string {
 	return tx.FeeCurrency
+}
+
+func (tx *Transaction) GetFiatFee() string {
+	return tx.FiatFee
+}
+
+func (tx *Transaction) GetFiatFeeCurrency() string {
+	return tx.FiatFeeCurrency
 }
 
 func (tx *Transaction) GetTotal() string {
@@ -72,6 +113,10 @@ func (tx *Transaction) GetTotalCurrency() string {
 	return tx.TotalCurrency
 }
 
-func (tx *Transaction) GetQuantityCurrency() string {
-	return tx.QuantityCurrency
+func (tx *Transaction) GetFiatTotal() string {
+	return tx.FiatTotal
+}
+
+func (tx *Transaction) GetFiatTotalCurrency() string {
+	return tx.FiatTotalCurrency
 }

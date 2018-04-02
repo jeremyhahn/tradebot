@@ -9,6 +9,7 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,17 +28,14 @@ func TestUserService_CreateUser(t *testing.T) {
 
 func TestUserService_CreateGetWallet(t *testing.T) {
 	userService := createUserService()
-	wallet := &dto.UserCryptoWalletDTO{
-		Address:  os.Getenv("ETH_ADDRESS"),
-		Currency: "ETH"}
-	err := userService.CreateWallet(wallet)
+	ethWallet, err := userService.GetWallet("BTC")
 	assert.Nil(t, err)
-	ethWallet := userService.GetWallet("ETH")
 	assert.NotNil(t, ethWallet)
-	assert.Equal(t, wallet.GetAddress(), ethWallet.GetAddress())
-	assert.Equal(t, wallet.GetCurrency(), ethWallet.GetCurrency())
-	assert.Equal(t, true, ethWallet.GetBalance() > 0)
-	assert.Equal(t, true, ethWallet.GetValue() > 0)
+	assert.Equal(t, os.Getenv("BTC_ADDRESS"), ethWallet.GetAddress())
+	assert.Equal(t, "BTC", ethWallet.GetCurrency())
+	zero := decimal.NewFromFloat(0)
+	assert.Equal(t, true, ethWallet.GetBalance().GreaterThan(zero))
+	assert.Equal(t, true, ethWallet.GetValue().GreaterThan(zero))
 	CleanupIntegrationTest()
 }
 
@@ -52,10 +50,10 @@ func TestUserService_GetWallets(t *testing.T) {
 func TestUserService_GetExchanges(t *testing.T) {
 	userService := createUserService()
 	exchanges := userService.GetConfiguredExchanges()
-	assert.Equal(t, "Coinbase", exchanges[0].GetName())
-	assert.Equal(t, "GDAX", exchanges[1].GetName())
-	assert.Equal(t, "Bittrex", exchanges[2].GetName())
-	assert.Equal(t, "Binance", exchanges[3].GetName())
+	assert.Equal(t, "Binance", exchanges[0].GetName())
+	assert.Equal(t, "Bittrex", exchanges[1].GetName())
+	assert.Equal(t, "Coinbase", exchanges[2].GetName())
+	assert.Equal(t, "GDAX", exchanges[3].GetName())
 	CleanupIntegrationTest()
 }
 
@@ -70,14 +68,14 @@ func TestUserService_GetTokens(t *testing.T) {
 	err := userService.CreateToken(token)
 	assert.Nil(t, err)
 
-	tokens, err := userService.GetTokens(os.Getenv("ETH_ADDRESS"))
+	tokens, err := userService.GetTokensFor(os.Getenv("ETH_ADDRESS"))
 
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(tokens))
 
 	assert.Equal(t, token.GetContractAddress(), tokens[0].GetContractAddress())
 	assert.Equal(t, token.GetWalletAddress(), tokens[0].GetWalletAddress())
-	assert.Equal(t, true, tokens[0].GetBalance() > 0)
+	assert.Equal(t, true, tokens[0].GetBalance().GreaterThan(decimal.NewFromFloat(0)))
 
 	CleanupIntegrationTest()
 }
@@ -93,6 +91,7 @@ func createUserService() UserService {
 	pluginService := CreatePluginService(ctx, "../plugins/", pluginDAO, pluginMapper)
 	exchangeService := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
 	ethereumService, _ := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeService)
+	walletService := NewWalletService(ctx, pluginService)
 	return NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
-		ethereumService, pluginService)
+		ethereumService, exchangeService, walletService)
 }

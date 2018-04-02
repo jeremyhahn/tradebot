@@ -15,11 +15,12 @@ import (
 	"github.com/jeremyhahn/tradebot/mapper"
 )
 
+var PLUGINS = make(map[string]*plugin.Plugin)
 var PLUGINTYPE = map[string]string{
 	common.INDICATOR_PLUGIN_TYPE: "indicators",
 	common.STRATEGY_PLUGIN_TYPE:  "strategies",
-	common.EXCHANGE_PLUGIN_TYPE:  "exchanges"}
-var PLUGINS = make(map[string]*plugin.Plugin)
+	common.EXCHANGE_PLUGIN_TYPE:  "exchanges",
+	common.WALLET_PLUGIN_TYPE:    "wallets"}
 
 type PluginService interface {
 	GetMapper() mapper.PluginMapper
@@ -29,6 +30,7 @@ type PluginService interface {
 	CreateIndicator(indicatorName string) (func(candles []common.Candlestick, params []string) (common.FinancialIndicator, error), error)
 	CreateStrategy(strategyName string) (func(params *common.TradingStrategyParams) (common.TradingStrategy, error), error)
 	CreateExchange(exchangeName string) (func(ctx common.Context, userExchangeEntity entity.UserExchangeEntity) common.Exchange, error)
+	CreateWallet(currency string) (func(params *common.WalletParams) common.Wallet, error)
 }
 
 type DefaultPluginService struct {
@@ -169,6 +171,36 @@ func (service *DefaultPluginService) CreateExchange(exchangeName string) (func(c
 		errmsg := fmt.Sprintf("Invalid plugin, expected factory method: (%s) %s(params *common.TradingStrategyParams) (common.TradingStrategy, error))",
 			filename, symbol)
 		service.ctx.GetLogger().Errorf("[PluginService.CreateExchange] %s", errmsg)
+		return nil, errors.New(errmsg)
+	}
+	return impl, nil
+}
+
+func (service *DefaultPluginService) CreateWallet(currency string) (func(params *common.WalletParams) common.Wallet, error) {
+	walletEntity, err := service.dao.Get(currency, common.WALLET_PLUGIN_TYPE)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[PluginService.CreateWallet] Error loading wallet from database: %s", err.Error())
+		return nil, err
+	}
+	filename := walletEntity.GetFilename()
+	lib, err := service.openPlugin(PLUGINTYPE[common.WALLET_PLUGIN_TYPE], filename)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[PluginService.CreateWallet] Error loading %s. %s", filename, err.Error())
+		return nil, err
+	}
+	walletName := strings.Title(strings.ToLower(currency))
+	symbol := fmt.Sprintf("Create%sWallet", walletName)
+	service.ctx.GetLogger().Debugf("[PluginService.CreateWallet] Looking up wallet symbol %s", symbol)
+	wallet, err := lib.Lookup(symbol)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[PluginService.CreateWallet] Error looking up wallet symbol: %s", err.Error())
+		return nil, err
+	}
+	impl, ok := wallet.(func(params *common.WalletParams) common.Wallet)
+	if !ok {
+		errmsg := fmt.Sprintf("Invalid plugin, expected factory method: (%s) %s(params *common.WalletParams) common.Wallet)",
+			filename, symbol)
+		service.ctx.GetLogger().Errorf("[PluginService.CreateWallet] %s", errmsg)
 		return nil, errors.New(errmsg)
 	}
 	return impl, nil

@@ -26,3 +26,8 @@ func NewCurrencyPair(currencyPair, localCurrency string) (*CurrencyPair, error) 
 func (cp *CurrencyPair) String() string {
 	return fmt.Sprintf("%s-%s", cp.Base, cp.Quote)
 }
+
+func (cp *CurrencyPair) Equals(currencyPair *CurrencyPair) bool {
+	return cp.Base == currencyPair.Base &&
+		cp.Quote == currencyPair.Quote
+}

@@ -1,14 +1,17 @@
 package dto
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
+)
 
 type PortfolioDTO struct {
-	User      common.UserContext             `json:"user"`
-	NetWorth  float64                        `json:"net_worth"`
-	Exchanges []common.CryptoExchangeSummary `json:"exchanges"`
-	Wallets   []common.UserCryptoWallet      `json:"wallets"`
-	Tokens    []common.EthereumToken         `json:"tokens"`
-	common.Portfolio
+	User             common.UserContext             `json:"user"`
+	NetWorth         decimal.Decimal                `json:"net_worth"`
+	Exchanges        []common.CryptoExchangeSummary `json:"exchanges"`
+	Wallets          []common.UserCryptoWallet      `json:"wallets"`
+	Tokens           []common.EthereumToken         `json:"tokens"`
+	common.Portfolio `json:"-"`
 }
 
 func NewPortfolioDTO() *PortfolioDTO {
@@ -19,7 +22,7 @@ func (dto *PortfolioDTO) GetUser() common.UserContext {
 	return dto.User
 }
 
-func (dto *PortfolioDTO) GetNetWorth() float64 {
+func (dto *PortfolioDTO) GetNetWorth() decimal.Decimal {
 	return dto.NetWorth
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/viewmodel"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -63,8 +64,8 @@ func TestChartDAO(t *testing.T) {
 	assert.Equal(t, "BTC", trades[0].GetBase())
 	assert.Equal(t, "USD", trades[0].GetQuote())
 	assert.Equal(t, "gdax", trades[0].GetExchangeName())
-	assert.Equal(t, 1.0, trades[0].GetAmount())
-	assert.Equal(t, 10000.0, trades[0].GetPrice())
+	assert.Equal(t, "1", trades[0].GetAmount())
+	assert.Equal(t, "10000", trades[0].GetPrice())
 	assert.Equal(t, uint(1), trades[0].GetUserId())
 
 	indicators := charts[0].GetIndicators()
@@ -132,8 +133,8 @@ func TestChartDAO_GetTrades(t *testing.T) {
 	assert.Equal(t, "BTC", trades[0].Base)
 	assert.Equal(t, "USD", trades[0].Quote)
 	assert.Equal(t, "gdax", trades[0].Exchange)
-	assert.Equal(t, 1.0, trades[0].Amount)
-	assert.Equal(t, 10000.0, trades[0].Price)
+	assert.Equal(t, "1", trades[0].Amount)
+	assert.Equal(t, decimal.NewFromFloat(10000.0).String(), trades[0].Price)
 	assert.Equal(t, uint(1), trades[0].UserId)
 
 	lastTrade, err := chartDAO.GetLastTrade(chart)
@@ -142,8 +143,8 @@ func TestChartDAO_GetTrades(t *testing.T) {
 	assert.Equal(t, "BTC", lastTrade.GetBase())
 	assert.Equal(t, "USD", lastTrade.GetQuote())
 	assert.Equal(t, "gdax", lastTrade.GetExchangeName())
-	assert.Equal(t, 1.0, lastTrade.GetAmount())
-	assert.Equal(t, 12000.0, lastTrade.GetPrice())
+	assert.Equal(t, "1", lastTrade.GetAmount())
+	assert.Equal(t, "12000", lastTrade.GetPrice())
 
 	CleanupIntegrationTest()
 }
@@ -238,8 +239,8 @@ func createChartTrades() []entity.Trade {
 		Base:     "BTC",
 		Quote:    "USD",
 		Exchange: "gdax",
-		Amount:   1,
-		Price:    10000,
+		Amount:   "1",
+		Price:    "10000",
 		UserId:   1})
 	trades = append(trades, entity.Trade{
 		Date:     time.Now().AddDate(0, 0, -10),
@@ -247,8 +248,8 @@ func createChartTrades() []entity.Trade {
 		Base:     "BTC",
 		Quote:    "USD",
 		Exchange: "gdax",
-		Amount:   1,
-		Price:    12000,
+		Amount:   "1",
+		Price:    "12000",
 		UserId:   1})
 	return trades
 }
@@ -286,8 +287,8 @@ func (mcs *MockExchange_Chart) SubscribeToLiveFeed(currencyPair *common.Currency
 			Quote:         "USD",
 			LocalCurrency: "USD"},
 		Exchange: "gdax",
-		Price:    12345.0,
-		Satoshis: 0.12345678}
+		Price:    decimal.NewFromFloat(12345.0),
+		Satoshis: decimal.NewFromFloat(0.12345678)}
 }
 
 func (mes *MockExchangeService_Chart) CreateExchange(exchangeName string) (common.Exchange, error) {

@@ -22,12 +22,12 @@ func TestProfitDAO(t *testing.T) {
 	profit := &entity.Profit{
 		UserId:   ctx.GetUser().GetId(),
 		TradeId:  trades[0].GetId(),
-		Quantity: 1,
+		Quantity: "1",
 		Bought:   trades[0].GetPrice(),
 		Sold:     trades[1].GetPrice(),
-		Fee:      2.75,
-		Tax:      5.50,
-		Total:    10008.25}
+		Fee:      "2.75",
+		Tax:      "5.50",
+		Total:    "10008.25"}
 
 	err := profitDAO.Create(profit)
 	assert.Equal(t, nil, err)

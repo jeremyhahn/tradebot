@@ -80,7 +80,7 @@ func TestUserDAO_CreateGetDeleteUserExchange(t *testing.T) {
 	mapper := mapper.NewUserMapper()
 
 	userExchange := &entity.UserCryptoExchange{
-		UserId: ctx.GetUser().GetId(),
+		UserID: ctx.GetUser().GetId(),
 		Name:   "Test Exchange",
 		Key:    "ABC123",
 		Secret: "$ecret!",
@@ -92,7 +92,7 @@ func TestUserDAO_CreateGetDeleteUserExchange(t *testing.T) {
 	userContext := mapper.MapUserDtoToEntity(ctx.GetUser())
 	persisted, exErr := userDAO.GetExchange(userContext, "Test Exchange")
 	assert.Equal(t, nil, exErr)
-	assert.Equal(t, userExchange.UserId, persisted.GetUserId())
+	assert.Equal(t, userExchange.UserID, persisted.GetUserID())
 	assert.Equal(t, userExchange.Name, persisted.GetName())
 	assert.Equal(t, userExchange.Key, persisted.GetKey())
 	assert.Equal(t, userExchange.Secret, persisted.GetSecret())

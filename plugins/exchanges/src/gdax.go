@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,7 +26,7 @@ type GDAX struct {
 	logger      *logging.Logger
 	name        string
 	displayName string
-	tradingFee  float64
+	tradingFee  decimal.Decimal
 	rateLimiter *common.RateLimiter
 	cache       *cache.Cache
 	common.Exchange
@@ -44,26 +43,24 @@ func CreateGDAX(ctx common.Context, _gdax entity.UserExchangeEntity) common.Exch
 		logger:      ctx.GetLogger(),
 		name:        "GDAX",
 		displayName: "GDAX",
-		tradingFee:  0.025,
+		tradingFee:  decimal.NewFromFloat(0.025),
 		cache:       cache.New(1*time.Minute, 1*time.Minute)}
 }
 
-func (_gdax *GDAX) GetPriceAt(currency string, targetDay time.Time) (*common.Candlestick, error) {
+func (_gdax *GDAX) GetPriceAt(currency string, atDate time.Time) (*common.Candlestick, error) {
 	currencyPair := &common.CurrencyPair{
 		Base:          currency,
 		Quote:         _gdax.ctx.GetUser().GetLocalCurrency(),
 		LocalCurrency: _gdax.ctx.GetUser().GetLocalCurrency()}
-	startDate := targetDay.Add(-1 * time.Minute)
-	endDate := targetDay.Add(5 * time.Minute)
-	candles, err := _gdax.GetPriceHistory(currencyPair, startDate, endDate, 60)
+	kline, err := _gdax.GetPriceHistory(currencyPair, atDate.Add(-5*time.Minute), atDate.Add(5*time.Minute), 60)
 	if err != nil {
 		return &common.Candlestick{}, err
 	}
-	if len(candles) > 0 {
-		return &candles[0], nil
+	closestCandle, err := util.FindClosestDatedCandle(_gdax.ctx.GetLogger(), atDate, kline)
+	if err != nil {
+		return &common.Candlestick{}, err
 	}
-	_gdax.ctx.GetLogger().Debugf("[GDAX.GetPriceAt] Unable to locate between % and %s", currencyPair, startDate, endDate)
-	return &common.Candlestick{}, nil
+	return closestCandle, nil
 }
 
 func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
@@ -113,16 +110,22 @@ func (_gdax *GDAX) GetPriceHistory(currencyPair *common.CurrencyPair,
 			CurrencyPair: currencyPair,
 			Period:       granularity,
 			Date:         r.Time,
-			Open:         r.Open,
-			Close:        r.Close,
-			High:         r.High,
-			Low:          r.Low,
-			Volume:       r.Volume})
+			Open:         decimal.NewFromFloat(r.Open),
+			Close:        decimal.NewFromFloat(r.Close),
+			High:         decimal.NewFromFloat(r.High),
+			Low:          decimal.NewFromFloat(r.Low),
+			Volume:       decimal.NewFromFloat(r.Volume)})
 	}
 	return candlesticks, nil
 }
 
 func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Transaction {
+	cacheKey := fmt.Sprintf("%d-%s", _gdax.ctx.GetUser().GetId(), "-gdax-orderhistory")
+	if txs, found := _gdax.cache.Get(cacheKey); found {
+		_gdax.ctx.GetLogger().Debugf("[GDAX.GetOrderHistory] Returning %s's GDAX orders from cache", _gdax.ctx.GetUser().GetUsername())
+		transactions := txs.(*[]common.Transaction)
+		return *transactions
+	}
 	GDAX_RATELIMITER.RespectRateLimit()
 	_gdax.logger.Debug("[GDAX.GetOrderHistory] Getting order history")
 	var orders []common.Transaction
@@ -167,11 +170,10 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.T
 					continue
 				}
 				orderDate := e.CreatedAt.Time()
-				quantity := decimal.NewFromFloat(order.FilledSize).StringFixed(baseCurrency.GetDecimalPlace())
+				quantity := decimal.NewFromFloat(order.FilledSize)
 				fee := decimal.NewFromFloat(order.FillFees)
 				total := decimal.NewFromFloat(order.ExecutedValue)
-				price := total.Sub(fee)
-
+				price := total.Div(quantity)
 				orders = append(orders, &dto.TransactionDTO{
 					Id:                   strconv.FormatInt(int64(e.Id), 10),
 					Type:                 order.Side,
@@ -179,25 +181,26 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.T
 					Network:              _gdax.name,
 					NetworkDisplayName:   _gdax.displayName,
 					CurrencyPair:         currencyPair,
-					Quantity:             quantity,
+					Quantity:             quantity.StringFixed(baseCurrency.GetDecimalPlace()),
 					QuantityCurrency:     currencyPair.Base,
-					FiatQuantity:         price.StringFixed(quoteCurrency.GetDecimalPlace()),
+					FiatQuantity:         total.StringFixed(quoteCurrency.GetDecimalPlace()),
 					FiatQuantityCurrency: currencyPair.Quote,
 					Price:                price.StringFixed(quoteCurrency.GetDecimalPlace()),
 					PriceCurrency:        currencyPair.Quote,
-					FiatPrice:            price.Sub(fee).StringFixed(quoteCurrency.GetDecimalPlace()),
+					FiatPrice:            price.StringFixed(quoteCurrency.GetDecimalPlace()),
 					FiatPriceCurrency:    currencyPair.Quote,
 					Fee:                  fee.StringFixed(quoteCurrency.GetDecimalPlace()),
 					FeeCurrency:          currencyPair.Quote,
 					FiatFee:              decimal.NewFromFloat(order.FillFees).StringFixed(quoteCurrency.GetDecimalPlace()),
 					FiatFeeCurrency:      currencyPair.Quote,
-					Total:                quantity,
+					Total:                quantity.StringFixed(baseCurrency.GetDecimalPlace()),
 					TotalCurrency:        currencyPair.Base,
 					FiatTotal:            total.StringFixed(quoteCurrency.GetDecimalPlace()),
 					FiatTotalCurrency:    currencyPair.Quote})
 			}
 		}
 	}
+	_gdax.cache.Set(cacheKey, &orders, cache.DefaultExpiration)
 	return orders
 }
 
@@ -216,17 +219,17 @@ func (_gdax *GDAX) GetDepositHistory() ([]common.Transaction, error) {
 }
 
 func (_gdax *GDAX) GetWithdrawalHistory() ([]common.Transaction, error) {
-	var deposits []common.Transaction
+	var withdrawals []common.Transaction
 	txs, err := _gdax.getDepositWithdrawalHistory()
 	if err != nil {
 		return nil, err
 	}
 	for _, order := range txs {
 		if order.GetType() == common.WITHDRAWAL_ORDER_TYPE {
-			deposits = append(deposits, order)
+			withdrawals = append(withdrawals, order)
 		}
 	}
-	return deposits, nil
+	return withdrawals, nil
 }
 
 func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
@@ -241,11 +244,12 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 		return cachedTransactions, nil
 	}
 	GDAX_RATELIMITER.RespectRateLimit()
-	_gdax.logger.Debug("[GDAX.getDepositWithdrawalHistory] Getting deposit/withdraw history")
+	_gdax.logger.Debug("[GDAX.getDepositWithdrawalHistory] Getting deposit/withdrawal history")
 	var orders []common.Transaction
 	var ledger []gdax.LedgerEntry
 	var transfers []gdax.LedgerEntry
-	matches := make(map[float64]gdax.LedgerEntry, 10)
+	buys := make(map[string]gdax.Order, 10)
+	matches := make(map[string]gdax.LedgerEntry, 10)
 	accounts, err := _gdax.gdax.GetAccounts()
 	if err != nil {
 		_gdax.logger.Errorf("[GDAX.getDepositWithdrawalHistory] %s", err.Error())
@@ -260,31 +264,129 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 			}
 			for _, order := range ledger {
 				if order.Type == "match" {
-					matches[order.Amount] = order
+					matches[fmt.Sprintf("%.8f", order.Amount)] = order
+					o, err := _gdax.gdax.GetOrder(order.Details.OrderId)
+					if err != nil {
+						_gdax.ctx.GetLogger().Errorf("[GDAX.getDepositWithdrawalHistory] Error retrieving order: %s", err.Error())
+					}
+					if o.Side == "buy" {
+						buys[fmt.Sprintf("%.8f", o.FilledSize)] = o
+					}
 					continue
 				}
 				if order.Type == "transfer" {
+					order.Details.ProductId = fmt.Sprintf("%s-%s", a.Currency, a.Currency)
 					transfers = append(transfers, order)
 				}
 			}
 		}
 	}
 	for _, order := range transfers {
-		var id, txType string
+		var id, txType, priceCurrency, feeCurrency string
 		var price, fee, total decimal.Decimal
 		var purchaseOrder *gdax.Order
+		var currencyPair *common.CurrencyPair
 		quantity := decimal.NewFromFloat(order.Amount)
-		fee = decimal.NewFromFloat(0.0)
+		fee = decimal.NewFromFloat(0)
 		price = quantity
 		total = quantity
-		amountKey := math.Abs(order.Amount)
+		decAmount := decimal.NewFromFloat(order.Amount)
+		amountKey := decAmount.Abs().String()
 		transferMatch := matches[amountKey]
-		var currencyPair *common.CurrencyPair
+		orderDate := order.CreatedAt.Time()
+
 		if transferMatch.Id <= 0 {
-			_gdax.logger.Errorf("[GDAX.getDepositWithdrawalHistory] Unable to locate a match order for amount %f", amountKey)
+			_gdax.logger.Errorf("[GDAX.getDepositWithdrawalHistory] Unable to locate a match order for %s transfer amount %s. Attempting match against prior buys.",
+				order.Details.ProductId, amountKey)
 			localCurrency := _gdax.ctx.GetUser().GetLocalCurrency()
-			cp, _ := common.NewCurrencyPair(fmt.Sprintf("%s-%s", localCurrency, localCurrency), localCurrency)
-			currencyPair = cp
+			transferCurrencyPair, _ := common.NewCurrencyPair(order.Details.ProductId, localCurrency)
+			currencyPair = transferCurrencyPair
+			quantity = decimal.NewFromFloat(order.Amount)
+			total = decimal.NewFromFloat(order.Amount)
+			if buy, ok := buys[quantity.Abs().String()]; ok {
+				buyCurrencyPair, _ := common.NewCurrencyPair(buy.ProductId, localCurrency)
+				fillSize := decimal.NewFromFloat(buy.FilledSize)
+				price = decimal.NewFromFloat(buy.ExecutedValue).Div(fillSize)
+				baseFiatPrice, err := _gdax.GetPriceAt(transferCurrencyPair.Base, orderDate)
+				if err != nil {
+					_gdax.logger.Errorf("[GDAX.getDepositWithdrawalHistory] Error getting %s fiat price", currencyPair)
+				}
+				fee = decimal.NewFromFloat(buy.FillFees).Abs()
+				if order.Amount < 0 {
+					txType = common.WITHDRAWAL_ORDER_TYPE
+				} else {
+					txType = common.DEPOSIT_ORDER_TYPE
+				}
+				buyQuoteCurrency, err := _gdax.getCurrency(buyCurrencyPair.Quote)
+				if err != nil {
+					_gdax.logger.Errorf("[GDAX.getDepositWithdrawalHistory] Error getting buy quote currency: %s", err.Error())
+				}
+				total = baseFiatPrice.Close.Mul(quantity.Abs())
+				orders = append(orders, &dto.TransactionDTO{
+					Id:                   buy.Id,
+					Type:                 txType,
+					Date:                 orderDate,
+					Network:              _gdax.name,
+					NetworkDisplayName:   _gdax.displayName,
+					CurrencyPair:         transferCurrencyPair,
+					Quantity:             quantity.StringFixed(8),
+					QuantityCurrency:     transferCurrencyPair.Base,
+					FiatQuantity:         total.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					FiatQuantityCurrency: buyCurrencyPair.Quote,
+					Price:                baseFiatPrice.Close.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					PriceCurrency:        buyQuoteCurrency.GetID(),
+					FiatPrice:            price.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					FiatPriceCurrency:    buyQuoteCurrency.GetID(),
+					Fee:                  fee.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					FeeCurrency:          buyQuoteCurrency.GetID(),
+					FiatFee:              fee.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					FiatFeeCurrency:      buyQuoteCurrency.GetID(),
+					Total:                quantity.StringFixed(8),
+					TotalCurrency:        currencyPair.Base,
+					FiatTotal:            total.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					FiatTotalCurrency:    buyQuoteCurrency.GetID()})
+				continue
+			}
+			if _, ok := common.FiatCurrencies[currencyPair.Base]; ok {
+				price = quantity
+			} else {
+				candle, err := _gdax.GetPriceAt(currencyPair.Base, orderDate)
+				if err != nil {
+					_gdax.ctx.GetLogger().Errorf("[GDAX.GetOrderHistory] Error retrieving %s price on %s: %s",
+						currencyPair.Base, orderDate, err.Error())
+				}
+				price = candle.Close
+				total = price.Mul(quantity.Abs())
+				if order.Id <= 0 {
+					id = fmt.Sprintf("%d", order.Id)
+				} else {
+					id = fmt.Sprintf("%s", orderDate)
+				}
+				orders = append(orders, &dto.TransactionDTO{
+					Id:                   id,
+					Type:                 txType,
+					Date:                 orderDate,
+					Network:              _gdax.name,
+					NetworkDisplayName:   _gdax.displayName,
+					CurrencyPair:         transferCurrencyPair,
+					Quantity:             quantity.StringFixed(8),
+					QuantityCurrency:     transferCurrencyPair.Base,
+					FiatQuantity:         total.StringFixed(2),
+					FiatQuantityCurrency: "USD",
+					Price:                price.StringFixed(2),
+					PriceCurrency:        "USD",
+					FiatPrice:            price.StringFixed(2),
+					FiatPriceCurrency:    "USD",
+					Fee:                  fee.StringFixed(2),
+					FeeCurrency:          "USD",
+					FiatFee:              fee.StringFixed(2),
+					FiatFeeCurrency:      "USD",
+					Total:                quantity.StringFixed(8),
+					TotalCurrency:        currencyPair.Base,
+					FiatTotal:            total.StringFixed(2),
+					FiatTotalCurrency:    "USD"})
+				continue
+			}
 		} else {
 			po, err := _gdax.gdax.GetOrder(transferMatch.Details.OrderId)
 			if err != nil {
@@ -303,7 +405,7 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 			quantity = decimal.NewFromFloat(purchaseOrder.FilledSize)
 			fee = decimal.NewFromFloat(purchaseOrder.FillFees)
 			total = decimal.NewFromFloat(purchaseOrder.ExecutedValue)
-			price = total.Sub(fee)
+			price = decimal.NewFromFloat(purchaseOrder.Price)
 		}
 		baseCurrency, err := _gdax.getCurrency(currencyPair.Base)
 		if err != nil {
@@ -323,12 +425,22 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 		if order.Id <= 0 {
 			id = fmt.Sprintf("%d", order.Id)
 		} else {
-			id = fmt.Sprintf("%s", order.CreatedAt.Time())
+			id = fmt.Sprintf("%s", orderDate)
+		}
+		if _, ok := common.FiatCurrencies[currencyPair.Base]; !ok {
+			candle, _ := _gdax.GetPriceAt(currencyPair.Base, orderDate)
+			price = candle.Close
+		}
+		if priceCurrency == "" {
+			priceCurrency = currencyPair.Quote
+		}
+		if feeCurrency == "" {
+			feeCurrency = currencyPair.Quote
 		}
 		orders = append(orders, &dto.TransactionDTO{
 			Id:                   id,
 			Type:                 txType,
-			Date:                 order.CreatedAt.Time(),
+			Date:                 orderDate,
 			Network:              _gdax.name,
 			NetworkDisplayName:   _gdax.displayName,
 			CurrencyPair:         currencyPair,
@@ -337,19 +449,18 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 			FiatQuantity:         total.Sub(fee).StringFixed(2),
 			FiatQuantityCurrency: currencyPair.Quote,
 			Price:                price.StringFixed(quoteCurrency.GetDecimalPlace()),
-			PriceCurrency:        currencyPair.Quote,
-			FiatPrice:            price.StringFixed(2),
+			PriceCurrency:        priceCurrency,
+			FiatPrice:            price.StringFixed(quoteCurrency.GetDecimalPlace()),
 			FiatPriceCurrency:    currencyPair.Quote,
 			Fee:                  fee.StringFixed(quoteCurrency.GetDecimalPlace()),
 			FeeCurrency:          currencyPair.Quote,
-			FiatFee:              fee.StringFixed(2),
+			FiatFee:              fee.StringFixed(quoteCurrency.GetDecimalPlace()),
 			FiatFeeCurrency:      currencyPair.Quote,
 			Total:                decimal.NewFromFloat(order.Amount).StringFixed(baseCurrency.GetDecimalPlace()),
 			TotalCurrency:        currencyPair.Base,
-			FiatTotal:            total.StringFixed(2),
+			FiatTotal:            total.StringFixed(quoteCurrency.GetDecimalPlace()),
 			FiatTotalCurrency:    currencyPair.Quote})
 	}
-
 	_gdax.cache.Set(cacheKey, &orders, cache.DefaultExpiration)
 	return orders, nil
 }
@@ -396,9 +507,9 @@ func (_gdax *GDAX) getCurrency(currency string) (*common.Currency, error) {
 	return nil, errors.New(fmt.Sprintf("Currency not found: %s", currency))
 }
 
-func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
+func (_gdax *GDAX) GetBalances() ([]common.Coin, decimal.Decimal) {
 	var cachedBalances []common.Coin
-	var cachedSum float64
+	var cachedSum decimal.Decimal
 	balancesKey := fmt.Sprintf("%d-%s", _gdax.ctx.GetUser().GetId(), "balances")
 	sumKey := fmt.Sprintf("%d-%s", _gdax.ctx.GetUser().GetId(), "balances-sum")
 	if x, found := _gdax.cache.Get(balancesKey); found {
@@ -409,15 +520,15 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
 		}
 	}
 	if x, found := _gdax.cache.Get(sumKey); found {
-		cachedSum = x.(float64)
+		cachedSum = x.(decimal.Decimal)
 	}
-	if len(cachedBalances) > 0 && cachedSum > 0 {
+	if len(cachedBalances) > 0 && cachedSum.GreaterThan(decimal.NewFromFloat(0)) {
 		return cachedBalances, cachedSum
 	}
 	GDAX_RATELIMITER.RespectRateLimit()
 	_gdax.logger.Debugf("[GDAX] Getting balances")
 	var coins []common.Coin
-	sum := 0.0
+	sum := decimal.NewFromFloat(0)
 	accounts, err := _gdax.gdax.GetAccounts()
 	if err != nil {
 		_gdax.logger.Errorf("[GDAX.GetBalances] %s", err.Error())
@@ -438,24 +549,26 @@ func (_gdax *GDAX) GetBalances() ([]common.Coin, float64) {
 		if a.Balance <= 0 {
 			continue
 		}
-		total := a.Balance * price
-		t, err := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-		if err != nil {
-			_gdax.logger.Errorf("[GDAX.GetBalances] %s", err.Error())
-			continue
+		var decimalPlaces int32
+		if _, exists := common.FiatCurrencies[a.Currency]; exists {
+			decimalPlaces = 2
+		} else {
+			decimalPlaces = 8
 		}
-		sum += total
+		decPrice := decimal.NewFromFloat(price)
+		total := decimal.NewFromFloat(a.Balance).Mul(decPrice)
+		sum = sum.Add(total)
 		coins = append(coins, &dto.CoinDTO{
 			Currency:  a.Currency,
-			Balance:   a.Balance,
-			Available: a.Available,
-			Pending:   a.Hold,
-			Price:     price,
-			Total:     t})
+			Balance:   decimal.NewFromFloat(a.Balance).Truncate(decimalPlaces),
+			Available: decimal.NewFromFloat(a.Available).Truncate(decimalPlaces),
+			Pending:   decimal.NewFromFloat(a.Hold).Truncate(decimalPlaces),
+			Price:     decPrice.Truncate(decimalPlaces),
+			Total:     total.Truncate(decimalPlaces)})
 	}
 	_gdax.cache.Set(balancesKey, &coins, cache.DefaultExpiration)
 	_gdax.cache.Set(sumKey, sum, cache.DefaultExpiration)
-	return coins, sum
+	return coins, sum.Truncate(2)
 }
 
 func (_gdax *GDAX) SubscribeToLiveFeed(currencyPair *common.CurrencyPair,
@@ -491,7 +604,7 @@ func (_gdax *GDAX) SubscribeToLiveFeed(currencyPair *common.CurrencyPair,
 			priceChannel <- common.PriceChange{
 				Exchange:     _gdax.GetName(),
 				CurrencyPair: currencyPair,
-				Price:        message.Price}
+				Price:        decimal.NewFromFloat(message.Price)}
 		}
 	}
 
@@ -499,15 +612,15 @@ func (_gdax *GDAX) SubscribeToLiveFeed(currencyPair *common.CurrencyPair,
 }
 
 func (_gdax *GDAX) GetSummary() common.CryptoExchangeSummary {
-	total := 0.0
-	satoshis := 0.0
+	total := decimal.NewFromFloat(0)
+	satoshis := decimal.NewFromFloat(0)
 	balances, _ := _gdax.GetBalances()
 	for _, c := range balances {
 		if c.GetCurrency() == _gdax.ctx.GetUser().GetLocalCurrency() {
-			total += c.GetTotal()
+			total = total.Add(c.GetTotal())
 		} else if c.IsBitcoin() {
-			satoshis += c.GetBalance()
-			total += c.GetTotal()
+			satoshis = satoshis.Add(c.GetBalance())
+			total = total.Add(c.GetTotal())
 		} else {
 			currency := fmt.Sprintf("%s-BTC", c.GetCurrency())
 			GDAX_RATELIMITER.RespectRateLimit()
@@ -516,17 +629,15 @@ func (_gdax *GDAX) GetSummary() common.CryptoExchangeSummary {
 				_gdax.logger.Errorf("[GDAX.GetExchange] %s", err.Error())
 				continue
 			}
-			satoshis += ticker.Price
-			total += c.GetTotal()
+			satoshis = satoshis.Add(decimal.NewFromFloat(ticker.Price))
+			total = total.Add(c.GetTotal())
 		}
 	}
-	s, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
-	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
 	exchange := &dto.CryptoExchangeSummaryDTO{
 		Name:     _gdax.name,
 		URL:      "https://www.gdax.com",
-		Total:    t,
-		Satoshis: s,
+		Total:    total.Truncate(2),
+		Satoshis: satoshis.Truncate(8),
 		Coins:    balances}
 	return exchange
 }
@@ -545,7 +656,7 @@ func (_gdax *GDAX) GetDisplayName() string {
 	return _gdax.displayName
 }
 
-func (_gdax *GDAX) GetTradingFee() float64 {
+func (_gdax *GDAX) GetTradingFee() decimal.Decimal {
 	return _gdax.tradingFee
 }
 

@@ -10,15 +10,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTransactionService_GetTransactionHistory(t *testing.T) {
+/*
+func TestTransactionService_Synchronize(t *testing.T) {
+	_, transactionService := createTransactionService()
+	txs, err := transactionService.Synchronize()
+	assert.Nil(t, err)
+	assert.Equal(t, true, len(txs) > 0)
+	CleanupIntegrationTest()
+}*/
+
+/*
+func TestTransactionService_GetOrderHistory(t *testing.T) {
 	_, transactionService := createTransactionService()
 	history := transactionService.GetOrderHistory()
-	actual := len(history)
-	if actual <= 0 {
-		t.Errorf("[TestTransactionService_GetTransactionHistory] Expected transaction history, got %d", actual)
-	}
+	assert.NotNil(t, history)
+	assert.Equal(t, true, len(history) > 0)
 	CleanupIntegrationTest()
-}
+}*/
 
 func TestTransactionService_ImportCSV(t *testing.T) {
 
@@ -30,7 +38,7 @@ func TestTransactionService_ImportCSV(t *testing.T) {
 
 	persistedTransactions, err := transactionDAO.Find()
 	assert.Nil(t, err)
-	assert.Equal(t, true, len(persistedTransactions) > 0)
+	assert.Equal(t, true, len(persistedTransactions) == 2)
 
 	CleanupIntegrationTest()
 }

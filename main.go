@@ -8,6 +8,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/webservice"
@@ -50,12 +51,6 @@ func main() {
 
 	databaseManager := common.CreateDatabase("./db", "", *debugFlag)
 
-	if *initDbFlag {
-		databaseManager.MigrateCoreDB()
-		databaseManager.MigratePriceDB()
-		os.Exit(0)
-	}
-
 	ctx := &common.Ctx{
 		AppRoot:      wd,
 		CoreDB:       databaseManager.ConnectCoreDB(),
@@ -67,6 +62,11 @@ func main() {
 		Keystore:     *keystoreFlag,
 		EthereumMode: *ethereumModeFlag}
 	defer ctx.Close()
+
+	if *initDbFlag {
+		InitDB(databaseManager, ctx)
+		os.Exit(0)
+	}
 
 	userDAO := dao.NewUserDAO(ctx)
 	pluginDAO := dao.NewPluginDAO(ctx)
@@ -118,4 +118,45 @@ func main() {
 			ctx.Logger.Fatalf(fmt.Sprintf("Error: %s", err.Error()))
 		}
 	*/
+}
+
+func InitDB(databaseManager common.DatabaseManager, ctx common.Context) {
+	databaseManager.MigrateCoreDB()
+	databaseManager.MigratePriceDB()
+	pluginDAO := dao.NewPluginDAO(ctx)
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "GDAX",
+		Filename: "gdax.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "Coinbase",
+		Filename: "coinbase.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "Bittrex",
+		Filename: "bittrex.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "Binance",
+		Filename: "binance.so",
+		Version:  "0.0.1a",
+		Type:     common.EXCHANGE_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "BTC",
+		Filename: "btc.so",
+		Version:  "0.0.1a",
+		Type:     common.WALLET_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "ETH",
+		Filename: "eth.so",
+		Version:  "0.0.1a",
+		Type:     common.WALLET_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "XRP",
+		Filename: "xrp.so",
+		Version:  "0.0.1a",
+		Type:     common.WALLET_PLUGIN_TYPE})
 }

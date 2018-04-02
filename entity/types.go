@@ -1,17 +1,19 @@
 package entity
 
-import "time"
+import (
+	"time"
+)
 
 type ProfitEntity interface {
 	GetId() uint
 	GetUserId() uint
 	GetTradeId() uint
-	GetQuantity() float64
-	GetBought() float64
-	GetSold() float64
-	GetFee() float64
-	GetTax() float64
-	GetTotal() float64
+	GetQuantity() string
+	GetBought() string
+	GetSold() string
+	GetFee() string
+	GetTax() string
+	GetTotal() string
 }
 
 type PluginEntity interface {
@@ -25,17 +27,27 @@ type TransactionEntity interface {
 	GetId() uint
 	GetUserId() uint
 	GetDate() time.Time
-	GetNetwork() string
-	GetType() string
 	GetCurrency() string
+	GetType() string
+	GetNetwork() string
+	GetNetworkDisplayName() string
 	GetQuantity() string
 	GetQuantityCurrency() string
+	GetFiatQuantity() string
+	GetFiatQuantityCurrency() string
 	GetPrice() string
 	GetPriceCurrency() string
+	GetPriceString() string
+	GetFiatPrice() string
+	GetFiatPriceCurrency() string
 	GetFee() string
 	GetFeeCurrency() string
 	GetTotal() string
 	GetTotalCurrency() string
+	GetFiatFee() string
+	GetFiatFeeCurrency() string
+	GetFiatTotal() string
+	GetFiatTotalCurrency() string
 }
 
 type UserEntity interface {
@@ -114,8 +126,8 @@ type TradeEntity interface {
 	GetExchangeName() string
 	GetDate() time.Time
 	GetType() string
-	GetPrice() float64
-	GetAmount() float64
+	GetPrice() string
+	GetAmount() string
 	GetChartData() string
 }
 

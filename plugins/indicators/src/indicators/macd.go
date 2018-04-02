@@ -1,11 +1,14 @@
 package indicators
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
+)
 
 type MovingAverageConvergenceDivergence interface {
-	Calculate(price float64) (float64, float64, float64)
-	GetValue() float64
-	GetSignalLine() float64
-	GetHistogram() float64
+	Calculate(price decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal)
+	GetValue() decimal.Decimal
+	GetSignalLine() decimal.Decimal
+	GetHistogram() decimal.Decimal
 	common.FinancialIndicator
 }

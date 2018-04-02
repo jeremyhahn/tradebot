@@ -58,21 +58,29 @@ indicators:
 	cd plugins/indicators/src && go build -buildmode=plugin -o ../bollinger_bands.so bollinger_bands.go sma.go
 	cd plugins/indicators/src && go build -buildmode=plugin -o ../macd.so macd.go ema.go
 	cd plugins/indicators/src && go build -buildmode=plugin -o ../obv.so obv.go
+
+strategies:
+	cd plugins/strategies/src && go build -buildmode=plugin -o ../default.so default.go
+
+exchanges:
 	cd plugins/exchanges/src && go build -buildmode=plugin -o ../coinbase.so coinbase.go
 	cd plugins/exchanges/src && go build -buildmode=plugin -o ../gdax.so gdax.go
 	cd plugins/exchanges/src && go build -buildmode=plugin -o ../bittrex.so bittrex.go
 	cd plugins/exchanges/src && go build -buildmode=plugin -o ../binance.so binance.go
 
-strategies:
-	cd plugins/strategies/src && go build -buildmode=plugin -o ../default.so default.go
+wallets:
+	cd plugins/wallets/src && go build -buildmode=plugin -o ../btc.so btc.go
+	cd plugins/wallets/src && go build -buildmode=plugin -o ../eth.so eth.go
+	cd plugins/wallets/src && go build -buildmode=plugin -o ../xrp.so xrp.go
 
-plugins: indicators strategies
+plugins: indicators strategies exchanges wallets
 
 clean:
 	rm -rf keys/
 	cd plugins/indicators && rm -rf *.so
 	cd plugins/strategies && rm -rf *.so
 	cd plugins/exchanges && rm -rf *.so
+	cd plugins/wallets && rm -rf *.so
 	rm -rf tradebot
 	cd webapp && yarn clean
 
@@ -89,8 +97,10 @@ dockerbuild: clean deps certs plugins
 	go build
 	./docker-build.sh
 
-webapp:
-	cd webui && npm i && yarn build:dev
+quick: quickdebug plugins
 
-build: clean certs plugins test webui
+webapp:
+	cd webapp && npm i && yarn build:dev
+
+build: clean certs plugins test webapp
 	go build

@@ -6,6 +6,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
+	"github.com/shopspring/decimal"
 )
 
 type MovingAverageConvergenceDivergenceParams struct {
@@ -21,10 +22,10 @@ type MovingAverageConvergenceDivergenceImpl struct {
 	ema1        indicators.ExponentialMovingAverage
 	ema2        indicators.ExponentialMovingAverage
 	ema3        indicators.ExponentialMovingAverage
-	signal      float64
-	value       float64
-	histogram   float64
-	lastSignal  float64
+	signal      decimal.Decimal
+	value       decimal.Decimal
+	histogram   decimal.Decimal
+	lastSignal  decimal.Decimal
 	common.FinancialIndicator
 }
 
@@ -60,7 +61,7 @@ func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, para
 		return nil, err3
 	}
 	ema3 := ema3Indicator.(indicators.ExponentialMovingAverage)
-	ema3.Add(&common.Candlestick{Close: ema1.GetAverage() - ema2.GetAverage()})
+	ema3.Add(&common.Candlestick{Close: ema1.GetAverage().Sub(ema2.GetAverage())})
 	for _, c := range candles[ema2Period:] {
 		ema3.OnPeriodChange(&c)
 	}
@@ -73,10 +74,10 @@ func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, para
 		ema1:        ema1, // 12-period
 		ema2:        ema2, // 26-period
 		ema3:        ema3, // 9-period
-		value:       ema1Avg - ema2Avg,
-		signal:      0,
-		histogram:   (ema1Avg - ema2Avg) - ema1Avg,
-		lastSignal:  0.0}
+		value:       ema1Avg.Sub(ema2Avg),
+		signal:      decimal.NewFromFloat(0),
+		histogram:   ema1Avg.Sub(ema2Avg).Sub(ema1Avg),
+		lastSignal:  decimal.NewFromFloat(0)}
 
 	for _, c := range candles[ema2Period:] {
 		macd.OnPeriodChange(&c)
@@ -85,36 +86,40 @@ func CreateMovingAverageConvergenceDivergence(candles []common.Candlestick, para
 	return macd, nil
 }
 
-func (macd *MovingAverageConvergenceDivergenceImpl) Calculate(price float64) (float64, float64, float64) {
-	var value, signal, histogram float64
-
+func (macd *MovingAverageConvergenceDivergenceImpl) Calculate(price decimal.Decimal) (decimal.Decimal,
+	decimal.Decimal, decimal.Decimal) {
+	var value, signal, histogram decimal.Decimal
 	if macd.ema3 != nil {
 		prices := macd.ema3.GetPrices()
-		sum := 0.0
+		sum := decimal.NewFromFloat(0)
 		for _, p := range prices {
-			sum += p
+			sum = sum.Add(p)
 		}
 		size := macd.ema3.GetSize()
-		value = macd.ema1.GetAverage() - macd.ema2.GetAverage()
-		if macd.signal == 0 {
-			signal = sum / float64(size)
+		value = macd.ema1.GetAverage().Sub(macd.ema2.GetAverage())
+		if macd.signal.Equals(decimal.NewFromFloat(0)) {
+			signal = sum.Div(decimal.NewFromFloat(float64(size)))
 		} else {
-			signal = macd.value*(2/(float64(size+1))) + (macd.lastSignal * (1 - (2 / (float64(size) + 1))))
+			//signal = macd.value*(2/(float64(size+1))) + (macd.lastSignal * (1 - (2 / (float64(size) + 1))))
+			one := decimal.NewFromFloat(1)
+			two := decimal.NewFromFloat(2)
+			decSize := decimal.NewFromFloat(float64(size + 1))
+			signal = macd.value.Mul(two.Div(decSize).Add(macd.lastSignal.Mul(one.Sub(two.Div(decSize.Add(one))))))
 		}
-		histogram = value - signal
+		histogram = value.Sub(signal)
 	}
 	return value, signal, histogram
 }
 
-func (macd *MovingAverageConvergenceDivergenceImpl) GetValue() float64 {
+func (macd *MovingAverageConvergenceDivergenceImpl) GetValue() decimal.Decimal {
 	return macd.value
 }
 
-func (macd *MovingAverageConvergenceDivergenceImpl) GetSignalLine() float64 {
+func (macd *MovingAverageConvergenceDivergenceImpl) GetSignalLine() decimal.Decimal {
 	return macd.signal
 }
 
-func (macd *MovingAverageConvergenceDivergenceImpl) GetHistogram() float64 {
+func (macd *MovingAverageConvergenceDivergenceImpl) GetHistogram() decimal.Decimal {
 	return macd.histogram
 }
 
@@ -122,16 +127,22 @@ func (macd *MovingAverageConvergenceDivergenceImpl) OnPeriodChange(candle *commo
 	//fmt.Println("[MACD] OnPeriodChange: %s", candle.ToString())
 	macd.ema1.Add(candle)
 	macd.ema2.Add(candle)
-	macd.value = macd.ema1.GetAverage() - macd.ema2.GetAverage()
+	macd.value = macd.ema1.GetAverage().Sub(macd.ema2.GetAverage())
 	macd.ema3.Add(&common.Candlestick{Close: macd.value})
-	if (macd.ema3.GetIndex()+1) == int(macd.params.SignalSize) || macd.lastSignal > 0 {
-		if macd.signal == 0 {
-			macd.signal = macd.ema3.Sum() / float64(macd.ema3.GetSize())
+	zero := decimal.NewFromFloat(0)
+	if (macd.ema3.GetIndex()+1) == int(macd.params.SignalSize) || macd.lastSignal.GreaterThan(zero) {
+		decSize := decimal.NewFromFloat(float64(macd.ema3.GetSize()))
+		if macd.signal.Equals(zero) {
+			macd.signal = macd.ema3.Sum().Div(decSize)
 		} else {
-			macd.signal = macd.value*(2/(float64(macd.ema3.GetSize()+1))) + (macd.lastSignal * (1 - (2 / (float64(macd.ema3.GetSize()) + 1))))
+			//macd.signal = macd.value*(2/(float64(macd.ema3.GetSize()+1))) + (macd.lastSignal * (1 - (2 / (float64(macd.ema3.GetSize()) + 1))))
+			one := decimal.NewFromFloat(1)
+			two := decimal.NewFromFloat(2)
+
+			macd.signal = macd.value.Mul(two.Div(decSize.Add(one))).Add(macd.lastSignal.Mul(one.Sub(two.Div(decSize.Add(one)))))
 		}
 		macd.lastSignal = macd.signal
-		macd.histogram = macd.value - macd.signal
+		macd.histogram = macd.value.Sub(macd.signal)
 	}
 }
 

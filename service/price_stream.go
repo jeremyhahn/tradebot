@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
 )
 
 type PriceStream interface {
@@ -16,7 +17,7 @@ type PriceStreamImpl struct {
 	Period          int       // total seconds per candlestick
 	Start           time.Time // timestamp of first candlestick
 	Volume          int
-	buffer          []float64
+	buffer          []decimal.Decimal
 	priceListeners  []common.PriceListener
 	periodListeners []common.PeriodListener
 }
@@ -25,7 +26,7 @@ func NewPriceStream(period int) PriceStream {
 	return &PriceStreamImpl{
 		Period:          period,
 		Start:           common.NewCandlestickPeriod(period),
-		buffer:          make([]float64, 0),
+		buffer:          make([]decimal.Decimal, 0),
 		priceListeners:  make([]common.PriceListener, 0),
 		periodListeners: make([]common.PeriodListener, 0)}
 }

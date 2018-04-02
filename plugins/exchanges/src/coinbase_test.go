@@ -9,6 +9,7 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/test"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,14 +18,14 @@ func TestCoinbase_GetBalance(t *testing.T) {
 	userDAO := dao.NewUserDAO(ctx)
 	userEntity := &entity.User{Id: ctx.GetUser().GetId()}
 
-	cryptoExchange, err := userDAO.GetExchange(userEntity, "coinbase")
+	cryptoExchange, err := userDAO.GetExchange(userEntity, "Coinbase")
 	assert.Nil(t, err)
 
 	cb := CreateCoinbase(ctx, cryptoExchange).(*Coinbase)
 	coins, sum := cb.GetBalances()
 
 	assert.Equal(t, true, len(coins) > 0)
-	assert.Equal(t, true, sum > 0)
+	assert.Equal(t, true, sum.GreaterThan(decimal.NewFromFloat(0)))
 
 	test.CleanupIntegrationTest()
 }
@@ -36,7 +37,7 @@ func TestCoinbase_GetOrderHistory(t *testing.T) {
 	userDAO := dao.NewUserDAO(ctx)
 	userEntity := &entity.User{Id: ctx.GetUser().GetId()}
 
-	cryptoExchange, err := userDAO.GetExchange(userEntity, "coinbase")
+	cryptoExchange, err := userDAO.GetExchange(userEntity, "Coinbase")
 	assert.Nil(t, err)
 
 	cb := CreateCoinbase(ctx, cryptoExchange).(*Coinbase)
@@ -58,7 +59,7 @@ func TestCoinbase_GetDeposits(t *testing.T) {
 	userDAO := dao.NewUserDAO(ctx)
 	userEntity := &entity.User{Id: ctx.GetUser().GetId()}
 
-	cryptoExchange, err := userDAO.GetExchange(userEntity, "coinbase")
+	cryptoExchange, err := userDAO.GetExchange(userEntity, "Coinbase")
 	assert.Nil(t, err)
 
 	cb := CreateCoinbase(ctx, cryptoExchange).(*Coinbase)
@@ -77,7 +78,7 @@ func TestCoinbase_GetWithdrawls(t *testing.T) {
 	userDAO := dao.NewUserDAO(ctx)
 	userEntity := &entity.User{Id: ctx.GetUser().GetId()}
 
-	cryptoExchange, err := userDAO.GetExchange(userEntity, "coinbase")
+	cryptoExchange, err := userDAO.GetExchange(userEntity, "Coinbase")
 	assert.Nil(t, err)
 
 	cb := CreateCoinbase(ctx, cryptoExchange).(*Coinbase)
@@ -95,7 +96,7 @@ func TestCoinbase_GetCurrencies(t *testing.T) {
 	userDAO := dao.NewUserDAO(ctx)
 	userEntity := &entity.User{Id: ctx.GetUser().GetId()}
 
-	cryptoExchange, err := userDAO.GetExchange(userEntity, "coinbase")
+	cryptoExchange, err := userDAO.GetExchange(userEntity, "Coinbase")
 	assert.Nil(t, err)
 
 	cb := CreateCoinbase(ctx, cryptoExchange).(*Coinbase)

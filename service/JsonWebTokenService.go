@@ -66,7 +66,7 @@ func CreateJsonWebTokenService(ctx common.Context, databaseManager common.Databa
 }
 
 func (service *JsonWebTokenServiceImpl) CreateContext(w http.ResponseWriter, r *http.Request) (common.Context, error) {
-	_, claims, err := service.ParseToken(r)
+	_, claims, err := service.ParseToken(r, request.AuthorizationHeaderExtractor)
 	if err != nil {
 		return nil, err
 	}
@@ -93,9 +93,9 @@ func (service *JsonWebTokenServiceImpl) GetContext(userID uint) common.Context {
 	return service.contexts[userID]
 }
 
-func (service *JsonWebTokenServiceImpl) ParseToken(r *http.Request) (*jwt.Token, *JsonWebTokenClaims, error) {
+func (service *JsonWebTokenServiceImpl) ParseToken(r *http.Request, extractor request.Extractor) (*jwt.Token, *JsonWebTokenClaims, error) {
 	service.ctx.GetLogger().Debugf("[JsonWebTokenService.ParseToken]")
-	token, err := request.ParseFromRequest(r, request.AuthorizationHeaderExtractor,
+	token, err := request.ParseFromRequest(r, extractor,
 		func(token *jwt.Token) (interface{}, error) {
 			return service.rsaKeyPair.GetPublicKey(), nil
 		})
@@ -158,7 +158,20 @@ func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req
 }
 
 func (service *JsonWebTokenServiceImpl) Validate(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	token, claims, err := service.ParseToken(r)
+	var token *jwt.Token
+	var claims *JsonWebTokenClaims
+	var err error
+	if _, ok := r.URL.Query()["access_token"]; ok {
+		t, c, e := service.ParseToken(r, request.OAuth2Extractor)
+		token = t
+		claims = c
+		err = e
+	} else {
+		t, c, e := service.ParseToken(r, request.AuthorizationHeaderExtractor)
+		token = t
+		claims = c
+		err = e
+	}
 	if err == nil {
 		if token.Valid {
 			if claims.Id <= 0 {

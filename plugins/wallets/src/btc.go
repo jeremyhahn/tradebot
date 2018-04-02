@@ -1,7 +1,8 @@
-package service
+package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -47,70 +48,78 @@ type BlockchainTickerItem struct {
 	USD BlockchainTickerSubItem
 }
 
-type BlockchainInfo struct {
-	logger     *logging.Logger
-	client     http.Client
-	items      BlockchainTickerItem
-	lastPrice  float64
-	lastLookup time.Time
-	BlockExplorerService
+type BtcWallet struct {
+	logger    *logging.Logger
+	client    http.Client
+	items     BlockchainTickerItem
+	lastPrice decimal.Decimal
+	params    *common.WalletParams
+	endpoint  string
+	common.Wallet
 }
 
-func NewBlockchainInfo(ctx common.Context) *BlockchainInfo {
+var BTCWALLET_RATELIMITER = common.NewRateLimiter(1, 1)
+
+func main() {}
+
+func CreateBtcWallet(params *common.WalletParams) common.Wallet {
 	client := http.Client{Timeout: common.HTTP_CLIENT_TIMEOUT}
-	return &BlockchainInfo{
-		logger:     ctx.GetLogger(),
-		client:     client,
-		lastPrice:  0.0,
-		lastLookup: time.Now().Add(-20 * time.Minute)}
+	return &BtcWallet{
+		logger:    params.Context.GetLogger(),
+		client:    client,
+		lastPrice: decimal.NewFromFloat(0.0),
+		params:    params,
+		endpoint:  "https://blockchain.info"}
 }
 
-func (b *BlockchainInfo) GetPrice() float64 {
-	elapsed := float64(time.Since(b.lastLookup))
-	if elapsed/float64(time.Second) >= 900 {
-		_, body, err := util.HttpRequest("https://blockchain.info/ticker")
-		if err != nil {
-			b.logger.Errorf("[BlockchainInfo.GetPrice] Error: %s", err.Error())
-		}
-		t := BlockchainTickerItem{}
-		jsonErr := json.Unmarshal(body, &t)
-		if jsonErr != nil {
-			b.logger.Errorf("[BlockchainInfo.GetPrice] %s", jsonErr.Error())
-		}
-		b.lastLookup = time.Now()
-		b.lastPrice = t.USD.Last
+func (b *BtcWallet) GetPrice() decimal.Decimal {
+	BTCWALLET_RATELIMITER.RespectRateLimit()
+	_, body, err := util.HttpRequest(fmt.Sprintf("%s/ticker", b.endpoint))
+	if err != nil {
+		b.logger.Errorf("[BtcWallet.GetPrice] Error: %s", err.Error())
 	}
-	return b.lastPrice
+	t := BlockchainTickerItem{}
+	jsonErr := json.Unmarshal(body, &t)
+	if jsonErr != nil {
+		b.logger.Errorf("[BtcWallet.GetPrice] %s", jsonErr.Error())
+	}
+	return decimal.NewFromFloat(t.USD.Last).Truncate(2)
 }
 
-func (b *BlockchainInfo) GetBalance(address string) common.UserCryptoWallet {
-	url := fmt.Sprintf("https://blockchain.info/address/%s?format=json", address)
+func (b *BtcWallet) GetWallet() (common.UserCryptoWallet, error) {
+	BTCWALLET_RATELIMITER.RespectRateLimit()
+	if len(b.params.Address) <= 0 {
+		return nil, errors.New("Bitcoin address is nil")
+	}
+	url := fmt.Sprintf("%s/address/%s?format=json", b.endpoint, b.params.Address)
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
-		b.logger.Errorf("[BlockchainInfo.GetBalance] %s", err.Error())
+		b.logger.Errorf("[BtcWallet.GetBalance] %s", err.Error())
+		return nil, err
 	}
 	wallet := BlockchainWallet{}
 	jsonErr := json.Unmarshal(body, &wallet)
 	if jsonErr != nil {
-		b.logger.Errorf("[BlockchainInfo.GetBalance] %s", jsonErr.Error())
+		b.logger.Errorf("[BtcWallet.GetBalance] %s", jsonErr.Error())
+		return nil, err
 	}
-	balance := wallet.Balance / 100000000
+	balance := decimal.NewFromFloat(wallet.Balance).Div(decimal.NewFromFloat(100000000))
 	return &dto.UserCryptoWalletDTO{
-		Address:  address,
-		Balance:  balance,
+		Address:  b.params.Address,
+		Balance:  balance.Truncate(8),
 		Currency: "BTC",
-		Value:    balance * b.GetPrice()}
+		Value:    balance.Mul(b.GetPrice()).Truncate(2)}, nil
 }
 
-func (b *BlockchainInfo) GetTransactions(address string) ([]common.Transaction, error) {
-	return b.getTransactionsAt(address, 0)
+func (b *BtcWallet) GetTransactions() ([]common.Transaction, error) {
+	BTCWALLET_RATELIMITER.RespectRateLimit()
+	return b.getTransactionsAt(b.params.Address, 0)
 }
 
-func (b *BlockchainInfo) getTransactionsAt(address string, offset int) ([]common.Transaction, error) {
+func (b *BtcWallet) getTransactionsAt(address string, offset int) ([]common.Transaction, error) {
 
-	url := fmt.Sprintf("%s/%s?limit=%d&offset=%d", "https://blockchain.info/rawaddr", address, 50, offset)
-
-	b.logger.Debugf("[BlockchainInfo.GetTransactions] url: %s", url)
+	url := fmt.Sprintf("%s/rawaddr/%s?limit=%d&offset=%d", b.endpoint, address, 50, offset)
+	b.logger.Debugf("[BtcWallet.GetTransactions] url: %s", url)
 
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
@@ -120,7 +129,7 @@ func (b *BlockchainInfo) getTransactionsAt(address string, offset int) ([]common
 	var bitcoinRawAddr BitcoinRawAddr
 	jsonErr := json.Unmarshal(body, &bitcoinRawAddr)
 	if jsonErr != nil {
-		b.logger.Errorf("[BlockchainInfo.GetTransactions] Error: %s", jsonErr.Error())
+		b.logger.Errorf("[BtcWallet.GetTransactions] Error: %s", jsonErr.Error())
 	}
 
 	transactions := make([]common.Transaction, 0, bitcoinRawAddr.NumberOfTxs)
@@ -134,7 +143,7 @@ func (b *BlockchainInfo) getTransactionsAt(address string, offset int) ([]common
 			if input.PrevOut.Addr == address {
 				transactions = append(transactions, &dto.TransactionDTO{
 					Date:     time.Unix(tx.Time, 0),
-					Type:     "withdrawl",
+					Type:     common.WITHDRAWAL_ORDER_TYPE,
 					Quantity: decimal.New(input.PrevOut.Value, 8).StringFixed(8)})
 			}
 		}
@@ -142,7 +151,7 @@ func (b *BlockchainInfo) getTransactionsAt(address string, offset int) ([]common
 			if out.Addr == address {
 				transactions = append(transactions, &dto.TransactionDTO{
 					Date:     time.Unix(tx.Time, 0),
-					Type:     "deposit",
+					Type:     common.DEPOSIT_ORDER_TYPE,
 					Quantity: decimal.New(out.Value, 8).StringFixed(8)}) // 100000000
 			}
 		}
@@ -162,10 +171,4 @@ func (b *BlockchainInfo) getTransactionsAt(address string, offset int) ([]common
 	}
 
 	return transactions, nil
-}
-
-func (b *BlockchainInfo) ConvertToUSD(currency string, btc float64) float64 {
-	price := b.GetPrice()
-	b.logger.Debugf("[BlockchainTicker] currency: %s, btc: %.8f, price: %f", currency, btc, price)
-	return btc * price
 }

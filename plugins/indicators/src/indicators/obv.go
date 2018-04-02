@@ -1,9 +1,12 @@
 package indicators
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
+)
 
 type OnBalanceVolume interface {
-	GetValue() float64
-	Calculate(price float64) float64
+	GetValue() decimal.Decimal
+	Calculate(price decimal.Decimal) decimal.Decimal
 	common.FinancialIndicator
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
+	"github.com/shopspring/decimal"
 )
 
 type ChartMapper interface {
@@ -26,6 +27,14 @@ func NewChartMapper(ctx common.Context) ChartMapper {
 }
 
 func (mapper *DefaultChartMapper) MapTradeEntityToDto(entity entity.TradeEntity) common.Trade {
+	amount, err := decimal.NewFromString(entity.GetAmount())
+	if err != nil {
+		mapper.ctx.GetLogger().Errorf("[ChartMapper.MapTradeEntityToDto] Error parsing amount decimal: %s", err.Error())
+	}
+	price, err := decimal.NewFromString(entity.GetPrice())
+	if err != nil {
+		mapper.ctx.GetLogger().Errorf("[ChartMapper.MapTradeEntityToDto] Error parsing price decimal: %s", err.Error())
+	}
 	return &dto.TradeDTO{
 		Id:        entity.GetId(),
 		UserId:    entity.GetUserId(),
@@ -35,8 +44,8 @@ func (mapper *DefaultChartMapper) MapTradeEntityToDto(entity entity.TradeEntity)
 		Exchange:  entity.GetExchangeName(),
 		Date:      entity.GetDate(),
 		Type:      entity.GetType(),
-		Amount:    entity.GetAmount(),
-		Price:     entity.GetPrice(),
+		Amount:    amount,
+		Price:     price,
 		ChartData: entity.GetChartData()}
 }
 
@@ -50,8 +59,8 @@ func (mapper *DefaultChartMapper) MapTradeDtoToEntity(trade common.Trade) entity
 		Type:      trade.GetType(),
 		Base:      trade.GetBase(),
 		Quote:     trade.GetQuote(),
-		Amount:    trade.GetAmount(),
-		Price:     trade.GetPrice(),
+		Amount:    trade.GetAmount().String(),
+		Price:     trade.GetPrice().String(),
 		ChartData: trade.GetChartData()}
 }
 

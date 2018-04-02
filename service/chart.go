@@ -10,6 +10,7 @@ import (
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/shopspring/decimal"
 )
 
 type DefaultChartService struct {
@@ -54,7 +55,7 @@ func (service *DefaultChartService) GetExchange(chart common.Chart) (common.Exch
 }
 
 func (service *DefaultChartService) Stream(chart common.Chart,
-	candlesticks []common.Candlestick, strategyHandler func(price float64) error) error {
+	candlesticks []common.Candlestick, strategyHandler func(price decimal.Decimal) error) error {
 
 	chartId := chart.GetId()
 

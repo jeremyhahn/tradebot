@@ -4,6 +4,8 @@ import (
 	"crypto/rsa"
 	"net/http"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -49,7 +51,6 @@ type Transaction interface {
 	GetFiatFeeCurrency() string
 	GetFiatTotal() string
 	GetFiatTotalCurrency() string
-	GetOrigin() Transaction
 	String() string
 }
 
@@ -57,10 +58,10 @@ type EthereumToken interface {
 	GetName() string
 	GetSymbol() string
 	GetDecimals() uint8
-	GetBalance() float64
+	GetBalance() decimal.Decimal
 	GetWalletAddress() string
 	GetContractAddress() string
-	GetValue() float64
+	GetValue() decimal.Decimal
 }
 
 type EthereumContract interface {
@@ -118,20 +119,20 @@ type Trade interface {
 	GetExchange() string
 	GetDate() time.Time
 	GetType() string
-	GetPrice() float64
-	GetAmount() float64
+	GetPrice() decimal.Decimal
+	GetAmount() decimal.Decimal
 	GetChartData() string
 }
 
 type Profit interface {
 	GetUserId() uint
 	GetTradeId() uint
-	GetQuantity() float64
-	GetBought() float64
-	GetSold() float64
-	GetFee() float64
-	GetTax() float64
-	GetTotal() float64
+	GetQuantity() decimal.Decimal
+	GetBought() decimal.Decimal
+	GetSold() decimal.Decimal
+	GetFee() decimal.Decimal
+	GetTax() decimal.Decimal
+	GetTotal() decimal.Decimal
 }
 
 type FinancialIndicator interface {
@@ -145,8 +146,8 @@ type FinancialIndicator interface {
 type TradingStrategy interface {
 	GetRequiredIndicators() []string
 	Analyze() (bool, bool, map[string]string, error)
-	CalculateFeeAndTax(price float64) (float64, float64)
-	GetTradeAmounts() (float64, float64)
+	CalculateFeeAndTax(price decimal.Decimal) (decimal.Decimal, decimal.Decimal)
+	GetTradeAmounts() (decimal.Decimal, decimal.Decimal)
 	GetParameters() *TradingStrategyParams
 }
 
@@ -174,13 +175,13 @@ type FiatPriceService interface {
 type Exchange interface {
 	GetName() string
 	GetDisplayName() string
-	GetBalances() ([]Coin, float64)
+	GetBalances() ([]Coin, decimal.Decimal)
 	GetSummary() CryptoExchangeSummary
-	GetNetWorth() float64
-	GetTradingFee() float64
+	GetNetWorth() decimal.Decimal
+	GetTradingFee() decimal.Decimal
 	//GetCurrencies() []string
 	SubscribeToLiveFeed(currencyPair *CurrencyPair, price chan PriceChange)
-	GetPrice(currencyPair *CurrencyPair) float64
+	GetPrice(currencyPair *CurrencyPair) decimal.Decimal
 	GetPriceHistory(currencyPair *CurrencyPair, start, end time.Time, granularity int) ([]Candlestick, error)
 	GetOrderHistory(currencyPair *CurrencyPair) []Transaction
 	GetDepositHistory() ([]Transaction, error)
@@ -218,37 +219,36 @@ type UserCryptoExchange interface {
 
 type Coin interface {
 	GetCurrency() string
-	GetPrice() float64
+	GetPrice() decimal.Decimal
 	GetExchange() string
-	GetBalance() float64
-	GetAvailable() float64
-	GetPending() float64
+	GetBalance() decimal.Decimal
+	GetAvailable() decimal.Decimal
+	GetPending() decimal.Decimal
 	GetAddress() string
-	GetTotal() float64
-	GetBTC() float64
-	GetUSD() float64
+	GetTotal() decimal.Decimal
+	GetBTC() decimal.Decimal
+	GetUSD() decimal.Decimal
 	IsBitcoin() bool
 }
 
 type CryptoExchangeSummary interface {
 	GetName() string
 	GetURL() string
-	GetTotal() float64
-	GetSatoshis() float64
+	GetTotal() decimal.Decimal
+	GetSatoshis() decimal.Decimal
 	GetCoins() []Coin
-	GetNetWorth() float64
 }
 
 type UserCryptoWallet interface {
 	GetAddress() string
-	GetBalance() float64
+	GetBalance() decimal.Decimal
 	GetCurrency() string
-	GetValue() float64
+	GetValue() decimal.Decimal
 }
 
 type Portfolio interface {
 	GetUser() UserContext
-	GetNetWorth() float64
+	GetNetWorth() decimal.Decimal
 	GetExchanges() []CryptoExchangeSummary
 	GetWallets() []UserCryptoWallet
 	GetTokens() []EthereumToken
@@ -258,21 +258,49 @@ type HttpWriter interface {
 	Write(w http.ResponseWriter, status int, response interface{})
 }
 
+type MarketCapService interface {
+	GetMarkets() []MarketCap
+	GetMarket(symbol string) MarketCap
+	GetGlobalMarket(currency string) *GlobalMarketCap
+	GetMarketsByPrice(order string) []MarketCap
+	GetMarketsByPercentChange1H(order string) []MarketCap
+	GetMarketsByPercentChange24H(order string) []MarketCap
+	GetMarketsByPercentChange7D(order string) []MarketCap
+	GetMarketsByTopPerformers(order string) []MarketCap
+	GetTrendingMarkets(order string) []MarketCap
+}
+
+type Wallet interface {
+	GetPrice() decimal.Decimal
+	GetWallet() (UserCryptoWallet, error)
+	GetTransactions() ([]Transaction, error)
+}
+
+type WalletParams struct {
+	Context          Context
+	Address          string
+	WalletUser       string
+	WalletSecret     string
+	WalletExtra      string
+	MarketCapService MarketCapService
+	FiatPriceService FiatPriceService
+}
+
 type TradingStrategyParams struct {
 	CurrencyPair *CurrencyPair
 	Balances     []Coin
 	Indicators   map[string]FinancialIndicator
-	NewPrice     float64
+	NewPrice     decimal.Decimal
 	LastTrade    Trade
-	TradeFee     float64
+	TradeFee     decimal.Decimal
 	Config       []string
 }
 
 type PriceChange struct {
-	Exchange     string        `json:"exchange"`
-	CurrencyPair *CurrencyPair `json:"currencyPair"`
-	Satoshis     float64       `json:"satoshis"`
-	Price        float64       `json:"price"`
+	Exchange     string          `json:"exchange"`
+	CurrencyPair *CurrencyPair   `json:"currencyPair"`
+	Satoshis     decimal.Decimal `json:"satoshis"`
+	Price        decimal.Decimal `json:"price"`
 }
 
 type ChartData struct {

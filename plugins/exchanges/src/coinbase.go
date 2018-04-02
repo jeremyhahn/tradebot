@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/Zauberstuhl/go-coinbase"
@@ -51,24 +50,38 @@ func (cb *Coinbase) GetDisplayName() string {
 	return cb.displayName
 }
 
-func (cb *Coinbase) GetBalances() ([]common.Coin, float64) {
+func (cb *Coinbase) GetBalances() ([]common.Coin, decimal.Decimal) {
 	balancesCacheKey := fmt.Sprintf("%d-%s", cb.ctx.GetUser().GetId(), "-coinbase-balances")
 	sumCacheKey := fmt.Sprintf("%d-%s", cb.ctx.GetUser().GetId(), "-coinbase-sum")
 	if balances, found := cb.cache.Get(balancesCacheKey); found {
 		sum, _ := cb.cache.Get(sumCacheKey)
 		b := balances.(*[]common.Coin)
-		return *b, *sum.(*float64)
+		return *b, *sum.(*decimal.Decimal)
 	}
 	var coins []common.Coin
-	var sum float64
+	var sum decimal.Decimal
 	accounts, _ := cb.client.Accounts()
 	for _, acct := range accounts.Data {
-		sum += acct.Native_balance.Amount
+		var decimalPlaces int32
+		if _, ok := common.FiatCurrencies[acct.Currency]; ok {
+			decimalPlaces = 2
+		} else {
+			decimalPlaces = 8
+		}
+		zero := decimal.NewFromFloat(0)
+		price := zero
+		balance := decimal.NewFromFloat(acct.Balance.Amount)
+		nativeAmount := decimal.NewFromFloat(acct.Native_balance.Amount)
+		sum = sum.Add(nativeAmount)
+		if balance.GreaterThan(decimal.NewFromFloat(0)) && nativeAmount.GreaterThan(decimal.NewFromFloat(0)) {
+			price = balance.Div(nativeAmount)
+		}
 		coins = append(coins, &dto.CoinDTO{
-			Currency: acct.Currency,
-			Balance:  acct.Balance.Amount,
-			//Price     get ticker price,
-			Total: acct.Native_balance.Amount})
+			Currency:  acct.Currency,
+			Balance:   balance.Truncate(decimalPlaces),
+			Available: balance.Truncate(decimalPlaces),
+			Price:     price.Truncate(2),
+			Total:     nativeAmount.Truncate(decimalPlaces)})
 	}
 	cb.cache.Set(balancesCacheKey, &coins, cache.DefaultExpiration)
 	cb.cache.Set(sumCacheKey, &sum, cache.DefaultExpiration)
@@ -113,12 +126,10 @@ func (cb *Coinbase) GetOrderHistory(currencyPair *common.CurrencyPair) []common.
 			cb.ctx.GetLogger().Errorf("[Coinbase.GetOrderHistory] Error getting buy quote currency: %s", err.Error())
 			continue
 		}
-
 		quantity := decimal.NewFromFloat(buy.Amount.Amount)
-		price := decimal.NewFromFloat(buy.Amount.Amount)
 		fee := decimal.NewFromFloat(buy.Fee.Amount)
 		total := decimal.NewFromFloat(buy.Total.Amount)
-
+		fiatPrice := total.Mul(quantity)
 		txs = append(txs, &dto.TransactionDTO{
 			Id:                   buy.Transaction.Id,
 			Type:                 buy.Resource,
@@ -128,20 +139,20 @@ func (cb *Coinbase) GetOrderHistory(currencyPair *common.CurrencyPair) []common.
 			CurrencyPair:         currencyPair,
 			Quantity:             quantity.StringFixed(baseCurrency.GetDecimalPlace()),
 			QuantityCurrency:     buy.Amount.Currency,
-			FiatQuantity:         total.Sub(fee).StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatQuantityCurrency: currencyPair.Quote,
-			Price:                total.Sub(fee).StringFixed(quoteCurrency.GetDecimalPlace()),
-			PriceCurrency:        currencyPair.Quote,
-			FiatPrice:            price.StringFixed(2),
-			FiatPriceCurrency:    currencyPair.Quote,
+			FiatQuantity:         total.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatQuantityCurrency: buy.Total.Currency,
+			Price:                fiatPrice.StringFixed(quoteCurrency.GetDecimalPlace()),
+			PriceCurrency:        buy.Total.Currency,
+			FiatPrice:            fiatPrice.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatPriceCurrency:    buy.Total.Currency,
 			Fee:                  fee.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FeeCurrency:          buy.Fee.Currency,
-			FiatFee:              fee.StringFixed(2),
+			FeeCurrency:          buy.Total.Currency,
+			FiatFee:              fee.StringFixed(quoteCurrency.GetDecimalPlace()),
 			FiatFeeCurrency:      currencyPair.Quote,
 			Total:                quantity.StringFixed(baseCurrency.GetDecimalPlace()),
 			TotalCurrency:        buy.Amount.Currency,
 			FiatTotal:            total.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatTotalCurrency:    currencyPair.Quote})
+			FiatTotalCurrency:    buy.Total.Currency})
 	}
 
 	sells, err := cb.client.ListSells(acctId)
@@ -167,12 +178,11 @@ func (cb *Coinbase) GetOrderHistory(currencyPair *common.CurrencyPair) []common.
 			cb.ctx.GetLogger().Errorf("[Coinbase.GetOrderHistory] Error getting sell quote currency: %s", err.Error())
 			continue
 		}
-
 		quantity := decimal.NewFromFloat(sell.Amount.Amount)
 		price := decimal.NewFromFloat(sell.Amount.Amount)
 		fee := decimal.NewFromFloat(sell.Fee.Amount)
 		total := decimal.NewFromFloat(sell.Total.Amount)
-
+		fiatPrice := price.Mul(quantity)
 		txs = append(txs, &dto.TransactionDTO{
 			Id:                   sell.Transaction.Id,
 			Type:                 sell.Resource,
@@ -182,39 +192,20 @@ func (cb *Coinbase) GetOrderHistory(currencyPair *common.CurrencyPair) []common.
 			CurrencyPair:         currencyPair,
 			Quantity:             quantity.StringFixed(baseCurrency.GetDecimalPlace()),
 			QuantityCurrency:     sell.Amount.Currency,
-			FiatQuantity:         total.Sub(fee).StringFixed(2),
+			FiatQuantity:         total.Sub(fee).StringFixed(quoteCurrency.GetDecimalPlace()),
 			FiatQuantityCurrency: currencyPair.Quote,
 			Price:                price.StringFixed(quoteCurrency.GetDecimalPlace()),
 			PriceCurrency:        currencyPair.Quote,
-			FiatPrice:            price.StringFixed(2),
+			FiatPrice:            fiatPrice.StringFixed(quoteCurrency.GetDecimalPlace()),
 			FiatPriceCurrency:    currencyPair.Quote,
 			Fee:                  fee.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FeeCurrency:          sell.Fee.Currency,
-			FiatFee:              fee.StringFixed(2),
+			FeeCurrency:          sell.Amount.Currency,
+			FiatFee:              fee.StringFixed(quoteCurrency.GetDecimalPlace()),
 			FiatFeeCurrency:      currencyPair.Quote,
 			Total:                total.StringFixed(baseCurrency.GetDecimalPlace()),
 			TotalCurrency:        sell.Total.Currency,
 			FiatTotal:            total.StringFixed(quoteCurrency.GetDecimalPlace()),
 			FiatTotalCurrency:    currencyPair.Quote})
-		/*
-			txs = append(txs, &dto.TransactionDTO{
-				Id:      sell.Transaction.Id,
-				Type:    sell.Resource,
-				Date:    createdAt,
-				Network: cb.name,
-				CurrencyPair: &common.CurrencyPair{
-					Base:          sell.Amount.Currency,
-					Quote:         sell.Total.Currency,
-					LocalCurrency: cb.ctx.GetUser().GetLocalCurrency()},
-				Quantity:         decimal.NewFromFloat(sell.Amount.Amount).StringFixed(8),
-				QuantityCurrency: sell.Amount.Currency,
-				Price:            decimal.NewFromFloat(sell.Amount.Amount).StringFixed(8),
-				PriceCurrency:    sell.Amount.Currency,
-				Fee:              decimal.NewFromFloat(sell.Fee.Amount).StringFixed(8),
-				FeeCurrency:      sell.Total.Currency,
-				Total:            decimal.NewFromFloat(sell.Total.Amount).StringFixed(8),
-				TotalCurrency:    sell.Total.Currency})
-		*/
 	}
 
 	return txs
@@ -408,15 +399,15 @@ func (cb *Coinbase) getCurrency(currency string) (*common.Currency, error) {
 }
 
 func (cb *Coinbase) GetSummary() common.CryptoExchangeSummary {
-	total := 0.0
-	satoshis := 0.0
+	total := decimal.NewFromFloat(0)
+	satoshis := decimal.NewFromFloat(0)
 	balances, _ := cb.GetBalances()
 	for _, c := range balances {
 		if c.GetCurrency() == cb.ctx.GetUser().GetLocalCurrency() {
-			total += c.GetTotal()
+			total = total.Add(c.GetTotal())
 		} else if c.IsBitcoin() {
-			satoshis += c.GetBalance()
-			total += c.GetTotal()
+			satoshis = satoshis.Add(c.GetBalance())
+			total = total.Add(c.GetTotal())
 		} else {
 			COINBASE_RATELIMITER.RespectRateLimit()
 			spotPrice, err := cb.client.GetSpotPrice(coinbase.ConfigPrice{Date: time.Now()})
@@ -424,17 +415,15 @@ func (cb *Coinbase) GetSummary() common.CryptoExchangeSummary {
 				cb.ctx.GetLogger().Errorf("[Coinbase.GetExchange] %s", err.Error())
 				continue
 			}
-			satoshis += spotPrice.Data.Amount
-			total += c.GetTotal()
+			satoshis = satoshis.Add(decimal.NewFromFloat(spotPrice.Data.Amount))
+			total = total.Add(c.GetTotal())
 		}
 	}
-	s, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
-	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
 	exchange := &dto.CryptoExchangeSummaryDTO{
 		Name:     cb.name,
 		URL:      "https://www.gdax.com",
-		Total:    t,
-		Satoshis: s,
+		Total:    total.Truncate(8),
+		Satoshis: satoshis.Truncate(8),
 		Coins:    balances}
 	return exchange
 }

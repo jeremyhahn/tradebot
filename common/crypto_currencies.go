@@ -265,6 +265,7 @@ var CryptoNames = map[string]string{
 	"BTC":        "Bitcoin",
 	"BCA":        "Bitcoin Atom",
 	"CDY":        "Bitcoin Candy",
+	"BCC":        "Bitcoin Cash / BCC",
 	"BCH":        "Bitcoin Cash / BCC",
 	"BCD":        "Bitcoin Diamond",
 	"BTG":        "Bitcoin Gold",

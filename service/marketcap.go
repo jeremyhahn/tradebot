@@ -13,18 +13,6 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-type MarketCapService interface {
-	GetMarkets() []common.MarketCap
-	GetMarket(symbol string) common.MarketCap
-	GetGlobalMarket(currency string) *common.GlobalMarketCap
-	GetMarketsByPrice(order string) []common.MarketCap
-	GetMarketsByPercentChange1H(order string) []common.MarketCap
-	GetMarketsByPercentChange24H(order string) []common.MarketCap
-	GetMarketsByPercentChange7D(order string) []common.MarketCap
-	GetMarketsByTopPerformers(order string) []common.MarketCap
-	GetTrendingMarkets(order string) []common.MarketCap
-}
-
 type MarketCapServiceImpl struct {
 	logger           *logging.Logger
 	client           http.Client
@@ -37,7 +25,7 @@ type MarketCapServiceImpl struct {
 
 var MARKETCAP_RATELIMITER = common.NewRateLimiter(10, 1)
 
-func NewMarketCapService(ctx common.Context) MarketCapService {
+func NewMarketCapService(ctx common.Context) common.MarketCapService {
 	client := http.Client{Timeout: time.Second * 2}
 	return &MarketCapServiceImpl{
 		logger:           ctx.GetLogger(),

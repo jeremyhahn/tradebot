@@ -34,7 +34,15 @@ export default class AuthService {
         })
     }
 
-    fetchTransactions() {
+    syncTransactions() {
+      return this.fetch(`${this.domain}/transactions/sync`, {
+          method: 'GET'
+      }).then(res => {
+          return Promise.resolve(res)
+      })
+    }
+
+    fetchTransactions(sync) {
       return this.fetch(`${this.domain}/transactions`, {
           method: 'GET'
       }).then(res => {

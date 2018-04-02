@@ -10,6 +10,7 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/test"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,7 +62,7 @@ func TestGDAX_GetBalances(t *testing.T) {
 
 	balance, netWorth := gdax.GetBalances()
 	assert.Equal(t, true, len(balance) > 0)
-	assert.Equal(t, true, netWorth > 0)
+	assert.Equal(t, true, netWorth.GreaterThan(decimal.NewFromFloat(0)))
 
 	test.CleanupIntegrationTest()
 }
@@ -147,14 +148,13 @@ func TestGDAX_GetWithdrawHistory(t *testing.T) {
 	gdax := CreateGDAX(ctx, cryptoExchange).(*GDAX)
 	assert.NotNil(t, gdax)
 
-	deposits, err := gdax.GetWithdrawalHistory()
+	withdrawals, err := gdax.GetWithdrawalHistory()
 	assert.Nil(t, err)
-
-	assert.Equal(t, true, len(deposits) > 0)
-	for _, deposit := range deposits {
-		assert.Equal(t, common.WITHDRAWAL_ORDER_TYPE, deposit.GetType())
+	assert.Equal(t, true, len(withdrawals) > 0)
+	for _, withdrawal := range withdrawals {
+		assert.Equal(t, common.WITHDRAWAL_ORDER_TYPE, withdrawal.GetType())
+		//ctx.GetLogger().Debug(withdrawal)
 	}
-
 	test.CleanupIntegrationTest()
 }
 

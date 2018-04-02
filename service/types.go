@@ -4,9 +4,11 @@ import (
 	"net/http"
 
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go/request"
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/shopspring/decimal"
 )
 
 type Middleware interface {
@@ -15,7 +17,7 @@ type Middleware interface {
 }
 
 type JsonWebTokenService interface {
-	ParseToken(r *http.Request) (*jwt.Token, *JsonWebTokenClaims, error)
+	ParseToken(r *http.Request, extractor request.Extractor) (*jwt.Token, *JsonWebTokenClaims, error)
 	GenerateToken(w http.ResponseWriter, req *http.Request)
 	Validate(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
 	Middleware
@@ -24,12 +26,6 @@ type JsonWebTokenService interface {
 type AuthService interface {
 	Login(username, password string) (common.UserContext, error)
 	Register(username, password string) error
-}
-
-type BlockExplorerService interface {
-	GetWallet(address string) (common.UserCryptoWallet, error)
-	GetTransactions() ([]common.Transaction, error)
-	GetTransactionsFor(address string) ([]common.Transaction, error)
 }
 
 type TokenService interface {
@@ -44,9 +40,12 @@ type TokenService interface {
 }
 
 type EthereumService interface {
+	GetPrice() decimal.Decimal
+	GetWallet(address string) (common.UserCryptoWallet, error)
+	GetTransactions() ([]common.Transaction, error)
+	GetTransactionsFor(address string) ([]common.Transaction, error)
 	GetAccounts() ([]common.UserContext, error)
 	AuthService
-	BlockExplorerService
 	TokenService
 }
 
@@ -56,6 +55,10 @@ type GethService interface {
 	DeleteAccount(passphrase string) error
 	AuthService
 	TokenService
+}
+
+type WalletService interface {
+	CreateWallet(currency, address string) (common.Wallet, error)
 }
 
 type PortfolioService interface {
@@ -75,9 +78,9 @@ type UserService interface {
 	GetConfiguredExchanges() []common.UserCryptoExchange
 	GetExchangeSummary(currencyPair *common.CurrencyPair) ([]common.CryptoExchangeSummary, error)
 	GetWallets() []common.UserCryptoWallet
-	GetWallet(currency string) common.UserCryptoWallet
-	GetTokens(wallet string) ([]common.EthereumToken, error)
-	GetAllTokens() ([]common.EthereumToken, error)
+	GetWallet(currency string) (common.UserCryptoWallet, error)
+	GetTokensFor(wallet string) ([]common.EthereumToken, error)
+	GetTokens() ([]common.EthereumToken, error)
 	CreateToken(token common.EthereumToken) error
 	CreateWallet(wallet common.UserCryptoWallet) error
 	CreateExchange(userCryptoExchange common.UserCryptoExchange) (common.UserCryptoExchange, error)
@@ -91,7 +94,7 @@ type AutoTradeService interface {
 type ChartService interface {
 	GetCurrencyPair(chart common.Chart) *common.CurrencyPair
 	GetExchange(chart common.Chart) (common.Exchange, error)
-	Stream(chart common.Chart, candlesticks []common.Candlestick, strategyHandler func(price float64) error) error
+	Stream(chart common.Chart, candlesticks []common.Candlestick, strategyHandler func(price decimal.Decimal) error) error
 	StopStream(chart common.Chart)
 	GetChart(id uint) (common.Chart, error)
 	GetCharts(autoTradeOnly bool) ([]common.Chart, error)
@@ -126,11 +129,12 @@ type ExchangeService interface {
 
 type TransactionService interface {
 	GetMapper() mapper.TransactionMapper
-	GetTransactions() ([]common.Transaction, error)
+	GetHistory() ([]common.Transaction, error)
 	GetOrderHistory() []common.Transaction
 	GetDepositHistory() []common.Transaction
 	GetWithdrawalHistory() []common.Transaction
 	GetImportedTransactions() []common.Transaction
 	ImportCSV(file, exchange string) ([]common.Transaction, error)
+	Synchronize() ([]common.Transaction, error)
 	//GetSourceTransaction(targetTx common.Transaction, transactions *[]common.Transaction) (common.Transaction, error)
 }

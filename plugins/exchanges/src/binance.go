@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/adshao/go-binance"
 	ws "github.com/gorilla/websocket"
+	"github.com/jeremyhahn/go-binance"
+	cache "github.com/patrickmn/go-cache"
 	"github.com/shopspring/decimal"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -64,9 +64,10 @@ type Binance struct {
 	logger        *logging.Logger
 	name          string
 	displayName   string
-	tradingFee    float64
+	tradingFee    decimal.Decimal
 	usdtMarkets   []string
 	currencyPairs string
+	cache         *cache.Cache
 	common.Exchange
 }
 
@@ -77,9 +78,22 @@ func CreateBinance(ctx common.Context, userExchangeEntity entity.UserExchangeEnt
 		logger:        ctx.GetLogger(),
 		name:          "Binance",
 		displayName:   "Binance",
-		tradingFee:    .01,
+		tradingFee:    decimal.NewFromFloat(.01),
 		currencyPairs: userExchangeEntity.GetExtra(),
-		usdtMarkets:   []string{"BTC", "ETH", "BNB", "NEO", "LTC", "BCC"}}
+		usdtMarkets:   []string{"BTC", "ETH", "BNB", "NEO", "LTC", "BCC"},
+		cache:         cache.New(1*time.Minute, 1*time.Minute)}
+}
+
+func (b *Binance) GetName() string {
+	return b.name
+}
+
+func (b *Binance) GetDisplayName() string {
+	return b.displayName
+}
+
+func (b *Binance) GetTradingFee() decimal.Decimal {
+	return b.tradingFee
 }
 
 func (b *Binance) GetPriceAt(currency string, atDate time.Time) (*common.Candlestick, error) {
@@ -91,61 +105,49 @@ func (b *Binance) GetPriceAt(currency string, atDate time.Time) (*common.Candles
 	if err != nil {
 		return &common.Candlestick{}, err
 	}
-	closestCandle, err := util.FindClosestDatedCandle(b.ctx.GetLogger(), atDate, &kline)
+	closestCandle, err := util.FindClosestDatedCandle(b.ctx.GetLogger(), atDate, kline)
 	if err != nil {
 		return &common.Candlestick{}, err
 	}
 	return closestCandle, nil
 }
 
-func (b *Binance) GetBalances() ([]common.Coin, float64) {
-
+func (b *Binance) GetBalances() ([]common.Coin, decimal.Decimal) {
 	var coins []common.Coin
-	sum := 0.0
-
+	sum := decimal.NewFromFloat(0)
 	account, err := b.client.NewGetAccountService().Do(context.Background())
 	if err != nil {
 		b.logger.Errorf("[Binance.GetBalances] %s", err.Error())
 		return coins, sum
 	}
-
 	for _, balance := range account.Balances {
-
-		bal, err := strconv.ParseFloat(balance.Free, 64)
+		bal, err := decimal.NewFromString(balance.Free)
 		if err != nil {
-			b.logger.Errorf("[Binance.GetBalances] %s", err.Error())
+			b.logger.Errorf("[Binance.GetBalances] Error parsing balance from string: %s", err.Error())
 		}
-
-		if bal > 0 {
-
+		if bal.GreaterThan(decimal.NewFromFloat(0)) {
 			b.logger.Debugf("[Binance.GetBalances] Getting balance for %s", balance.Asset)
-
-			bitcoin := b.getBitcoin()
-			bitcoinPrice := b.parseBitcoinPrice(bitcoin)
-
+			bitcoin, err := b.GetPriceAt("BTC", time.Now())
+			if err != nil {
+				b.logger.Errorf("[Binance.GetBalances] Error getting current bitcoin price: %s", err.Error())
+			}
 			if balance.Asset == "BTC" {
-				total := bal * bitcoinPrice
-				t, err := strconv.ParseFloat(strconv.FormatFloat(total, 'f', 2, 64), 64)
-				if err != nil {
-					b.logger.Errorf("[Binance.GetBalances] %s", err.Error())
-				}
-				sum += t
+				total := bal.Mul(bitcoin.Close).Truncate(8)
+				sum = sum.Add(total)
 				coins = append(coins, &dto.CoinDTO{
 					Currency:  balance.Asset,
-					Available: bal,
-					Balance:   bal,
-					Price:     bitcoinPrice,
-					Total:     t})
+					Available: bal.Truncate(8),
+					Balance:   bal.Truncate(8),
+					Price:     bitcoin.Close.Truncate(2),
+					Total:     total.Truncate(2)})
 				continue
 			}
-
 			currencyPair := &common.CurrencyPair{
 				Base:          balance.Asset,
 				Quote:         b.ctx.GetUser().GetLocalCurrency(),
 				LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
 			localizedCurrencyPair := b.localizedCurrencyPair(currencyPair)
 			symbol := fmt.Sprintf("%s%s", localizedCurrencyPair.Base, "BTC")
-
 			ticker, err := b.client.NewPriceChangeStatsService().Symbol(symbol).Do(context.Background())
 			if err != nil {
 				b.logger.Errorf("[Binance.GetBalances] %s", err.Error())
@@ -154,40 +156,33 @@ func (b *Binance) GetBalances() ([]common.Coin, float64) {
 				b.logger.Errorf("[Binance.GetBalances] Unable to retrieve ticker for symbol: %s", symbol)
 				continue
 			}
-
-			lastPrice, err := strconv.ParseFloat(ticker.LastPrice, 64)
+			lastPrice, err := decimal.NewFromString(ticker.LastPrice)
 			if err != nil {
-				b.logger.Errorf("[Binance.GetBalances] %s", err.Error())
+				b.logger.Errorf("[Binance.GetBalances] Error parsing last ticker price into decimal: %s", err.Error())
 			}
-
-			total := bal * (lastPrice * bitcoinPrice)
-
-			t, err := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-			if err != nil {
-				b.logger.Errorf("[Binance.GetBalances] %s", err.Error())
-			}
-
-			sum += t
+			subtotal := lastPrice.Mul(bitcoin.Close)
+			total := bal.Mul(subtotal)
+			sum = sum.Add(total)
 			coins = append(coins, &dto.CoinDTO{
 				Currency:  balance.Asset,
-				Available: bal,
-				Balance:   bal,
-				Price:     lastPrice,
-				Total:     t})
+				Available: bal.Truncate(8),
+				Balance:   bal.Truncate(8),
+				Price:     lastPrice.Truncate(2),
+				Total:     total.Truncate(2)})
 		}
 	}
-
-	return coins, sum
+	return coins, sum.Truncate(2)
 }
 
 func (b *Binance) GetPriceHistory(currencyPair *common.CurrencyPair,
 	start, end time.Time, granularity int) ([]common.Candlestick, error) {
+
 	candlesticks := make([]common.Candlestick, 0)
 	interval := fmt.Sprintf("%dm", granularity)
 	startTime := start.UnixNano() / int64(time.Millisecond)
 	endTime := end.UnixNano() / int64(time.Millisecond)
-	b.logger.Debugf("[Binance.GetPriceHistory] Getting %s price history between %d and %d on a %s interval",
-		currencyPair, startTime, endTime, interval)
+	b.logger.Debugf("[Binance.GetPriceHistory] Getting %s price history between %s and %s on a %s interval",
+		currencyPair, start, end, interval)
 	klines, err := b.client.NewKlinesService().
 		StartTime(startTime).EndTime(endTime).
 		Symbol(b.FormattedCurrencyPair(currencyPair)).
@@ -197,11 +192,26 @@ func (b *Binance) GetPriceHistory(currencyPair *common.CurrencyPair,
 		return candlesticks, err
 	}
 	for _, k := range klines {
-		volume, _ := strconv.ParseFloat(k.Volume, 64)
-		open, _ := strconv.ParseFloat(k.Open, 64)
-		high, _ := strconv.ParseFloat(k.High, 64)
-		low, _ := strconv.ParseFloat(k.Low, 64)
-		close, _ := strconv.ParseFloat(k.Close, 64)
+		volume, err := decimal.NewFromString(k.Volume)
+		if err != nil {
+			b.logger.Errorf("[Binance.GetPriceHistory] Error parsing volume into string: %s", err.Error())
+		}
+		open, err := decimal.NewFromString(k.Open)
+		if err != nil {
+			b.logger.Errorf("[Binance.GetPriceHistory] Error parsing open price into string: %s", err.Error())
+		}
+		high, err := decimal.NewFromString(k.High)
+		if err != nil {
+			b.logger.Errorf("[Binance.GetPriceHistory] Error parsing high price into string: %s", err.Error())
+		}
+		low, err := decimal.NewFromString(k.Low)
+		if err != nil {
+			b.logger.Errorf("[Binance.GetPriceHistory] Error parsing low price into string: %s", err.Error())
+		}
+		close, err := decimal.NewFromString(k.Close)
+		if err != nil {
+			b.logger.Errorf("[Binance.GetPriceHistory] Error parsing close price into string: %s", err.Error())
+		}
 		candlesticks = append(candlesticks, common.Candlestick{
 			CurrencyPair: currencyPair,
 			Date:         time.Unix(k.CloseTime/1000, 0),
@@ -227,29 +237,36 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Tr
 	var _orders []common.Transaction
 	for _, o := range orders {
 		var id, orderType string
-		if o.IsBuyer {
-			orderType = "buy"
-		} else {
-			orderType = "sell"
-		}
+		var fiatFee decimal.Decimal
 		orderDate := time.Unix(o.Time/1000, 0)
-		qty, err := strconv.ParseFloat(o.Quantity, 64)
+		baseFiatPrice := b.getFiatPrice(currencyPair.Base, orderDate)
+		quoteFiatPrice := b.getFiatPrice(currencyPair.Quote, orderDate)
+		quantity, err := decimal.NewFromString(o.Quantity)
 		if err != nil {
-			b.ctx.GetLogger().Errorf("[Binance.GetOrderHistory] Failed to parse quantity to float64: %s", err.Error())
+			b.ctx.GetLogger().Errorf("[Binance.GetOrderHistory] Failed to parse quantity string into decimal: %s", err.Error())
 		}
-		p, err := strconv.ParseFloat(o.Price, 64)
+		purchasePrice, err := decimal.NewFromString(o.Price)
 		if err != nil {
-			b.ctx.GetLogger().Errorf("[Binance.GetOrderHistory] Failed to parse price to float64: %s", err.Error())
+			b.ctx.GetLogger().Errorf("[Binance.GetOrderHistory] Failed to parse purchase price string into decimal: %s", err.Error())
 		}
-		c, err := strconv.ParseFloat(o.Commission, 64)
+		fee, err := decimal.NewFromString(o.Commission)
 		if err != nil {
-			b.ctx.GetLogger().Errorf("[Binance.GetOrderHistory] Failed to parse commission to float64: %s", err.Error())
+			b.ctx.GetLogger().Errorf("[Binance.GetOrderHistory] Failed to parse commission price string into decimal: %s", err.Error())
 		}
 		if o.ID <= 0 {
 			id = fmt.Sprintf("%s", orderDate)
 		} else {
 			id = fmt.Sprintf("%d", o.ID)
 		}
+		if o.IsBuyer {
+			orderType = common.BUY_ORDER_TYPE
+			fiatFee = fee.Mul(baseFiatPrice)
+		} else {
+			orderType = common.SELL_ORDER_TYPE
+			fiatFee = fee.Mul(quoteFiatPrice)
+		}
+		fiatTotal := quantity.Mul(purchasePrice).Mul(quoteFiatPrice)
+		fiatPrice := purchasePrice.Mul(quoteFiatPrice)
 		_orders = append(_orders, &dto.TransactionDTO{
 			Id:                   id,
 			Network:              b.name,
@@ -257,59 +274,24 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Tr
 			Type:                 orderType,
 			CurrencyPair:         currencyPair,
 			Date:                 orderDate,
-			Quantity:             decimal.NewFromFloat(qty).StringFixed(8),
+			Quantity:             quantity.StringFixed(8),
 			QuantityCurrency:     currencyPair.Base,
-			FiatQuantity:         "0.00",
-			FiatQuantityCurrency: "N/A",
-			Price:                decimal.NewFromFloat(p).StringFixed(8),
-			PriceCurrency:        "BTC",
-			FiatPrice:            "0.00",
-			FiatPriceCurrency:    "N/A",
-			Fee:                  decimal.NewFromFloat(c).StringFixed(8),
-			FeeCurrency:          currencyPair.Base,
-			FiatFee:              "0.00",
-			FiatFeeCurrency:      "N/A",
+			FiatQuantity:         quantity.Mul(baseFiatPrice).StringFixed(2),
+			FiatQuantityCurrency: "USD",
+			Price:                purchasePrice.StringFixed(8),
+			PriceCurrency:        currencyPair.Quote,
+			FiatPrice:            fiatPrice.StringFixed(2),
+			FiatPriceCurrency:    "USD",
+			Fee:                  fee.StringFixed(8),
+			FeeCurrency:          o.CommissionAsset,
+			FiatFee:              fiatFee.StringFixed(2),
+			FiatFeeCurrency:      "USD",
 			TotalCurrency:        currencyPair.Quote,
-			Total:                decimal.NewFromFloat(qty).Mul(decimal.NewFromFloat(p)).StringFixed(8),
-			FiatTotal:            "0.00",
-			FiatTotalCurrency:    "N/A"})
-
+			Total:                quantity.Mul(purchasePrice).StringFixed(8),
+			FiatTotal:            fiatTotal.StringFixed(2),
+			FiatTotalCurrency:    "USD"})
 	}
 	return _orders
-}
-
-func (b *Binance) GetCurrencies() (map[string]*common.Currency, error) {
-	b.ctx.GetLogger().Errorf("[Binance.GetCurrencies] Configured currencies: %s", b.currencyPairs)
-	currencies := make(map[string]*common.Currency)
-	configuredCurrencies := strings.Split(b.currencyPairs, ",")
-	currencyMap := make(map[string]bool, len(configuredCurrencies))
-	for _, cur := range configuredCurrencies {
-		pieces := strings.Split(cur, "-")
-		if len(pieces) < 2 {
-			errmsg := fmt.Sprintf("Invalid currency pair: %s", cur)
-			b.ctx.GetLogger().Errorf("[Binance.GetCurrencies] Error: %s", errmsg)
-			return nil, errors.New(errmsg)
-		} else {
-			currencyMap[pieces[0]] = true
-			currencyMap[pieces[1]] = true
-		}
-	}
-	for k, _ := range currencyMap {
-		var name string
-		if _, found := common.CryptoNames[k]; !found {
-			b.ctx.GetLogger().Errorf("[Binance.GetCurrencies] Unable to locate currency %s in common.CryptoNames", k)
-			name = k
-		} else {
-			name = common.CryptoNames[k]
-		}
-		currencies[k] = &common.Currency{
-			ID:           k,
-			Name:         name,
-			Symbol:       k,
-			BaseUnit:     100000000,
-			DecimalPlace: 2}
-	}
-	return currencies, nil
 }
 
 func (b *Binance) GetDepositHistory() ([]common.Transaction, error) {
@@ -327,47 +309,35 @@ func (b *Binance) GetDepositHistory() ([]common.Transaction, error) {
 				Quote:         deposit.Asset,
 				LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
 			orderDate := time.Unix(deposit.InsertTime/1000, 0)
-			var id string
-			if deposit.InsertTime <= 0 {
-				id = fmt.Sprintf("%s", orderDate)
-			} else {
-				id = fmt.Sprintf("%d", deposit.InsertTime)
-			}
+			quantity := decimal.NewFromFloat(deposit.Amount)
+			baseFiatPrice := b.getFiatPrice(currencyPair.Base, orderDate)
+			fiatTotal := quantity.Mul(baseFiatPrice)
 			orders = append(orders, &dto.TransactionDTO{
-				Id:                   id,
+				Id:                   deposit.TxID,
 				Type:                 common.DEPOSIT_ORDER_TYPE,
 				Date:                 orderDate,
 				Network:              b.name,
 				NetworkDisplayName:   b.displayName,
 				CurrencyPair:         currencyPair,
-				Quantity:             decimal.NewFromFloat(deposit.Amount).StringFixed(8),
+				Quantity:             quantity.StringFixed(8),
 				QuantityCurrency:     deposit.Asset,
-				FiatQuantity:         "0.00",
-				FiatQuantityCurrency: "N/A",
-				Price:                "0.00000000",
-				PriceCurrency:        deposit.Asset,
-				FiatPrice:            "0.00",
-				FiatPriceCurrency:    "N/A",
+				FiatQuantity:         fiatTotal.StringFixed(2),
+				FiatQuantityCurrency: "USD",
+				Price:                baseFiatPrice.StringFixed(2),
+				PriceCurrency:        "USD",
+				FiatPrice:            baseFiatPrice.StringFixed(2),
+				FiatPriceCurrency:    "USD",
 				Fee:                  "0.00000000",
 				FeeCurrency:          deposit.Asset,
 				FiatFee:              "0.00",
-				FiatFeeCurrency:      "N/A",
-				Total:                decimal.NewFromFloat(deposit.Amount).StringFixed(8),
+				FiatFeeCurrency:      "USD",
+				Total:                quantity.StringFixed(8),
 				TotalCurrency:        deposit.Asset,
-				FiatTotal:            "0.00",
-				FiatTotalCurrency:    "N/A"})
+				FiatTotal:            fiatTotal.StringFixed(2),
+				FiatTotalCurrency:    "USD"})
 		}
 	}
 	return orders, nil
-}
-
-func (b *Binance) supportsUSDT(currency string) bool {
-	for _, market := range b.usdtMarkets {
-		if market == currency {
-			return true
-		}
-	}
-	return false
 }
 
 func (b *Binance) GetWithdrawalHistory() ([]common.Transaction, error) {
@@ -379,80 +349,41 @@ func (b *Binance) GetWithdrawalHistory() ([]common.Transaction, error) {
 		if err != nil {
 			b.logger.Errorf("[Binance.GetWithdrawalHistory] Error: %s", err.Error())
 		}
-		for _, withdraw := range withdraws {
-			if withdraw.Status != 6 { // 0:Email Sent,1:Cancelled 2:Awaiting Approval 3:Rejected 4:Processing 5:Failure 6:Completed
+		for _, withdrawal := range withdraws {
+			if withdrawal.Status != 6 { // 0:Email Sent,1:Cancelled 2:Awaiting Approval 3:Rejected 4:Processing 5:Failure 6:Completed
 				continue
 			}
-			orderDate := time.Unix(withdraw.ApplyTime/1000, 0)
+			orderDate := time.Unix(withdrawal.ApplyTime/1000, 0)
 			currencyPair := &common.CurrencyPair{
-				Base:          withdraw.Asset,
-				Quote:         withdraw.Asset,
+				Base:          withdrawal.Asset,
+				Quote:         withdrawal.Asset,
 				LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
-			/*
-				currencyPair := &common.CurrencyPair{
-					Base:          withdraw.Asset,
-					Quote:         "USDT",
-					LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
-						var priceCandle *common.Candlestick
-							if b.supportsUSDT(withdraw.Asset) {
-								usdtCandle, err := b.GetPriceAt(withdraw.Asset, orderDate)
-								if err != nil {
-									return nil, err
-								}
-								priceCandle = usdtCandle
-							} else {
-								btcToUsdCandle, err := b.toBTCtoUSD(withdraw.Asset, orderDate)
-								if err != nil {
-									return nil, err
-								}
-								priceCandle = btcToUsdCandle
-							}
-					orders = append(orders, &dto.OrderDTO{
-						Id:               string(withdraw.ApplyTime),
-						Type:             common.WITHDRAWAL_ORDER_TYPE,
-						Date:             orderDate,
-						Exchange:         b.name,
-						CurrencyPair:     currencyPair,
-						Quantity:         withdraw.Amount,
-						QuantityCurrency: withdraw.Asset,
-						Price:            withdraw.Amount * priceCandle.Close,
-						PriceCurrency:    currencyPair.Quote,
-						Fee:              0.0,
-						FeeCurrency:      currencyPair.Quote,
-						Total:            withdraw.Amount * priceCandle.Close,
-						TotalCurrency:    currencyPair.Quote,
-					  CoinPrice:         priceCandle.Close,
-					  CoinPriceCurrency: currencyPair.Quote})*/
-
-			var id string
-			if withdraw.ApplyTime <= 0 {
-				id = fmt.Sprintf("%s", orderDate)
-			} else {
-				id = fmt.Sprintf("%d", withdraw.ApplyTime)
-			}
+			baseFiatPrice := b.getFiatPrice(currencyPair.Base, orderDate)
+			quantity := decimal.NewFromFloat(withdrawal.Amount)
+			fiatTotal := quantity.Mul(baseFiatPrice)
 			orders = append(orders, &dto.TransactionDTO{
-				Id:                   id,
+				Id:                   withdrawal.TxID,
 				Type:                 common.WITHDRAWAL_ORDER_TYPE,
 				Date:                 orderDate,
 				Network:              b.name,
 				NetworkDisplayName:   b.displayName,
 				CurrencyPair:         currencyPair,
-				Quantity:             decimal.NewFromFloat(withdraw.Amount).StringFixed(8),
-				QuantityCurrency:     withdraw.Asset,
-				FiatQuantity:         "0.00",
-				FiatQuantityCurrency: "N/A",
-				Price:                "0.00000000",
-				PriceCurrency:        withdraw.Asset,
-				FiatPrice:            "0.00",
-				FiatPriceCurrency:    "N/A",
+				Quantity:             quantity.StringFixed(8),
+				QuantityCurrency:     withdrawal.Asset,
+				FiatQuantity:         fiatTotal.StringFixed(2),
+				FiatQuantityCurrency: "USD",
+				Price:                baseFiatPrice.StringFixed(2),
+				PriceCurrency:        "USD",
+				FiatPrice:            baseFiatPrice.StringFixed(2),
+				FiatPriceCurrency:    "USD",
 				Fee:                  "0.00000000",
-				FeeCurrency:          withdraw.Asset,
+				FeeCurrency:          withdrawal.Asset,
 				FiatFee:              "0.00",
 				FiatFeeCurrency:      "N/A",
-				Total:                decimal.NewFromFloat(withdraw.Amount).StringFixed(8),
-				TotalCurrency:        withdraw.Asset,
-				FiatTotal:            "0.00",
-				FiatTotalCurrency:    "N/A"})
+				Total:                quantity.StringFixed(8),
+				TotalCurrency:        withdrawal.Asset,
+				FiatTotal:            fiatTotal.StringFixed(2),
+				FiatTotalCurrency:    "USD"})
 		}
 	}
 	return orders, nil
@@ -489,19 +420,79 @@ func (b *Binance) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceCh
 
 		b.logger.Debugf("[Binance.SubscribeToLiveFeed] %+v\n", message)
 
-		f, err := strconv.ParseFloat(message.Price, 64)
+		price, err := decimal.NewFromString(message.Price)
 		if err != nil {
-			b.logger.Errorf("[Bittrex.GetBalances] %s", err.Error())
+			b.logger.Errorf("[Binance.SubscribeToLiveFeed] Error parsing price into string: %s", err.Error())
 		}
 
 		priceChange <- common.PriceChange{
 			CurrencyPair: currencyPair,
 			Exchange:     b.name,
-			Price:        f,
-			Satoshis:     1.0}
+			Price:        price,
+			Satoshis:     decimal.NewFromFloat(1.0)}
 	}
 
 	b.SubscribeToLiveFeed(currencyPair, priceChange)
+}
+
+func (b *Binance) GetCurrencies() (map[string]*common.Currency, error) {
+	b.ctx.GetLogger().Errorf("[Binance.GetCurrencies] Configured currencies: %s", b.currencyPairs)
+	currencies := make(map[string]*common.Currency)
+	configuredCurrencies := strings.Split(b.currencyPairs, ",")
+	currencyMap := make(map[string]bool, len(configuredCurrencies))
+	for _, cur := range configuredCurrencies {
+		pieces := strings.Split(cur, "-")
+		if len(pieces) < 2 {
+			errmsg := fmt.Sprintf("Invalid currency pair: %s", cur)
+			b.ctx.GetLogger().Errorf("[Binance.GetCurrencies] Error: %s", errmsg)
+			return nil, errors.New(errmsg)
+		} else {
+			currencyMap[pieces[0]] = true
+			currencyMap[pieces[1]] = true
+		}
+	}
+	for k, _ := range currencyMap {
+		var name string
+		if _, found := common.CryptoNames[k]; !found {
+			b.ctx.GetLogger().Errorf("[Binance.GetCurrencies] Unable to locate currency %s in common.CryptoNames", k)
+			name = k
+		} else {
+			name = common.CryptoNames[k]
+		}
+		currencies[k] = &common.Currency{
+			ID:           k,
+			Name:         name,
+			Symbol:       k,
+			BaseUnit:     100000000,
+			DecimalPlace: 2}
+	}
+	return currencies, nil
+}
+
+func (b *Binance) GetSummary() common.CryptoExchangeSummary {
+	total := decimal.NewFromFloat(0)
+	satoshis := decimal.NewFromFloat(0)
+	balances, _ := b.GetBalances()
+	for _, c := range balances {
+		if c.GetCurrency() == "BTC" { // TODO
+			total = total.Add(c.GetTotal())
+		} else {
+			satoshis = satoshis.Add(c.GetPrice().Mul(c.GetBalance()))
+			total = total.Add(c.GetTotal())
+		}
+	}
+	exchange := &dto.CryptoExchangeSummaryDTO{
+		Name:     b.name,
+		URL:      "https://www.binance.com",
+		Total:    total.Truncate(8),
+		Satoshis: satoshis.Truncate(8),
+		Coins:    balances}
+	return exchange
+}
+
+func (b *Binance) FormattedCurrencyPair(currencyPair *common.CurrencyPair) string {
+	cp := b.localizedCurrencyPair(currencyPair)
+	return fmt.Sprintf("%s%s", cp.Base, cp.Quote)
 }
 
 func (b *Binance) ParseImport(file string) ([]common.Transaction, error) {
@@ -510,47 +501,53 @@ func (b *Binance) ParseImport(file string) ([]common.Transaction, error) {
 	return orders, errors.New("Binance.ParseImport Unsupported")
 }
 
-func (b *Binance) GetSummary() common.CryptoExchangeSummary {
-	total := 0.0
-	satoshis := 0.0
-	balances, _ := b.GetBalances()
-	for _, c := range balances {
-		if c.GetCurrency() == "BTC" { // TODO
-			total += c.GetTotal()
-		} else {
-			satoshis += c.GetPrice() * c.GetBalance()
-			total += c.GetTotal()
+func (b *Binance) getFiatPrice(currency string, atDate time.Time) decimal.Decimal {
+	cacheKey := fmt.Sprintf("%s-%s-%s", "binance-fiatprice", currency, atDate)
+	if price, found := b.cache.Get(cacheKey); found {
+		b.ctx.GetLogger().Debugf("[Binance.getFiatPrice] Returning fiat price from cache")
+		return price.(decimal.Decimal)
+	}
+	b.ctx.GetLogger().Debugf("[Binance.getFiatPrice] Converting %s to fiat on %s", currency, atDate)
+	fiatPrice := decimal.NewFromFloat(0)
+	if currency == "BTC" {
+		candle, err := b.GetPriceAt("BTC", atDate)
+		if err != nil {
+			b.ctx.GetLogger().Errorf("[Binance.getFiatPrice] Failed to get bitcoin price on %s: %s", atDate, err.Error())
+		}
+		fiatPrice = candle.Close
+	} else if b.supportsUSDT(currency) {
+		candle, err := b.GetPriceAt(currency, atDate)
+		if err != nil {
+			b.ctx.GetLogger().Errorf("[Binance.getFiatPrice] Failed to get USDT price for %s on %s: %s", currency, atDate, err.Error())
+		}
+		fiatPrice = candle.Close
+	} else {
+		candle, err := b.toBTCtoUSDT(currency, atDate)
+		if err != nil {
+			b.ctx.GetLogger().Errorf("[Binance.getFiatPrice] Failed to convert %s to BTC to USDT on %s: %s",
+				currency, atDate, err.Error())
+		}
+		fiatPrice = candle.Close
+	}
+	b.cache.Set(cacheKey, fiatPrice, cache.NoExpiration)
+	return fiatPrice
+}
+
+func (b *Binance) supportsUSDT(currency string) bool {
+	for _, market := range b.usdtMarkets {
+		if market == currency {
+			return true
 		}
 	}
-	f, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", satoshis), 64)
-	t, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", total), 64)
-	exchange := &dto.CryptoExchangeSummaryDTO{
-		Name:     b.name,
-		URL:      "https://www.binance.com",
-		Total:    t,
-		Satoshis: f,
-		Coins:    balances}
-	return exchange
+	return false
 }
 
-func (b *Binance) GetName() string {
-	return b.name
-}
-
-func (b *Binance) GetDisplayName() string {
-	return b.displayName
-}
-
-func (b *Binance) GetTradingFee() float64 {
-	return b.tradingFee
-}
-
-func (b *Binance) FormattedCurrencyPair(currencyPair *common.CurrencyPair) string {
-	cp := b.localizedCurrencyPair(currencyPair)
-	return fmt.Sprintf("%s%s", cp.Base, cp.Quote)
-}
-
-func (b *Binance) toBTCtoUSD(currency string, atDate time.Time) (*common.Candlestick, error) {
+func (b *Binance) toBTCtoUSDT(currency string, atDate time.Time) (*common.Candlestick, error) {
+	cacheKey := fmt.Sprintf("%s-%s-%s", "binance-btctousd", currency, atDate)
+	if candle, found := b.cache.Get(cacheKey); found {
+		b.ctx.GetLogger().Debugf("[Binance.toBTCtoUSDT] Returning USDT price from cache")
+		return candle.(*common.Candlestick), nil
+	}
 	bitcoinCandle, err := b.GetPriceAt("BTC", atDate)
 	currencyPair := &common.CurrencyPair{
 		Base:          currency,
@@ -560,48 +557,15 @@ func (b *Binance) toBTCtoUSD(currency string, atDate time.Time) (*common.Candles
 	if err != nil {
 		return &common.Candlestick{}, err
 	}
-	currencyCandle, err := util.FindClosestDatedCandle(b.ctx.GetLogger(), atDate, &klines)
+	currencyCandle, err := util.FindClosestDatedCandle(b.ctx.GetLogger(), atDate, klines)
 	if err != nil {
 		return &common.Candlestick{}, err
 	}
-	return &common.Candlestick{
+	candlestick := &common.Candlestick{
 		Date:  atDate,
-		Close: currencyCandle.Close * bitcoinCandle.Close}, nil
-}
-
-func (b *Binance) getBitcoin() *binance.PriceChangeStats {
-	currencyPair := &common.CurrencyPair{
-		Base:          "BTC",
-		Quote:         b.ctx.GetUser().GetLocalCurrency(),
-		LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
-	localizedCurrencyPair := b.localizedCurrencyPair(currencyPair)
-	symbol := fmt.Sprintf("%s%s", localizedCurrencyPair.Base, localizedCurrencyPair.Quote)
-	stats, err := b.client.NewPriceChangeStatsService().Symbol(symbol).Do(context.Background())
-	if err != nil {
-		b.logger.Errorf("[Binance.getBitcoin] %s", err.Error())
-	}
-	return stats
-}
-
-func (b *Binance) getBitcoinPrice() float64 {
-	bitcoin := b.getBitcoin()
-	f, err := strconv.ParseFloat(bitcoin.LastPrice, 8)
-	if err != nil {
-		b.logger.Errorf("[Binance.getBitcoinPrice] %s", err.Error())
-	}
-	return f
-}
-
-func (b *Binance) parseBitcoinPrice(bitcoin *binance.PriceChangeStats) float64 {
-	if bitcoin == nil {
-		b.logger.Error("[Binance.parseBitcoinPrice] Null pointer returned from Binance library")
-		return 0.0
-	}
-	f, err := strconv.ParseFloat(bitcoin.LastPrice, 8)
-	if err != nil {
-		b.logger.Errorf("[Binance.parseBitcoinPrice] %s", err.Error())
-	}
-	return f
+		Close: currencyCandle.Close.Mul(bitcoinCandle.Close)}
+	b.cache.Set(cacheKey, candlestick, cache.NoExpiration)
+	return candlestick, nil
 }
 
 func (b *Binance) localizedCurrencyPair(currencyPair *common.CurrencyPair) *common.CurrencyPair {

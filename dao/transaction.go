@@ -21,8 +21,8 @@ func NewTransactionDAO(ctx common.Context) TransactionDAO {
 	return &TransactionDAOImpl{ctx: ctx}
 }
 
-func (dao *TransactionDAOImpl) Create(Transaction entity.TransactionEntity) error {
-	return dao.ctx.GetCoreDB().Create(Transaction).Error
+func (dao *TransactionDAOImpl) Create(transaction entity.TransactionEntity) error {
+	return dao.ctx.GetCoreDB().Create(transaction).Error
 }
 
 func (dao *TransactionDAOImpl) Save(Transaction entity.TransactionEntity) error {

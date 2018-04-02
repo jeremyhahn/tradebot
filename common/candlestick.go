@@ -3,21 +3,23 @@ package common
 import (
 	"fmt"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 type Candlestick struct {
-	Exchange     string        `json:"exchange"`
-	CurrencyPair *CurrencyPair `json:"currency_pair"`
-	Period       int           `json:"period"`
-	Date         time.Time     `json:"date"`
-	Open         float64       `json:"open"`
-	Close        float64       `json:"close"`
-	High         float64       `json:"high"`
-	Low          float64       `json:"low"`
-	Volume       float64       `json:"volume"`
+	Exchange     string          `json:"exchange"`
+	CurrencyPair *CurrencyPair   `json:"currency_pair"`
+	Period       int             `json:"period"`
+	Date         time.Time       `json:"date"`
+	Open         decimal.Decimal `json:"open"`
+	Close        decimal.Decimal `json:"close"`
+	High         decimal.Decimal `json:"high"`
+	Low          decimal.Decimal `json:"low"`
+	Volume       decimal.Decimal `json:"volume"`
 }
 
-func CreateCandlestick(exchangeName string, currencyPair *CurrencyPair, period int, prices []float64) *Candlestick {
+func CreateCandlestick(exchangeName string, currencyPair *CurrencyPair, period int, prices []decimal.Decimal) *Candlestick {
 	var candle = &Candlestick{
 		Exchange:     exchangeName,
 		CurrencyPair: currencyPair,
@@ -25,12 +27,12 @@ func CreateCandlestick(exchangeName string, currencyPair *CurrencyPair, period i
 		Date:         time.Now(),
 		Open:         prices[0],
 		Close:        prices[len(prices)-1],
-		Volume:       float64(len(prices))}
+		Volume:       decimal.NewFromFloat(float64(len(prices)))}
 	for _, price := range prices {
-		if price > candle.High {
+		if candle.High.GreaterThan(price) {
 			candle.High = price
 		}
-		if price < candle.Low {
+		if candle.Low.LessThan(price) {
 			candle.Low = price
 		}
 	}
@@ -58,7 +60,7 @@ func (candle *Candlestick) String() string {
 		base = candle.CurrencyPair.Base
 		quote = candle.CurrencyPair.Quote
 	}
-	return fmt.Sprintf("Exchange: %s, CurrencyPair: %s-%s, Period: %d, Date: %s, Open: %.2f, Close: %.2f, High: %.2f, Low: %.2f, Volume: %.2f",
+	return fmt.Sprintf("Exchange: %s, CurrencyPair: %s-%s, Period: %d, Date: %s, Open: %s, Close: %s, High: %s, Low: %s, Volume: %s",
 		candle.Exchange, base, quote, candle.Period, candle.Date, candle.Open,
 		candle.Close, candle.High, candle.Low, candle.Volume)
 }

@@ -127,6 +127,22 @@ func CreateIntegrationTestContext(dotEnvDir, appRoot string) common.Context {
 		Version:  "0.0.1a",
 		Type:     common.EXCHANGE_PLUGIN_TYPE})
 
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "BTC",
+		Filename: "btc.so",
+		Version:  "0.0.1a",
+		Type:     common.WALLET_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "ETH",
+		Filename: "eth.so",
+		Version:  "0.0.1a",
+		Type:     common.WALLET_PLUGIN_TYPE})
+	pluginDAO.Create(&entity.Plugin{
+		Name:     "XRP",
+		Filename: "xrp.so",
+		Version:  "0.0.1a",
+		Type:     common.WALLET_PLUGIN_TYPE})
+
 	return TEST_CONTEXT
 }
 

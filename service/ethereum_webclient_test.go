@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEtherScan_GetWallet(t *testing.T) {
+func TestEthereumWebClient_GetWallet(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
 	pluginDAO := dao.NewPluginDAO(ctx)
@@ -28,20 +28,23 @@ func TestEtherScan_GetWallet(t *testing.T) {
 	exchangeService := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
 	fiatPriceService, err := NewFiatPriceService(ctx, exchangeService)
 	assert.Nil(t, err)
-	service, err := NewEtherscanService(ctx, userDAO, userMapper, NewMarketCapService(ctx), fiatPriceService)
+
+	localAuthService := NewLocalAuthService(ctx, userDAO, userMapper)
+	service, err := NewEthereumWebClient(ctx, userDAO, localAuthService, NewMarketCapService(ctx), fiatPriceService)
 	assert.Nil(t, err)
 
 	wallet, err := service.GetWallet(os.Getenv("ETH_ADDRESS"))
 	assert.Nil(t, err)
 
+	zero := decimal.NewFromFloat(0)
 	assert.Equal(t, true, len(wallet.GetAddress()) > 0)
-	assert.Equal(t, true, wallet.GetBalance() > 0)
-	assert.Equal(t, true, wallet.GetValue() > 0)
+	assert.Equal(t, true, wallet.GetBalance().GreaterThan(zero))
+	assert.Equal(t, true, wallet.GetValue().GreaterThan(zero))
 
 	test.CleanupIntegrationTest()
 }
 
-func TestEtherScanService_GetTransactions(t *testing.T) {
+func TestEthereumWebClientService_GetTransactions(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
 	walletAddress := os.Getenv("ETH_ADDRESS")
@@ -58,8 +61,10 @@ func TestEtherScanService_GetTransactions(t *testing.T) {
 	assert.Nil(t, err)
 	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeService)
 	assert.Nil(t, err)
+
+	walletService := NewWalletService(ctx, pluginService)
 	userService := NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
-		ethereumService, pluginService)
+		ethereumService, exchangeService, walletService)
 
 	userService.CreateWallet(&dto.UserCryptoWalletDTO{
 		Address:  os.Getenv("ETH_ADDRESS"),
@@ -70,11 +75,11 @@ func TestEtherScanService_GetTransactions(t *testing.T) {
 		ContractAddress: os.Getenv("TOKEN_ADDRESS"),
 		WalletAddress:   os.Getenv("ETH_ADDRESS")})
 
-	etherscanService, err := NewEtherscanService(ctx, userDAO, userMapper, marketcapService, fiatPriceService)
+	localAuthService := NewLocalAuthService(ctx, userDAO, userMapper)
+	webclient, err := NewEthereumWebClient(ctx, userDAO, localAuthService, NewMarketCapService(ctx), fiatPriceService)
 	assert.Nil(t, err)
 
-	transactions, err := etherscanService.GetTransactions()
-
+	transactions, err := webclient.GetTransactions()
 	assert.Nil(t, err)
 	assert.NotNil(t, transactions)
 
@@ -102,17 +107,17 @@ func TestEtherScanService_GetTransactions(t *testing.T) {
 	assert.Equal(t, true, totalWithdrawl.GreaterThan(decimal.NewFromFloat(0)))
 
 	txSum := totalDeposit.Sub(totalWithdrawl).Sub(totalFees)
-	wallet, err := etherscanService.GetWallet(walletAddress)
+	wallet, err := webclient.GetWallet(walletAddress)
 	assert.Nil(t, err)
 
-	actual := decimal.NewFromFloat(wallet.GetBalance()).StringFixed(8)
+	actual := wallet.GetBalance().StringFixed(8)
 	expected := txSum.StringFixed(8)
 	assert.Equal(t, actual, expected)
 
 	test.CleanupIntegrationTest()
 }
 
-func TestEtherScan_GetToken(t *testing.T) {
+func TestEthereumWebClient_GetToken(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
 	userDAO := dao.NewUserDAO(ctx)
@@ -124,20 +129,20 @@ func TestEtherScan_GetToken(t *testing.T) {
 	exchangeService := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
 	fiatPriceService, err := NewFiatPriceService(ctx, exchangeService)
 
-	service, err := NewEtherscanService(ctx, dao.NewUserDAO(ctx), mapper.NewUserMapper(),
-		NewMarketCapService(ctx), fiatPriceService)
+	localAuthService := NewLocalAuthService(ctx, userDAO, userMapper)
+	service, err := NewEthereumWebClient(ctx, userDAO, localAuthService, NewMarketCapService(ctx), fiatPriceService)
 	assert.Nil(t, err)
 
 	token, err := service.GetToken(os.Getenv("ETH_ADDRESS"), os.Getenv("TOKEN_ADDRESS"))
 	assert.Nil(t, err)
 
-	assert.Equal(t, true, token.GetBalance() > 0)
+	assert.Equal(t, true, token.GetBalance().GreaterThan(decimal.NewFromFloat(0)))
 	//fmt.Printf("balance: %.8f\n", balance)
 
 	test.CleanupIntegrationTest()
 }
 
-func TestEtherScanService_GetTokenTransactions(t *testing.T) {
+func TestEthereumWebClientService_GetTokenTransactions(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
 	userDAO := dao.NewUserDAO(ctx)
@@ -150,8 +155,8 @@ func TestEtherScanService_GetTokenTransactions(t *testing.T) {
 	fiatPriceService, err := NewFiatPriceService(ctx, exchangeService)
 	assert.Nil(t, err)
 
-	service, err := NewEtherscanService(ctx, dao.NewUserDAO(ctx), mapper.NewUserMapper(),
-		NewMarketCapService(ctx), fiatPriceService)
+	localAuthService := NewLocalAuthService(ctx, userDAO, userMapper)
+	service, err := NewEthereumWebClient(ctx, userDAO, localAuthService, NewMarketCapService(ctx), fiatPriceService)
 	assert.Nil(t, err)
 
 	transactions, err := service.GetTokenTransactions(os.Getenv("TOKEN_INTERNAL_ADDRESS"))

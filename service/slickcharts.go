@@ -7,6 +7,7 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/util"
+	"github.com/shopspring/decimal"
 )
 
 type SlickChartsResponse struct {
@@ -115,10 +116,10 @@ func (sc *SlickCharts) GetPriceHistory(currency string) []common.Candlestick {
 	for _, price := range history {
 		candlesticks = append(candlesticks, common.Candlestick{
 			Date:   time.Unix(price.Time/1000, 0),
-			High:   price.High,
-			Low:    price.Low,
-			Close:  price.Close,
-			Volume: price.Volume})
+			High:   decimal.NewFromFloat(price.High),
+			Low:    decimal.NewFromFloat(price.Low),
+			Close:  decimal.NewFromFloat(price.Close),
+			Volume: decimal.NewFromFloat(price.Volume)})
 	}
 
 	sc.prices[currency] = candlesticks

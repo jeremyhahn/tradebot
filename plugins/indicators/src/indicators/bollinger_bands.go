@@ -1,12 +1,15 @@
 package indicators
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
+)
 
 type BollingerBands interface {
-	GetUpper() float64
-	GetMiddle() float64
-	GetLower() float64
-	StandardDeviation() float64
-	Calculate(price float64) (float64, float64, float64)
+	GetUpper() decimal.Decimal
+	GetMiddle() decimal.Decimal
+	GetLower() decimal.Decimal
+	StandardDeviation() decimal.Decimal
+	Calculate(price decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal)
 	common.FinancialIndicator
 }

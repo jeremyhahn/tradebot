@@ -17,11 +17,12 @@ import (
 )
 
 type TransactionRestService interface {
-	GetTransactions(w http.ResponseWriter, r *http.Request)
+	GetHistory(w http.ResponseWriter, r *http.Request)
 	GetOrderHistory(w http.ResponseWriter, r *http.Request)
 	GetDepositHistory(w http.ResponseWriter, r *http.Request)
 	GetWithdrawalHistory(w http.ResponseWriter, r *http.Request)
 	GetImportedTransactions(w http.ResponseWriter, r *http.Request)
+	Synchronize(w http.ResponseWriter, r *http.Request)
 	Export(w http.ResponseWriter, r *http.Request)
 	Import(w http.ResponseWriter, r *http.Request)
 }
@@ -38,24 +39,52 @@ func NewTransactionRestService(middlewareService service.Middleware, jsonWriter 
 		jsonWriter:        jsonWriter}
 }
 
-func (restService *TransactionRestServiceImpl) GetTransactions(w http.ResponseWriter, r *http.Request) {
+func (restService *TransactionRestServiceImpl) Synchronize(w http.ResponseWriter, r *http.Request) {
 	ctx, err := restService.middlewareService.CreateContext(w, r)
 	if err != nil {
 		RestError(w, r, err, restService.jsonWriter)
 	}
 	defer ctx.Close()
-	ctx.GetLogger().Debugf("[TransactionRestService.GetTransactions]")
+	ctx.GetLogger().Debugf("[TransactionRestService.Synchronize]")
 	txService, err := restService.createTransactionService(ctx)
 	if err != nil {
 		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
 			Success: false,
 			Payload: err.Error()})
+		return
 	}
-	transactions, err := txService.GetTransactions()
+	txs, err := txService.Synchronize()
 	if err != nil {
 		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
 			Success: false,
 			Payload: err.Error()})
+		return
+	}
+	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
+		Success: true,
+		Payload: txs})
+}
+
+func (restService *TransactionRestServiceImpl) GetHistory(w http.ResponseWriter, r *http.Request) {
+	ctx, err := restService.middlewareService.CreateContext(w, r)
+	if err != nil {
+		RestError(w, r, err, restService.jsonWriter)
+	}
+	defer ctx.Close()
+	ctx.GetLogger().Debugf("[TransactionRestService.GetHistory]")
+	txService, err := restService.createTransactionService(ctx)
+	if err != nil {
+		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
+			Success: false,
+			Payload: err.Error()})
+		return
+	}
+	transactions, err := txService.GetHistory()
+	if err != nil {
+		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
+			Success: false,
+			Payload: err.Error()})
+		return
 	}
 	restService.formatTransactions(&transactions)
 	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{

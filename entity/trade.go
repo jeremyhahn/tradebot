@@ -11,8 +11,8 @@ type Trade struct {
 	Exchange  string `gorm:"index"`
 	Date      time.Time
 	Type      string
-	Price     float64
-	Amount    float64
+	Price     string
+	Amount    string
 	ChartData string
 	TradeEntity
 }
@@ -49,11 +49,11 @@ func (trade *Trade) GetType() string {
 	return trade.Type
 }
 
-func (trade *Trade) GetPrice() float64 {
+func (trade *Trade) GetPrice() string {
 	return trade.Price
 }
 
-func (trade *Trade) GetAmount() float64 {
+func (trade *Trade) GetAmount() string {
 	return trade.Amount
 }
 

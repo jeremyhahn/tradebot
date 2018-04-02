@@ -1,25 +1,27 @@
 // +build integration
 
-package service
+package main
 
 import (
+	"os"
 	"testing"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
-	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRippleService_GetTransactions(t *testing.T) {
-	ctx := test.NewIntegrationTestContext()
+func TestXrpService_GetTransactions(t *testing.T) {
+	ctx := test.CreateIntegrationTestContext("../../../.env", "../../../")
+	wallet := NewXrpWallet(&common.WalletParams{
+		Context:          ctx,
+		Address:          os.Getenv("XRP_ADDRESS"),
+		MarketCapService: service.NewMarketCapService(ctx)})
 
-	marketcapService := NewMarketCapService(ctx)
-	rippleService := NewRippleService(ctx, dao.NewUserDAO(ctx), marketcapService)
-
-	transactions, err := rippleService.GetTransactions()
+	transactions, err := wallet.GetTransactions()
 	assert.Nil(t, err)
 	assert.NotNil(t, transactions)
 	assert.Equal(t, true, len(transactions) > 1)

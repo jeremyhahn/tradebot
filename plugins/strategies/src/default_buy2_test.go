@@ -6,6 +6,7 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/plugins/indicators/src/indicators"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -33,10 +34,10 @@ func TestDefaultTradingStrategy_DefaultConfig_Buy2(t *testing.T) {
 	balances := []common.Coin{
 		&dto.CoinDTO{
 			Currency:  "BTC",
-			Available: 1.5},
+			Available: decimal.NewFromFloat(1.5)},
 		&dto.CoinDTO{
 			Currency:  "USD",
-			Available: 0.0}}
+			Available: decimal.NewFromFloat(0.0)}}
 	lastTrade := &dto.TradeDTO{
 		Id:       1,
 		ChartId:  1,
@@ -44,13 +45,13 @@ func TestDefaultTradingStrategy_DefaultConfig_Buy2(t *testing.T) {
 		Quote:    "USD",
 		Exchange: "gdax",
 		Type:     "buy",
-		Amount:   1,
-		Price:    8000}
+		Amount:   decimal.NewFromFloat(1),
+		Price:    decimal.NewFromFloat(8000)}
 	params := &common.TradingStrategyParams{
 		CurrencyPair: &common.CurrencyPair{Base: "BTC", Quote: "USD", LocalCurrency: "USD"},
 		Indicators:   strategyIndicators,
-		NewPrice:     11000,
-		TradeFee:     .025,
+		NewPrice:     decimal.NewFromFloat(11000),
+		TradeFee:     decimal.NewFromFloat(.025),
 		Balances:     balances,
 		LastTrade:    lastTrade}
 
@@ -69,24 +70,25 @@ func TestDefaultTradingStrategy_DefaultConfig_Buy2(t *testing.T) {
 	assert.Equal(t, false, sell)
 	assert.Equal(t, "Out of USD funding!", err.Error())
 	assert.Equal(t, map[string]string{
-		"BollingerBands":                     "14000.00, 13000.00, 12000.00",
-		"MovingAverageConvergenceDivergence": "25.00, 20.00, 3.25",
-		"RelativeStrengthIndex":              "29.00"}, data)
+		"RelativeStrengthIndex":              "29",
+		"BollingerBands":                     "14000, 13000, 12000",
+		"MovingAverageConvergenceDivergence": "25, 20, 3.25",
+	}, data)
 }
 
 func (mrsi *MockRSI_StrategyBuy2) GetName() string {
 	return "RelativeStrengthIndex"
 }
 
-func (mrsi *MockRSI_StrategyBuy2) Calculate(price float64) float64 {
-	return 29.0
+func (mrsi *MockRSI_StrategyBuy2) Calculate(price decimal.Decimal) decimal.Decimal {
+	return decimal.NewFromFloat(29.0)
 }
 
-func (mrsi *MockRSI_StrategyBuy2) IsOverBought(rsiValue float64) bool {
+func (mrsi *MockRSI_StrategyBuy2) IsOverBought(rsiValue decimal.Decimal) bool {
 	return false
 }
 
-func (mrsi *MockRSI_StrategyBuy2) IsOverSold(rsiValue float64) bool {
+func (mrsi *MockRSI_StrategyBuy2) IsOverSold(rsiValue decimal.Decimal) bool {
 	return true
 }
 
@@ -94,14 +96,14 @@ func (mrsi *MockBBands_StrategyBuy2) GetName() string {
 	return "BollingerBands"
 }
 
-func (mrsi *MockBBands_StrategyBuy2) Calculate(price float64) (float64, float64, float64) {
-	return 14000.0, 13000.0, 12000.0
+func (mrsi *MockBBands_StrategyBuy2) Calculate(price decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal) {
+	return decimal.NewFromFloat(14000.0), decimal.NewFromFloat(13000.0), decimal.NewFromFloat(12000.0)
 }
 
 func (mrsi *MockMACD_StrategyBuy2) GetName() string {
 	return "MovingAverageConvergenceDivergence"
 }
 
-func (mrsi *MockMACD_StrategyBuy2) Calculate(price float64) (float64, float64, float64) {
-	return 25, 20, 3.25
+func (mrsi *MockMACD_StrategyBuy2) Calculate(price decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal) {
+	return decimal.NewFromFloat(25), decimal.NewFromFloat(20), decimal.NewFromFloat(3.25)
 }

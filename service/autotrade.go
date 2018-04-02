@@ -5,8 +5,8 @@ import (
 
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dto"
-	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/shopspring/decimal"
 )
 
 type DefaultAutoTradeService struct {
@@ -72,7 +72,7 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 
 		go func(chart common.Chart) {
 
-			streamErr := ats.chartService.Stream(chart, candlesticks, func(currentPrice float64) error {
+			streamErr := ats.chartService.Stream(chart, candlesticks, func(currentPrice decimal.Decimal) error {
 
 				params := common.TradingStrategyParams{
 					CurrencyPair: currencyPair,
@@ -119,7 +119,7 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 							Price:     currentPrice,
 							Amount:    quoteAmount,
 							ChartData: chartJSON}
-						thisProfit := &entity.Profit{
+						thisProfit := &dto.ProfitDTO{
 							UserId:   ats.ctx.GetUser().GetId(),
 							TradeId:  thisTrade.GetId(),
 							Quantity: quoteAmount,
@@ -127,7 +127,7 @@ func (ats *DefaultAutoTradeService) EndWorldHunger() error {
 							Sold:     currentPrice,
 							Fee:      fee,
 							Tax:      tax,
-							Total:    currentPrice - lastTrade.GetPrice() - fee - tax}
+							Total:    currentPrice.Sub(lastTrade.GetPrice()).Sub(fee).Sub(tax)}
 						ats.tradeService.Save(thisTrade)
 						ats.profitService.Save(thisProfit)
 					}

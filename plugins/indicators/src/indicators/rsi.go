@@ -1,11 +1,14 @@
 package indicators
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
+)
 
 type RelativeStrengthIndex interface {
-	IsOverSold(rsiValue float64) bool
-	IsOverBought(rsiValue float64) bool
-	GetValue() float64
-	Calculate(price float64) float64
+	IsOverSold(rsiValue decimal.Decimal) bool
+	IsOverBought(rsiValue decimal.Decimal) bool
+	GetValue() decimal.Decimal
+	Calculate(price decimal.Decimal) decimal.Decimal
 	common.FinancialIndicator
 }

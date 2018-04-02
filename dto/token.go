@@ -1,16 +1,19 @@
 package dto
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
+)
 
 type EthereumTokenDTO struct {
-	Name            string  `json:"name"`
-	Symbol          string  `json:"symbol"`
-	Decimals        uint8   `json:"decimals"`
-	Balance         float64 `json:"balance"`
-	EthBalance      string  `json:"eth_balance"`
-	ContractAddress string  `json:"contract_address"`
-	WalletAddress   string  `json:"wallet_address"`
-	Value           float64 `json:"value"`
+	Name            string          `json:"name"`
+	Symbol          string          `json:"symbol"`
+	Decimals        uint8           `json:"decimals"`
+	Balance         decimal.Decimal `json:"balance"`
+	EthBalance      string          `json:"eth_balance"`
+	ContractAddress string          `json:"contract_address"`
+	WalletAddress   string          `json:"wallet_address"`
+	Value           decimal.Decimal `json:"value"`
 	common.EthereumToken
 }
 
@@ -30,7 +33,7 @@ func (et *EthereumTokenDTO) GetDecimals() uint8 {
 	return et.Decimals
 }
 
-func (et *EthereumTokenDTO) GetBalance() float64 {
+func (et *EthereumTokenDTO) GetBalance() decimal.Decimal {
 	return et.Balance
 }
 
@@ -46,6 +49,6 @@ func (et *EthereumTokenDTO) GetWalletAddress() string {
 	return et.WalletAddress
 }
 
-func (et *EthereumTokenDTO) GetValue() float64 {
+func (et *EthereumTokenDTO) GetValue() decimal.Decimal {
 	return et.Value
 }

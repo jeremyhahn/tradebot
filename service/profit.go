@@ -22,10 +22,10 @@ func (ps *DefaultProfitService) Save(profit common.Profit) {
 	ps.profitDAO.Create(&entity.Profit{
 		UserId:   profit.GetUserId(),
 		TradeId:  profit.GetTradeId(),
-		Quantity: profit.GetQuantity(),
-		Bought:   profit.GetBought(),
-		Sold:     profit.GetSold(),
-		Fee:      profit.GetFee(),
-		Tax:      profit.GetTax(),
-		Total:    profit.GetTotal()})
+		Quantity: profit.GetQuantity().String(),
+		Bought:   profit.GetBought().String(),
+		Sold:     profit.GetSold().String(),
+		Fee:      profit.GetFee().String(),
+		Tax:      profit.GetTax().String(),
+		Total:    profit.GetTotal().String()})
 }

@@ -1,13 +1,16 @@
 package dto
 
-import "github.com/jeremyhahn/tradebot/common"
+import (
+	"github.com/jeremyhahn/tradebot/common"
+	"github.com/shopspring/decimal"
+)
 
 type CryptoExchangeSummaryDTO struct {
-	Name     string        `json:"name"`
-	URL      string        `json:"url"`
-	Total    float64       `json:"total"`
-	Satoshis float64       `json:"satoshis"`
-	Coins    []common.Coin `json:"coins"`
+	Name     string          `json:"name"`
+	URL      string          `json:"url"`
+	Total    decimal.Decimal `json:"total"`
+	Satoshis decimal.Decimal `json:"satoshis"`
+	Coins    []common.Coin   `json:"coins"`
 	common.CryptoExchangeSummary
 }
 
@@ -23,11 +26,11 @@ func (ce *CryptoExchangeSummaryDTO) GetURL() string {
 	return ce.URL
 }
 
-func (ce *CryptoExchangeSummaryDTO) GetTotal() float64 {
+func (ce *CryptoExchangeSummaryDTO) GetTotal() decimal.Decimal {
 	return ce.Total
 }
 
-func (ce *CryptoExchangeSummaryDTO) GetSatoshis() float64 {
+func (ce *CryptoExchangeSummaryDTO) GetSatoshis() decimal.Decimal {
 	return ce.Satoshis
 }
 

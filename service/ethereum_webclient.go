@@ -2,7 +2,6 @@ package service
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,10 +11,8 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/entity"
-	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/util"
 	"github.com/shopspring/decimal"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type EtherScanTx struct {
@@ -54,62 +51,40 @@ type EtherScanResponse struct {
 	Result  string `json:"result"`
 }
 
-type EtherscanServiceImpl struct {
+type EthereumWebClient struct {
 	ctx              common.Context
 	userDAO          dao.UserDAO
-	userMapper       mapper.UserMapper
-	marketcapService MarketCapService
+	authService      AuthService
+	marketcapService common.MarketCapService
 	fiatPriceService common.FiatPriceService
 	apiKeyToken      string
 	endpoint         string
-	rateLimiter      *common.RateLimiter
 	EthereumService
 }
 
 var ETHERSCAN_RATELIMITER = common.NewRateLimiter(5, 1)
 
-func NewEtherscanService(ctx common.Context, userDAO dao.UserDAO, userMapper mapper.UserMapper,
-	marketcapService MarketCapService, fiatPriceService common.FiatPriceService) (EthereumService, error) {
-	return &EtherscanServiceImpl{
+func NewEthereumWebClient(ctx common.Context, userDAO dao.UserDAO, authService AuthService,
+	marketcapService common.MarketCapService, fiatPriceService common.FiatPriceService) (EthereumService, error) {
+	return &EthereumWebClient{
 		ctx:              ctx,
 		userDAO:          userDAO,
-		userMapper:       userMapper,
+		authService:      authService,
 		marketcapService: marketcapService,
 		fiatPriceService: fiatPriceService,
 		apiKeyToken:      "YourApiKeyToken",
 		endpoint:         "https://api.etherscan.io/api"}, nil
 }
 
-func (service *EtherscanServiceImpl) Login(username, password string) (common.UserContext, error) {
-	userEntity, err := service.userDAO.GetByName(username)
-	if err != nil && err.Error() != "record not found" {
-		return nil, errors.New("Invalid username/password")
-	}
-	if err != nil {
-		return nil, err
-	}
-	err = bcrypt.CompareHashAndPassword([]byte(userEntity.GetKeystore()), []byte(password))
-	if err != nil {
-		return nil, errors.New("Invalid username/password")
-	}
-	return service.userMapper.MapUserEntityToDto(userEntity), nil
+func (service *EthereumWebClient) Login(username, password string) (common.UserContext, error) {
+	return service.authService.Login(username, password)
 }
 
-func (service *EtherscanServiceImpl) Register(username, password string) error {
-	_, err := service.userDAO.GetByName(username)
-	if err != nil && err.Error() != "record not found" {
-		service.ctx.GetLogger().Errorf("[EtherscanService.Register] %s", err.Error())
-		return errors.New(fmt.Sprintf("Unexpected error: %s", err.Error()))
-	}
-	encrypted, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return service.userDAO.Save(&entity.User{
-		Username:      username,
-		LocalCurrency: "USD",
-		Etherbase:     "etherscan",
-		Keystore:      string(encrypted)})
+func (service *EthereumWebClient) Register(username, password string) error {
+	return service.authService.Register(username, password)
 }
 
-func (service *EtherscanServiceImpl) GetAccounts() ([]common.UserContext, error) {
+func (service *EthereumWebClient) GetAccounts() ([]common.UserContext, error) {
 	var accounts []common.UserContext
 	walletEntities := service.userDAO.GetWallets(
 		&entity.User{
@@ -125,44 +100,70 @@ func (service *EtherscanServiceImpl) GetAccounts() ([]common.UserContext, error)
 	return accounts, nil
 }
 
-func (service *EtherscanServiceImpl) GetWallet(address string) (common.UserCryptoWallet, error) {
+func (service *EthereumWebClient) GetPrice() decimal.Decimal {
+
+	ETHERSCAN_RATELIMITER.RespectRateLimit()
+
+	url := fmt.Sprintf("%s?module=stats&action=ethprice&apikey=%s", service.endpoint, service.apiKeyToken)
+	service.ctx.GetLogger().Debugf("[EthereumWebClient.GetPrice] url: %s", url)
+
+	_, body, err := util.HttpRequest(url)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetPrice] HTTP Request Error: %s", err.Error())
+	}
+
+	response := EtherScanGetLastPriceResponse{}
+	jsonErr := json.Unmarshal(body, &response)
+	if jsonErr != nil {
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetPrice] JSON Unmarshal Error: %s", jsonErr.Error())
+	}
+
+	price, err := decimal.NewFromString(response.Result.USD)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetPrice] String to decimal conversation error: %s", err.Error())
+	}
+
+	return price
+}
+
+func (service *EthereumWebClient) GetWallet(address string) (common.UserCryptoWallet, error) {
 
 	ETHERSCAN_RATELIMITER.RespectRateLimit()
 
 	url := fmt.Sprintf("%s?module=account&action=balance&address=0x%s&tag=latest&apikey=%s",
 		service.endpoint, address, service.apiKeyToken)
 
-	service.ctx.GetLogger().Debugf("[EtherscanService.GetWallet] url: %s", url)
+	service.ctx.GetLogger().Debugf("[EthereumWebClient.GetWallet] url: %s", url)
 
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetWallet] Error: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetWallet] Error: %s", err.Error())
 		return nil, err
 	}
 
 	response := EtherScanResponse{}
 	jsonErr := json.Unmarshal(body, &response)
 	if jsonErr != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetWallet] %s", jsonErr.Error())
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetWallet] %s", jsonErr.Error())
 		return nil, jsonErr
 	}
 
-	result, err := strconv.ParseFloat(response.Result, 64)
+	result, err := decimal.NewFromString(response.Result)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetWallet] Float conversation error: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetWallet] Float conversation error: %s", err.Error())
 		return nil, err
 	}
 
-	balance := result / 1000000000000000000
+	balance := result.Div(decimal.NewFromFloat(1000000000000000000))
 
 	return &dto.UserCryptoWalletDTO{
 		Address:  address,
 		Balance:  balance,
 		Currency: "ETH",
-		Value:    service.getLastPrice() * balance}, nil
+		Value:    service.GetPrice().Mul(balance)}, nil
 }
 
-func (service *EtherscanServiceImpl) GetTransactions() ([]common.Transaction, error) {
+func (service *EthereumWebClient) GetTransactions() ([]common.Transaction, error) {
 	var transactions []common.Transaction
 	userEntity := &entity.User{Id: service.ctx.GetUser().GetId()}
 	wallets := service.userDAO.GetWallets(userEntity)
@@ -179,19 +180,19 @@ func (service *EtherscanServiceImpl) GetTransactions() ([]common.Transaction, er
 	return transactions, nil
 }
 
-func (service *EtherscanServiceImpl) GetTransactionsFor(address string) ([]common.Transaction, error) {
+func (service *EthereumWebClient) GetTransactionsFor(address string) ([]common.Transaction, error) {
 	ETHERSCAN_RATELIMITER.RespectRateLimit()
 	url := fmt.Sprintf("%s?module=account&action=txlist&address=0x%s&startblock=0&endblock=99999999999999999999999&sort=asc&apikey=%s",
 		service.endpoint, address, service.apiKeyToken)
-	service.ctx.GetLogger().Debugf("[EtherscanService.GetTransactionsFor] url: %s", url)
+	service.ctx.GetLogger().Debugf("[EthereumWebClient.GetTransactionsFor] url: %s", url)
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTransactionsFor] HTTP Request Error: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetTransactionsFor] HTTP Request Error: %s", err.Error())
 	}
 	response := EtherScanGetTransactionsResponse{}
 	jsonErr := json.Unmarshal(body, &response)
 	if jsonErr != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTransactionsFor] JSON Unmarshall error: %s", jsonErr.Error())
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetTransactionsFor] JSON Unmarshal error: %s", jsonErr.Error())
 	}
 	var transactions []common.Transaction
 	for _, tx := range response.Result {
@@ -221,31 +222,30 @@ func (service *EtherscanServiceImpl) GetTransactionsFor(address string) ([]commo
 		if err != nil {
 			return nil, err
 		}
-		closePrice := decimal.NewFromFloat(candlestick.Close)
 		transactions = append(transactions, &dto.TransactionDTO{
 			Id:                   tx.Timestamp,
 			Date:                 time.Unix(timestamp, 0),
-			CurrencyPair:         &common.CurrencyPair{Base: "ETH", Quote: localCurrency, LocalCurrency: localCurrency},
+			CurrencyPair:         &common.CurrencyPair{Base: "ETH", Quote: "ETH", LocalCurrency: localCurrency},
 			Type:                 txType,
-			Network:              "etherscan",
+			Network:              "Ethereum",
 			NetworkDisplayName:   "Ethereum",
 			Quantity:             finalAmount.StringFixed(8),
 			QuantityCurrency:     "ETH",
-			FiatQuantity:         finalAmount.Mul(closePrice).StringFixed(2),
+			FiatQuantity:         finalAmount.Mul(candlestick.Close).StringFixed(2),
 			FiatQuantityCurrency: "USD",
-			Price:                closePrice.StringFixed(2),
+			Price:                candlestick.Close.StringFixed(2),
 			PriceCurrency:        "USD",
 			Fee:                  finalFee.StringFixed(8),
 			FeeCurrency:          "ETH",
-			FiatFee:              finalFee.Mul(closePrice).StringFixed(2),
+			FiatFee:              finalFee.Mul(candlestick.Close).StringFixed(2),
 			FiatFeeCurrency:      "USD",
-			Total:                finalAmount.Mul(closePrice).StringFixed(2),
+			Total:                finalAmount.Mul(candlestick.Close).StringFixed(2),
 			TotalCurrency:        "USD"})
 	}
 	return transactions, nil
 }
 
-func (service *EtherscanServiceImpl) GetToken(walletAddress, contractAddress string) (common.EthereumToken, error) {
+func (service *EthereumWebClient) GetToken(walletAddress, contractAddress string) (common.EthereumToken, error) {
 
 	ETHERSCAN_RATELIMITER.RespectRateLimit()
 
@@ -253,23 +253,23 @@ func (service *EtherscanServiceImpl) GetToken(walletAddress, contractAddress str
 	url := fmt.Sprintf("%s?module=account&action=tokenbalance&contractaddress=0x%s&&address=0x%s&tag=latest&apikey=%s",
 		service.endpoint, contractAddress, walletAddress, service.apiKeyToken)
 
-	service.ctx.GetLogger().Debugf("[EtherscanService.GetToken] url: %s", url)
+	service.ctx.GetLogger().Debugf("[EthereumWebClient.GetToken] url: %s", url)
 
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetToken] Error: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetToken] Error: %s", err.Error())
 		return nil, err
 	}
 
 	response := EtherScanResponse{}
 	jsonErr := json.Unmarshal(body, &response)
 	if jsonErr != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetToken] %s", jsonErr.Error())
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetToken] %s", jsonErr.Error())
 	}
 
-	result, err := strconv.ParseFloat(response.Result, 64)
+	result, err := decimal.NewFromString(response.Result)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetToken] Float conversation error: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetToken] Result decimal conversation error: %s", err.Error())
 	}
 
 	tokens := service.userDAO.GetTokens(&entity.User{
@@ -282,40 +282,42 @@ func (service *EtherscanServiceImpl) GetToken(walletAddress, contractAddress str
 		}
 	}
 
-	balance := result / 100000000
-	fPriceUSD, _ := strconv.ParseFloat(service.marketcapService.GetMarket(symbol).PriceUSD, 64)
-	value := balance * fPriceUSD
-
+	balance := result.Div(decimal.NewFromFloat(100000000))
+	decPriceUSD, err := decimal.NewFromString(service.marketcapService.GetMarket(symbol).PriceUSD)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetToken] Balance decimal conversation error: %s", err.Error())
+	}
+	value := balance.Mul(decPriceUSD)
 	return &dto.EthereumTokenDTO{
 		Symbol:          symbol,
 		WalletAddress:   walletAddress,
 		ContractAddress: contractAddress,
-		Balance:         balance,
-		Value:           value}, nil
+		Balance:         balance.Truncate(8),
+		Value:           value.Truncate(2)}, nil
 }
 
-func (service *EtherscanServiceImpl) GetTokenTransactions(contractAddress string) ([]common.Transaction, error) {
+func (service *EthereumWebClient) GetTokenTransactions(contractAddress string) ([]common.Transaction, error) {
 
 	ETHERSCAN_RATELIMITER.RespectRateLimit()
 
 	url := fmt.Sprintf("%s?module=account&action=txlistinternal&address=0x%s&startblock=0&endblock=99999999999999999999999&sort=asc&apikey=%s",
 		service.endpoint, contractAddress, service.apiKeyToken)
-	service.ctx.GetLogger().Debugf("[EtherscanService.GetTokenTransactions] url: %s", url)
+	service.ctx.GetLogger().Debugf("[EthereumWebClient.GetTokenTransactions] url: %s", url)
 
 	_, body, err := util.HttpRequest(url)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTokenTransactions] HTTP Request Error: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetTokenTransactions] HTTP Request Error: %s", err.Error())
 	}
 
 	response := EtherScanGetTransactionsResponse{}
 	jsonErr := json.Unmarshal(body, &response)
 	if jsonErr != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTokenTransactions] JSON Unmarshall error: %s", jsonErr.Error())
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetTokenTransactions] JSON Unmarshall error: %s", jsonErr.Error())
 	}
 
 	priceUSD, err := decimal.NewFromString(service.marketcapService.GetMarket("ETH").PriceUSD)
 	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.GetTokenTransactions] Error converting price to decimal: %s", err.Error())
+		service.ctx.GetLogger().Errorf("[EthereumWebClient.GetTokenTransactions] Error converting price to decimal: %s", err.Error())
 	}
 
 	var transactions []common.Transaction
@@ -357,30 +359,4 @@ func (service *EtherscanServiceImpl) GetTokenTransactions(contractAddress string
 			TotalCurrency:    "USD"})
 	}
 	return transactions, nil
-}
-
-func (service *EtherscanServiceImpl) getLastPrice() float64 {
-
-	ETHERSCAN_RATELIMITER.RespectRateLimit()
-
-	url := fmt.Sprintf("%s?module=stats&action=ethprice&apikey=%s", service.endpoint, service.apiKeyToken)
-	service.ctx.GetLogger().Debugf("[EtherscanService.getLastPrice] url: %s", url)
-
-	_, body, err := util.HttpRequest(url)
-	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.getLastPrice] HTTP Request Error: %s", err.Error())
-	}
-
-	response := EtherScanGetLastPriceResponse{}
-	jsonErr := json.Unmarshal(body, &response)
-	if jsonErr != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.getLastPrice] JSON Unmarshall Error: %s", jsonErr.Error())
-	}
-
-	price, err := strconv.ParseFloat(response.Result.USD, 64)
-	if err != nil {
-		service.ctx.GetLogger().Errorf("[EtherscanService.getLastPrice] Float Conversation Error: %s", err.Error())
-	}
-
-	return price
 }

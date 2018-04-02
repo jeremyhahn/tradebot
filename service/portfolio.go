@@ -3,19 +3,20 @@ package service
 import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dto"
+	"github.com/shopspring/decimal"
 )
 
 type PortfolioServiceImpl struct {
 	ctx              common.Context
 	stopChans        map[uint]chan bool
 	portfolios       map[uint]common.Portfolio
-	marketcapService MarketCapService
+	marketcapService common.MarketCapService
 	userService      UserService
 	ethereumService  EthereumService
 	PortfolioService
 }
 
-func NewPortfolioService(ctx common.Context, marketcapService MarketCapService,
+func NewPortfolioService(ctx common.Context, marketcapService common.MarketCapService,
 	userService UserService, ethereumService EthereumService) PortfolioService {
 	return &PortfolioServiceImpl{
 		ctx:              ctx,
@@ -28,24 +29,23 @@ func NewPortfolioService(ctx common.Context, marketcapService MarketCapService,
 
 func (ps *PortfolioServiceImpl) Build(user common.UserContext, currencyPair *common.CurrencyPair) (common.Portfolio, error) {
 	ps.ctx.GetLogger().Debugf("[PortfolioService.Build] Building portfolio for %s", user.GetUsername())
-	var netWorth float64
+	var netWorth decimal.Decimal
 	exchangeList, err := ps.userService.GetExchangeSummary(currencyPair)
 	if err != nil {
 		ps.ctx.GetLogger().Errorf("[PortfolioService.Build] Error: %s", err.Error())
 		return nil, err
 	}
 	for _, ex := range exchangeList {
-		netWorth += ex.GetTotal()
+		netWorth = netWorth.Add(ex.GetTotal())
 	}
 	walletList := ps.userService.GetWallets()
 	for _, w := range walletList {
-		netWorth += w.GetValue()
+		netWorth = netWorth.Add(w.GetValue())
 	}
-	tokenList, err := ps.userService.GetAllTokens()
+	tokenList, err := ps.userService.GetTokens()
 	for _, t := range tokenList {
-		netWorth += t.GetValue()
+		netWorth = netWorth.Add(t.GetValue())
 	}
-
 	/*
 		accounts, err := ps.ethereumService.GetAccounts()
 		if err != nil {
@@ -88,7 +88,7 @@ func (ps *PortfolioServiceImpl) Build(user common.UserContext, currencyPair *com
 	}
 	portfolio := &dto.PortfolioDTO{
 		User:      currentUser,
-		NetWorth:  netWorth,
+		NetWorth:  netWorth.Truncate(2),
 		Exchanges: exchangeList,
 		Wallets:   walletList,
 		Tokens:    tokenList}

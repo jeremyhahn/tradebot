@@ -53,7 +53,7 @@ func (ws *WebServer) Start() {
 	transactionRestService := rest.NewTransactionRestService(ws.jsonWebTokenService, jsonWriter)
 	router.Handle("/api/v1/transactions", negroni.New(
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
-		negroni.Wrap(http.HandlerFunc(transactionRestService.GetTransactions)),
+		negroni.Wrap(http.HandlerFunc(transactionRestService.GetHistory)),
 	))
 	router.Handle("/api/v1/transactions/orderhistory", negroni.New(
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
@@ -75,6 +75,10 @@ func (ws *WebServer) Start() {
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
 		negroni.Wrap(http.HandlerFunc(transactionRestService.Import)),
 	))
+	router.Handle("/api/v1/transactions/sync", negroni.New(
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(transactionRestService.Synchronize)),
+	))
 	router.Handle("/api/v1/exchanges/names", negroni.New(
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
 		negroni.Wrap(http.HandlerFunc(exchangeRestService.GetDisplayNames)),
@@ -93,12 +97,15 @@ func (ws *WebServer) Start() {
 	)).Methods("POST")
 
 	// Websocket Handlers
-	router.HandleFunc("/ws/portfolio", func(w http.ResponseWriter, r *http.Request) {
-		portfolioHub := websocket.NewPortfolioHub(ws.ctx.GetLogger())
-		go portfolioHub.Run()
-		ph := websocket.NewPortfolioHandler(ws.ctx.GetLogger(), portfolioHub, ws.jsonWebTokenService)
-		ph.OnConnect(w, r)
-	})
+	router.Handle("/ws/portfolio", negroni.New(
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			portfolioHub := websocket.NewPortfolioHub(ws.ctx.GetLogger())
+			go portfolioHub.Run()
+			ph := websocket.NewPortfolioHandler(ws.ctx.GetLogger(), portfolioHub, ws.jsonWebTokenService)
+			ph.OnConnect(w, r)
+		})),
+	))
 
 	// React Routes
 	routes := []string{"login", "register", "portfolio", "trades", "orders",

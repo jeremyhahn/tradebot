@@ -7,6 +7,7 @@ import (
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/test"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,8 +44,8 @@ func TestChartMapper(t *testing.T) {
 			Exchange: "gdax",
 			Date:     time.Now().AddDate(0, 0, -1),
 			Type:     "buy",
-			Price:    5000,
-			Amount:   1.5},
+			Price:    decimal.NewFromFloat(5000),
+			Amount:   decimal.NewFromFloat(1.5)},
 		&dto.TradeDTO{
 			Id:       2,
 			ChartId:  1,
@@ -54,8 +55,8 @@ func TestChartMapper(t *testing.T) {
 			Exchange: "gdax",
 			Date:     time.Now(),
 			Type:     "sell",
-			Price:    10000,
-			Amount:   1.0}}
+			Price:    decimal.NewFromFloat(10000),
+			Amount:   decimal.NewFromFloat(1.0)}}
 
 	chartDTO := &dto.ChartDTO{
 		Base:       "BTC",

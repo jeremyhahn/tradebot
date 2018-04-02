@@ -12,6 +12,7 @@ import BuySellDialog from 'app/components/dialogs/BuySell'
 import Coin from 'app/components/Coin';
 import Avatar from 'material-ui/Avatar';
 import Typography from 'material-ui/Typography';
+import AuthService from 'app/components/AuthService';
 import withAuth from 'app/components/withAuth';
 
 const currencies = [
@@ -48,6 +49,7 @@ class Portfolio extends React.Component {
 			},
 			netWorth: 0.0
 		};
+    this.Auth = new AuthService()
 		this.handleAddExchangeModalOpen = this.handleAddExchangeModalOpen.bind(this);
 		this.handleAddExchangeModalClose = this.handleAddExchangeModalClose.bind(this);
 		this.handleAddExchangeModalUpdate = this.handleAddExchangeModalUpdate.bind(this);
@@ -74,7 +76,8 @@ class Portfolio extends React.Component {
 		var loc = window.location, new_uri;
 		var protocol = (loc.protocol === "https:") ? "wss" : "ws";
 		if(this.ws == null) {
-		  this.ws = new WebSocket(protocol + "://" + loc.hostname + ':' + loc.port + "/ws/portfolio");
+		  this.ws = new WebSocket(protocol + "://" + loc.hostname + ':' + loc.port +
+          "/ws/portfolio?access_token=" + this.Auth.getToken());
 	  }
 		var _this = this;
 		var ws = this.ws;
@@ -177,7 +180,7 @@ class Portfolio extends React.Component {
 			<div style={{flex: '100%', height: '100%'}}>
 
 				<div style={{float: 'right', marginTop: '20px', marginRight: '35px'}}>
-					<Typography type="subheading" gutterBottom>Net worth: { this.state.netWorth.formatMoney() }</Typography>
+					<Typography type="subheading" gutterBottom>Net worth: { this.state.netWorth }</Typography>
 			  </div>
 
 				<Paper style={{ marginTop: '60px', height: '100%'}}>
@@ -185,7 +188,7 @@ class Portfolio extends React.Component {
 					{ this.state.portfolio.exchanges.map( exchange =>
 						<List key={exchange.name}>
 							<ListSubheader style={{ textTransform: 'uppercase' }}>
-								{ exchange.name + " - " + exchange.satoshis + " BTC - " + exchange.total.formatMoney()}
+								{ exchange.name + " - " + exchange.satoshis + " BTC - " + exchange.total.formatCurrency(this.Auth.getUser().local_currency)}
 							</ListSubheader>
 							{
 								exchange.coins.map( coin =>
@@ -205,7 +208,7 @@ class Portfolio extends React.Component {
 						{ this.state.portfolio.wallets.map( (wallet, i) =>
 							<ListItem key={wallet.currency + "-" + i} button>
 								<Avatar src={"images/crypto/128/" + wallet.currency.toLowerCase() + ".png"} />
-								<ListItemText primary={wallet.currency} secondary={wallet.balance  + " (" + wallet.value.formatMoney() +")" } />
+								<ListItemText primary={wallet.currency} secondary={wallet.balance  + " (" + wallet.value.formatCurrency(this.Auth.getUser().local_currency) +")" } />
 							</ListItem>
 						)}
 						</List>
@@ -217,7 +220,7 @@ class Portfolio extends React.Component {
 						{ this.state.portfolio.tokens.map( (token, i) =>
 							<ListItem key={token.symbol + "-" + i} button>
                 <Avatar src={"images/tokens/28/" + token.symbol.toLowerCase() + ".png"} />
-								<ListItemText primary={token.symbol} secondary={token.balance  + " (" + token.value.formatMoney() +")" } />
+								<ListItemText primary={token.symbol} secondary={token.balance  + " (" + token.value.formatCurrency(this.Auth.getUser().local_currency) +")" } />
 							</ListItem>
 						)}
 						</List>
