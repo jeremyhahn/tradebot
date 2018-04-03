@@ -21,13 +21,16 @@ func TestPortfolioService_Build(t *testing.T) {
 	pluginMapper := mapper.NewPluginMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 	pluginService := CreatePluginService(ctx, "../plugins/", pluginDAO, pluginMapper)
-	exchangeservice := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
-	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeservice)
+	exchangeService := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
+	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeService)
 	assert.Nil(t, err)
 
-	walletService := NewWalletService(ctx, pluginService)
+	fiatPriceService, err := NewFiatPriceService(ctx, exchangeService)
+	assert.Nil(t, err)
+
+	walletService := NewWalletService(ctx, pluginService, fiatPriceService)
 	userService := NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
-		ethereumService, exchangeservice, walletService)
+		ethereumService, exchangeService, walletService)
 
 	service := NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 	currencyPair := &common.CurrencyPair{
@@ -53,13 +56,16 @@ func TestPortfolioService_Stream(t *testing.T) {
 	pluginMapper := mapper.NewPluginMapper()
 	userExchangeMapper := mapper.NewUserExchangeMapper()
 	pluginService := CreatePluginService(ctx, "../plugins/", pluginDAO, pluginMapper)
-	exchangeservice := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
-	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeservice)
+	exchangeService := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
+	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeService)
 	assert.Nil(t, err)
 
-	walletService := NewWalletService(ctx, pluginService)
+	fiatPriceService, err := NewFiatPriceService(ctx, exchangeService)
+	assert.Nil(t, err)
+
+	walletService := NewWalletService(ctx, pluginService, fiatPriceService)
 	userService := NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
-		ethereumService, exchangeservice, walletService)
+		ethereumService, exchangeService, walletService)
 
 	service := NewPortfolioService(ctx, marketcapService, userService, ethereumService)
 	currencyPair := &common.CurrencyPair{

@@ -91,7 +91,8 @@ func createUserService() UserService {
 	pluginService := CreatePluginService(ctx, "../plugins/", pluginDAO, pluginMapper)
 	exchangeService := NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
 	ethereumService, _ := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeService)
-	walletService := NewWalletService(ctx, pluginService)
+	fiatPriceService, _ := NewFiatPriceService(ctx, exchangeService)
+	walletService := NewWalletService(ctx, pluginService, fiatPriceService)
 	return NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
 		ethereumService, exchangeService, walletService)
 }

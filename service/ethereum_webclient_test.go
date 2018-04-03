@@ -62,7 +62,7 @@ func TestEthereumWebClientService_GetTransactions(t *testing.T) {
 	ethereumService, err := NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeService)
 	assert.Nil(t, err)
 
-	walletService := NewWalletService(ctx, pluginService)
+	walletService := NewWalletService(ctx, pluginService, fiatPriceService)
 	userService := NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
 		ethereumService, exchangeService, walletService)
 

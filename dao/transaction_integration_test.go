@@ -16,6 +16,7 @@ func TestTransactionDAO(t *testing.T) {
 
 	orderDAO := NewTransactionDAO(ctx)
 	order1 := &entity.Transaction{
+		Id:       "1",
 		UserId:   1,
 		Date:     time.Now(),
 		Network:  "Test",
@@ -26,6 +27,7 @@ func TestTransactionDAO(t *testing.T) {
 		Fee:      decimal.NewFromFloat(1.23).StringFixed(2),
 		Total:    decimal.NewFromFloat(124.67).StringFixed(2)}
 	order2 := &entity.Transaction{
+		Id:       "2",
 		UserId:   1,
 		Date:     time.Now(),
 		Network:  "Test 2",
@@ -45,7 +47,7 @@ func TestTransactionDAO(t *testing.T) {
 	orders, err := orderDAO.Find()
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(orders))
-	assert.Equal(t, uint(1), orders[0].GetId())
+	assert.Equal(t, "1", orders[0].GetId())
 	assert.Equal(t, uint(1), orders[0].GetUserId())
 	//	assert.Equal(t, order1.GetDate(), orders[0].GetDate())
 	assert.Equal(t, order1.GetNetwork(), orders[0].GetNetwork())
@@ -55,7 +57,7 @@ func TestTransactionDAO(t *testing.T) {
 	assert.Equal(t, order1.GetFee(), orders[0].GetFee())
 	assert.Equal(t, order1.GetTotal(), orders[0].GetTotal())
 
-	assert.Equal(t, uint(2), orders[1].GetId())
+	assert.Equal(t, "2", orders[1].GetId())
 	assert.Equal(t, uint(1), orders[1].GetUserId())
 	//	assert.Equal(t, order2.GetDate(), orders[1].GetDate())
 	assert.Equal(t, order2.GetNetwork(), orders[1].GetNetwork())
