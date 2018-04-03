@@ -1,8 +1,6 @@
 package mapper
 
 import (
-	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -29,7 +27,7 @@ func NewTransactionMapper(ctx common.Context) TransactionMapper {
 func (mapper *DefaultTransactionMapper) MapTransactionEntityToDto(entity entity.TransactionEntity) common.Transaction {
 	currencyPair, _ := common.NewCurrencyPair(entity.GetCurrency(), mapper.ctx.GetUser().GetLocalCurrency())
 	return &dto.TransactionDTO{
-		Id:                   fmt.Sprintf("%d", entity.GetId()),
+		Id:                   entity.GetId(),
 		Network:              entity.GetNetwork(),
 		NetworkDisplayName:   strings.Title(entity.GetNetwork()),
 		Date:                 entity.GetDate(),
@@ -54,10 +52,9 @@ func (mapper *DefaultTransactionMapper) MapTransactionEntityToDto(entity entity.
 }
 
 func (mapper *DefaultTransactionMapper) MapTransactionDtoToEntity(dto common.Transaction) entity.TransactionEntity {
-	id, _ := strconv.ParseUint(dto.GetId(), 10, 64)
 	userId := mapper.ctx.GetUser().GetId()
 	return &entity.Transaction{
-		Id:                   uint(id),
+		Id:                   dto.GetId(),
 		UserId:               userId,
 		Date:                 dto.GetDate(),
 		Currency:             dto.GetCurrencyPair().String(),

@@ -174,27 +174,44 @@ func (r *Ripple) GetTransactions() ([]common.Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
+		amt = amt.Div(decimal.NewFromFloat(1000000))
 		fee, err := decimal.NewFromString(tx.Tx.Fee)
 		if err != nil {
 			return nil, err
 		}
+		fee = fee.Div(decimal.NewFromFloat(1000000))
 		currencyPair := &common.CurrencyPair{
 			Base:          "XRP",
 			Quote:         "XRP",
 			LocalCurrency: r.ctx.GetUser().GetLocalCurrency()}
+		candlestick, err := r.params.FiatPriceService.GetPriceAt("XRP", tx.Date)
+		if err != nil {
+			return nil, err
+		}
+		total := amt.Mul(candlestick.Close)
 		transactions = append(transactions, &dto.TransactionDTO{
-			Id:                 tx.Hash,
-			Date:               tx.Date,
-			CurrencyPair:       currencyPair,
-			Type:               txType,
-			Network:            "ripple",
-			NetworkDisplayName: "Ripple",
-			Quantity:           amt.Div(decimal.NewFromFloat(1000000)).StringFixed(8),
-			QuantityCurrency:   "XRP",
-			Fee:                fee.Div(decimal.NewFromFloat(1000000)).StringFixed(8),
-			FeeCurrency:        "XRP",
-			Total:              amt.StringFixed(8),
-			TotalCurrency:      "XRP"})
+			Id:                   tx.Hash,
+			Date:                 tx.Date,
+			CurrencyPair:         currencyPair,
+			Type:                 txType,
+			Network:              "ripple",
+			NetworkDisplayName:   "Ripple",
+			Quantity:             amt.StringFixed(8),
+			QuantityCurrency:     "XRP",
+			FiatQuantity:         amt.Mul(candlestick.Close).StringFixed(2),
+			FiatQuantityCurrency: "USD",
+			Price:                candlestick.Close.StringFixed(2),
+			PriceCurrency:        "USD",
+			FiatPrice:            candlestick.Close.StringFixed(2),
+			FiatPriceCurrency:    "USD",
+			Fee:                  fee.StringFixed(8),
+			FeeCurrency:          "XRP",
+			FiatFee:              fee.Mul(candlestick.Close).StringFixed(2),
+			FiatFeeCurrency:      "USD",
+			Total:                amt.StringFixed(8),
+			TotalCurrency:        "XRP",
+			FiatTotal:            total.StringFixed(2),
+			FiatTotalCurrency:    "USD"})
 	}
 	return transactions, nil
 }

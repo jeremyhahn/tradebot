@@ -40,7 +40,8 @@ func (restService *UserRestServiceImpl) createUserService(ctx common.Context) se
 	pluginService := service.NewPluginService(ctx, pluginDAO, pluginMapper)
 	exchangeService := service.NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
 	ethereumService, _ := service.NewEthereumService(ctx, userDAO, userMapper, marketcapService, exchangeService)
-	walletService := service.NewWalletService(ctx, pluginService)
+	fiatPriceService, _ := service.NewFiatPriceService(ctx, exchangeService)
+	walletService := service.NewWalletService(ctx, pluginService, fiatPriceService)
 	return service.NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
 		ethereumService, exchangeService, walletService)
 }

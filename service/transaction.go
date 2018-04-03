@@ -14,18 +14,21 @@ type TransactionServiceImpl struct {
 	dao              dao.TransactionDAO
 	mapper           mapper.TransactionMapper
 	exchangeService  ExchangeService
+	userService      UserService
 	ethereumService  EthereumService
 	fiatPriceService common.FiatPriceService
 	TransactionService
 }
 
 func NewTransactionService(ctx common.Context, transactionDAO dao.TransactionDAO, transactionMapper mapper.TransactionMapper,
-	exchangeService ExchangeService, ethereumService EthereumService, fiatPriceService common.FiatPriceService) TransactionService {
+	exchangeService ExchangeService, userService UserService, ethereumService EthereumService,
+	fiatPriceService common.FiatPriceService) TransactionService {
 	return &TransactionServiceImpl{
 		ctx:              ctx,
 		dao:              transactionDAO,
 		mapper:           transactionMapper,
 		exchangeService:  exchangeService,
+		userService:      userService,
 		ethereumService:  ethereumService,
 		fiatPriceService: fiatPriceService}
 }
@@ -62,25 +65,38 @@ func (service *TransactionServiceImpl) Synchronize() ([]common.Transaction, erro
 	if err != nil {
 		return synchronized, err
 	}
-	transactions, err := service.ethereumService.GetTransactions()
+	/*
+		transactions, err := service.ethereumService.GetTransactions()
+		if err != nil {
+			return nil, err
+		}
+		walletTransactions, err := service.GetWalletHistory()
+		if err != nil {
+			return nil, err
+		}
+		transactions = append(transactions, walletTransactions...)
+		transactions = append(transactions, service.GetOrderHistory()...)
+		transactions = append(transactions, service.GetImportedTransactions()...)
+		transactions = append(transactions, service.GetDepositHistory()...)
+		transactions = append(transactions, service.GetWithdrawalHistory()...)
+	*/
+
+	transactions, err := service.GetWalletHistory()
 	if err != nil {
 		return nil, err
 	}
-	transactions = append(transactions, service.GetOrderHistory()...)
-	transactions = append(transactions, service.GetImportedTransactions()...)
-	transactions = append(transactions, service.GetDepositHistory()...)
-	transactions = append(transactions, service.GetWithdrawalHistory()...)
+
 	service.Sort(&transactions)
 	for _, tx := range transactions {
 		if unique, err := service.isUnique(tx, &transactions, &persisted); err != nil {
 			return synchronized, err
 		} else {
 			if unique {
-				//tx2 := tx.(*dto.TransactionDTO)
-				//tx2.Id = "0"
 				err := service.dao.Create(service.mapper.MapTransactionDtoToEntity(tx))
 				if err != nil {
-					return nil, err
+					service.ctx.GetLogger().Errorf("Error adding transaction to database: %s. Error: %s", tx, err.Error())
+					//return nil, err
+					continue
 				}
 				synchronized = append(synchronized, tx)
 			}
@@ -106,6 +122,22 @@ func (service *TransactionServiceImpl) GetHistory() ([]common.Transaction, error
 		return transactions, nil
 	}
 	return service.Synchronize()
+}
+
+func (service *TransactionServiceImpl) GetWalletHistory() ([]common.Transaction, error) {
+	var transactions []common.Transaction
+	walletPlugins, err := service.userService.GetWalletPlugins()
+	if err != nil {
+		return transactions, err
+	}
+	for _, wallet := range walletPlugins {
+		txs, err := wallet.GetTransactions()
+		if err != nil {
+			return transactions, err
+		}
+		transactions = append(transactions, txs...)
+	}
+	return transactions, nil
 }
 
 func (service *TransactionServiceImpl) GetOrderHistory() []common.Transaction {

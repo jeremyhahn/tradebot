@@ -254,7 +254,7 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 	matches := make(map[string]gdax.LedgerEntry, 10)
 	accounts, err := _gdax.gdax.GetAccounts()
 	if err != nil {
-		_gdax.logger.Errorf("[GDAX.getDepositWithdrawalHistory] %s", err.Error())
+		_gdax.logger.Errorf("[GDAX.getDepositWithdrawalHistory] Error retrieving accounts: %s", err.Error())
 		return nil, err
 	}
 	for _, a := range accounts {
@@ -262,7 +262,7 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 		cursor := _gdax.gdax.ListAccountLedger(a.Id)
 		for cursor.HasMore {
 			if err := cursor.NextPage(&ledger); err != nil {
-				_gdax.logger.Errorf("[GDAX.getDepositWithdrawalHistory] %s", err.Error())
+				_gdax.logger.Errorf("[GDAX.getDepositWithdrawalHistory] Paging error: %s", err.Error())
 				return nil, err
 			}
 			for _, order := range ledger {
@@ -364,7 +364,7 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 				if order.Id <= 0 {
 					id = fmt.Sprintf("%d", order.Id)
 				} else {
-					id = fmt.Sprintf("%s", orderDate)
+					id = fmt.Sprintf("gdax-%s", orderDate)
 				}
 				orders = append(orders, &dto.TransactionDTO{
 					Id:                   id,
@@ -430,7 +430,7 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 		if order.Id <= 0 {
 			id = fmt.Sprintf("%d", order.Id)
 		} else {
-			id = fmt.Sprintf("%s", orderDate)
+			id = fmt.Sprintf("gdax-%s", orderDate)
 		}
 		if _, ok := common.FiatCurrencies[currencyPair.Base]; !ok {
 			candle, _ := _gdax.GetPriceAt(currencyPair.Base, orderDate)

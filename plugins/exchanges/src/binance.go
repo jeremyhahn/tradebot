@@ -254,7 +254,7 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Tr
 			b.ctx.GetLogger().Errorf("[Binance.GetOrderHistory] Failed to parse commission price string into decimal: %s", err.Error())
 		}
 		if o.ID <= 0 {
-			id = fmt.Sprintf("%s", orderDate)
+			id = fmt.Sprintf("binance-%s", orderDate)
 		} else {
 			id = fmt.Sprintf("%d", o.ID)
 		}

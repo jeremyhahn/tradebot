@@ -309,5 +309,7 @@ func (restService *TransactionRestServiceImpl) createTransactionService(ctx comm
 	if err != nil {
 		return nil, err
 	}
-	return service.NewTransactionService(ctx, transactionDAO, transactionMapper, exchangeService, ethereumService, fiatPriceService), nil
+	walletService := service.NewWalletService(ctx, pluginService, fiatPriceService)
+	userService := service.NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService, ethereumService, exchangeService, walletService)
+	return service.NewTransactionService(ctx, transactionDAO, transactionMapper, exchangeService, userService, ethereumService, fiatPriceService), nil
 }

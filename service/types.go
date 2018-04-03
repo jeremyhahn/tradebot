@@ -77,8 +77,9 @@ type UserService interface {
 	GetExchange(user common.UserContext, name string, currencyPair *common.CurrencyPair) (common.Exchange, error)
 	GetConfiguredExchanges() []common.UserCryptoExchange
 	GetExchangeSummary(currencyPair *common.CurrencyPair) ([]common.CryptoExchangeSummary, error)
-	GetWallets() []common.UserCryptoWallet
 	GetWallet(currency string) (common.UserCryptoWallet, error)
+	GetWallets() []common.UserCryptoWallet
+	GetWalletPlugins() ([]common.Wallet, error)
 	GetTokensFor(wallet string) ([]common.EthereumToken, error)
 	GetTokens() ([]common.EthereumToken, error)
 	CreateToken(token common.EthereumToken) error

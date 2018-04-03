@@ -69,7 +69,11 @@ func (ph *PortfolioHandler) OnConnect(w http.ResponseWriter, r *http.Request) {
 		ctx.GetLogger().Errorf("[PortfolioHandler.stream] Error: %s", err.Error())
 		return
 	}
-	walletService := service.NewWalletService(ctx, pluginService)
+	fiatPriceService, err := service.NewFiatPriceService(ctx, exchangeService)
+	if err != nil {
+		return
+	}
+	walletService := service.NewWalletService(ctx, pluginService, fiatPriceService)
 	userService := service.NewUserService(ctx, userDAO, userMapper, userExchangeMapper, marketcapService,
 		ethereumService, exchangeService, walletService)
 	portfolioService := service.NewPortfolioService(ctx, marketcapService, userService, ethereumService)

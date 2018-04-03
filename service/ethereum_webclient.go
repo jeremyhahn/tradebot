@@ -223,7 +223,7 @@ func (service *EthereumWebClient) GetTransactionsFor(address string) ([]common.T
 			return nil, err
 		}
 		transactions = append(transactions, &dto.TransactionDTO{
-			Id:                   tx.Timestamp,
+			Id:                   fmt.Sprintf("eth-%s", tx.Timestamp),
 			Date:                 time.Unix(timestamp, 0),
 			CurrencyPair:         &common.CurrencyPair{Base: "ETH", Quote: "ETH", LocalCurrency: localCurrency},
 			Type:                 txType,

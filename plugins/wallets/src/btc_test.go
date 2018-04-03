@@ -3,11 +3,15 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
+	"github.com/jeremyhahn/tradebot/dao"
+	"github.com/jeremyhahn/tradebot/mapper"
+	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/test"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -37,12 +41,22 @@ func TestBtcWallet_GetBalance(t *testing.T) {
 func TestBtcWallet_GetTransactions(t *testing.T) {
 	ctx := test.CreateIntegrationTestContext("../../../.env", "../../../")
 
+	userDAO := dao.NewUserDAO(ctx)
+	pluginDAO := dao.NewPluginDAO(ctx)
+	userMapper := mapper.NewUserMapper()
+	pluginMapper := mapper.NewPluginMapper()
+	userExchangeMapper := mapper.NewUserExchangeMapper()
+	pluginService := service.NewPluginService(ctx, pluginDAO, pluginMapper)
+	exchangeService := service.NewExchangeService(ctx, userDAO, userMapper, userExchangeMapper, pluginService)
+	fiatPriceService, err := service.NewFiatPriceService(ctx, exchangeService)
+	assert.Nil(t, err)
+
 	wallet := CreateBtcWallet(&common.WalletParams{
-		Context: ctx,
-		Address: os.Getenv("BTC_ADDRESS")})
+		Context:          ctx,
+		Address:          os.Getenv("BTC_ADDRESS"),
+		FiatPriceService: fiatPriceService})
 
 	transactions, err := wallet.GetTransactions()
-
 	assert.Nil(t, err)
 	assert.NotNil(t, transactions)
 
@@ -56,6 +70,7 @@ func TestBtcWallet_GetTransactions(t *testing.T) {
 		} else if tx.GetType() == common.WITHDRAWAL_ORDER_TYPE {
 			totalWithdrawl = totalWithdrawl.Add(qty)
 		}
+		fmt.Printf("%+v\n", tx)
 		assert.Equal(t, true, tx.GetDate().Before(time.Now()))
 	}
 	assert.Equal(t, true, totalDeposit.GreaterThan(decimal.NewFromFloat(0)))

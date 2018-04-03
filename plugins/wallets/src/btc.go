@@ -15,8 +15,9 @@ import (
 )
 
 type BitcoinRawAddrTxItem struct {
-	Addr  string `json:"addr"`
-	Value int64  `json:"value"`
+	Addr    string `json:"addr"`
+	Value   int64  `json:"value"`
+	TxIndex int64  `json:"tx_index"`
 }
 
 type BitcoinRawAddrTxInput struct {
@@ -27,6 +28,7 @@ type BitcoinRawAddrTx struct {
 	Inputs []BitcoinRawAddrTxInput `json:"inputs"`
 	Out    []BitcoinRawAddrTxItem  `json:"out"`
 	Time   int64                   `json:"time"`
+	Hash   string                  `json:"hash"`
 }
 
 type BitcoinRawAddr struct {
@@ -67,7 +69,7 @@ func CreateBtcWallet(params *common.WalletParams) common.Wallet {
 	return &BtcWallet{
 		logger:    params.Context.GetLogger(),
 		client:    client,
-		lastPrice: decimal.NewFromFloat(0.0),
+		lastPrice: decimal.NewFromFloat(0),
 		params:    params,
 		endpoint:  "https://blockchain.info"}
 }
@@ -132,35 +134,91 @@ func (b *BtcWallet) getTransactionsAt(address string, offset int) ([]common.Tran
 		b.logger.Errorf("[BtcWallet.GetTransactions] Error: %s", jsonErr.Error())
 	}
 
-	transactions := make([]common.Transaction, 0, bitcoinRawAddr.NumberOfTxs)
+	var transactions []common.Transaction
 
 	if len(bitcoinRawAddr.Txs) <= 0 {
 		return transactions, nil
 	}
 
+	currencyPair := &common.CurrencyPair{
+		Base:          "BTC",
+		Quote:         "BTC",
+		LocalCurrency: b.params.Context.GetUser().GetLocalCurrency()}
+
 	for _, tx := range bitcoinRawAddr.Txs {
-		for _, input := range tx.Inputs {
-			if input.PrevOut.Addr == address {
-				transactions = append(transactions, &dto.TransactionDTO{
-					Date:     time.Unix(tx.Time, 0),
-					Type:     common.WITHDRAWAL_ORDER_TYPE,
-					Quantity: decimal.New(input.PrevOut.Value, 8).StringFixed(8)})
-			}
-		}
+
+		var txType string
+		var quantity, fee decimal.Decimal
+		var myOutSum, outSum, myInSum, inSum int64
 		for _, out := range tx.Out {
 			if out.Addr == address {
-				transactions = append(transactions, &dto.TransactionDTO{
-					Date:     time.Unix(tx.Time, 0),
-					Type:     common.DEPOSIT_ORDER_TYPE,
-					Quantity: decimal.New(out.Value, 8).StringFixed(8)}) // 100000000
+				myOutSum += out.Value
+			} else {
+				outSum += out.Value
 			}
 		}
+		for _, input := range tx.Inputs {
+			if input.PrevOut.Addr == address {
+				myInSum += input.PrevOut.Value
+			} else {
+				inSum += input.PrevOut.Value
+			}
+		}
+		zero := decimal.NewFromFloat(0)
+		myInputSum := decimal.NewFromFloat(float64(myInSum)).Div(decimal.NewFromFloat(100000000))
+		//inputSum := decimal.NewFromFloat(float64(inSum)).Div(decimal.NewFromFloat(100000000))
+		myOutputSum := decimal.NewFromFloat(float64(myOutSum)).Div(decimal.NewFromFloat(100000000))
+		outputSum := decimal.NewFromFloat(float64(outSum)).Div(decimal.NewFromFloat(100000000))
+
+		//fmt.Printf("myInputSum=%s, inputSum=%s, myOutputSum=%s, outputSum=%s\n", myInputSum.StringFixed(8),
+		//	inputSum.StringFixed(8), myOutputSum.StringFixed(8), outputSum.StringFixed(8))
+
+		if myOutputSum.GreaterThan(zero) {
+			txType = common.DEPOSIT_ORDER_TYPE
+			quantity = myOutputSum
+			fee = zero
+		} else if myInputSum.GreaterThan(zero) {
+			txType = common.WITHDRAWAL_ORDER_TYPE
+			quantity = myInputSum
+			fee = myInputSum.Sub(outputSum)
+		}
+
+		timestamp := time.Unix(tx.Time, 0)
+		candlestick, err := b.params.FiatPriceService.GetPriceAt("BTC", timestamp)
+		if err != nil {
+			return nil, err
+		}
+		fiatTotal := quantity.Mul(candlestick.Close)
+		transactions = append(transactions, &dto.TransactionDTO{
+			Id:                   tx.Hash,
+			Date:                 timestamp,
+			CurrencyPair:         currencyPair,
+			Type:                 txType,
+			Network:              "Bitcoin",
+			NetworkDisplayName:   "Bitcoin",
+			Quantity:             quantity.StringFixed(8),
+			QuantityCurrency:     "BTC",
+			FiatQuantity:         fiatTotal.StringFixed(2),
+			FiatQuantityCurrency: "USD",
+			Price:                candlestick.Close.StringFixed(2),
+			PriceCurrency:        "USD",
+			FiatPrice:            candlestick.Close.StringFixed(2),
+			FiatPriceCurrency:    "USD",
+			Fee:                  fee.StringFixed(8),
+			FeeCurrency:          "BTC",
+			FiatFee:              fee.Mul(candlestick.Close).StringFixed(2),
+			FiatFeeCurrency:      "USD",
+			Total:                quantity.StringFixed(8),
+			TotalCurrency:        "BTC",
+			FiatTotal:            fiatTotal.StringFixed(2),
+			FiatTotalCurrency:    "USD"})
 	}
 
 	newOffset := offset
 	numPages := bitcoinRawAddr.NumberOfTxs / len(bitcoinRawAddr.Txs)
 
 	for i := 1; i < numPages; i++ {
+		BTCWALLET_RATELIMITER.RespectRateLimit()
 		newOffset += 50
 		txs, err := b.getTransactionsAt(address, newOffset)
 		if err != nil {

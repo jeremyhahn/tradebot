@@ -5,15 +5,17 @@ import (
 )
 
 type WalletServiceImpl struct {
-	ctx           common.Context
-	pluginService PluginService
-	currency      string
+	ctx              common.Context
+	pluginService    PluginService
+	fiatPriceService common.FiatPriceService
+	currency         string
 }
 
-func NewWalletService(ctx common.Context, pluginService PluginService) WalletService {
+func NewWalletService(ctx common.Context, pluginService PluginService, fiatPriceService common.FiatPriceService) WalletService {
 	return &WalletServiceImpl{
-		ctx:           ctx,
-		pluginService: pluginService}
+		ctx:              ctx,
+		pluginService:    pluginService,
+		fiatPriceService: fiatPriceService}
 }
 
 func (service *WalletServiceImpl) CreateWallet(currency, address string) (common.Wallet, error) {
@@ -26,6 +28,6 @@ func (service *WalletServiceImpl) CreateWallet(currency, address string) (common
 		Context:          service.ctx,
 		Address:          address,
 		MarketCapService: NewMarketCapService(service.ctx),
-		FiatPriceService: nil})
+		FiatPriceService: service.fiatPriceService})
 	return wallet, nil
 }

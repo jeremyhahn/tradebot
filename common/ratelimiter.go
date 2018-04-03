@@ -27,7 +27,7 @@ func (rateLimiter *RateLimiter) RespectRateLimit() {
 	coolOffPeriod := time.Duration(rateLimiter.interval) * time.Second
 	if rateLimiter.currentRequests >= rateLimiter.maxRequests && duration <= coolOffPeriod {
 		//rateLimiter.ctx.GetLogger().Debugf("[RateLimiter] Waiting %s for rate limit cool-off: \n", coolOffPeriod)
-		fmt.Printf("[RateLimiter] Waiting %s for rate limit cool-off: \n", coolOffPeriod)
+		fmt.Printf("[RateLimiter] Waiting %s for rate limit cool-off\n", coolOffPeriod)
 		time.Sleep(coolOffPeriod)
 		resetCounter = true
 	}

@@ -24,7 +24,7 @@ type PluginEntity interface {
 }
 
 type TransactionEntity interface {
-	GetId() uint
+	GetId() string
 	GetUserId() uint
 	GetDate() time.Time
 	GetCurrency() string

@@ -471,7 +471,7 @@ func (b *Bittrex) ParseImport(file string) ([]common.Transaction, error) {
 		baseFiatPrice := b.getFiatPrice(currencyPair.Base, date)
 		quoteFiatPrice := b.getFiatPrice(currencyPair.Quote, date)
 		orders = append(orders, &dto.TransactionDTO{
-			Id:                   "0",
+			Id:                   fmt.Sprintf("bittrex-csv-%d", i),
 			Network:              b.name,
 			NetworkDisplayName:   b.displayName,
 			Date:                 date,

@@ -235,3 +235,19 @@ func (service *DefaultUserService) GetWallets() []common.UserCryptoWallet {
 	}
 	return walletList
 }
+
+func (service *DefaultUserService) GetWalletPlugins() ([]common.Wallet, error) {
+	var walletList []common.Wallet
+	daoUser := &entity.User{Id: service.ctx.GetUser().GetId()}
+	walletEntities := service.userDAO.GetWallets(daoUser)
+	for _, walletEntity := range walletEntities {
+		wallet, err := service.walletService.CreateWallet(walletEntity.GetCurrency(), walletEntity.GetAddress())
+		if err != nil {
+			service.ctx.GetLogger().Errorf("[UserService.GetWalletPlugins] Unable to create %s wallet instance: %s",
+				walletEntity.GetCurrency(), err.Error())
+			return walletList, err
+		}
+		walletList = append(walletList, wallet)
+	}
+	return walletList, nil
+}

@@ -3,12 +3,12 @@ package entity
 import "time"
 
 type Transaction struct {
-	Id                   uint `gorm:"primary_key;AUTO_INCREMENT"`
+	Id                   string `gorm:"primary_key"`
 	UserId               uint
 	Date                 time.Time
 	Currency             string `gorm:"type:varchar(10)"`
 	Type                 string `gorm:"type:varchar(64)"`
-	Network              string `gorm:"type:varchar(200)"`
+	Network              string `gorm:"type:varchar(200);primary_key"`
 	NetworkDisplayName   string `gorm:"type:varchar(200)"`
 	Quantity             string `gorm:"type:varchar(64)"`
 	QuantityCurrency     string `gorm:"type:varchar(6)"`
@@ -29,7 +29,7 @@ type Transaction struct {
 	TransactionEntity
 }
 
-func (tx *Transaction) GetId() uint {
+func (tx *Transaction) GetId() string {
 	return tx.Id
 }
 
