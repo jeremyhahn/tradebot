@@ -29,9 +29,10 @@ func (mapper *DefaultTransactionMapper) MapTransactionEntityToDto(entity entity.
 	return &dto.TransactionDTO{
 		Id:                   entity.GetId(),
 		Network:              entity.GetNetwork(),
-		NetworkDisplayName:   strings.Title(entity.GetNetwork()),
+		NetworkDisplayName:   entity.GetNetworkDisplayName(),
 		Date:                 entity.GetDate(),
 		Type:                 entity.GetType(),
+		Category:             entity.GetCategory(),
 		CurrencyPair:         currencyPair,
 		Quantity:             entity.GetQuantity(),
 		QuantityCurrency:     entity.GetQuantityCurrency(),
@@ -59,6 +60,7 @@ func (mapper *DefaultTransactionMapper) MapTransactionDtoToEntity(dto common.Tra
 		Date:                 dto.GetDate(),
 		Currency:             dto.GetCurrencyPair().String(),
 		Type:                 dto.GetType(),
+		Category:             dto.GetCategory(),
 		Network:              dto.GetNetwork(),
 		NetworkDisplayName:   dto.GetNetworkDisplayName(),
 		Quantity:             dto.GetQuantity(),
@@ -82,9 +84,11 @@ func (mapper *DefaultTransactionMapper) MapTransactionDtoToEntity(dto common.Tra
 func (mapper *DefaultTransactionMapper) MapTransactionDtoToViewModel(dto common.Transaction) viewmodel.Transaction {
 	return viewmodel.Transaction{
 		Id:                   dto.GetId(),
-		Network:              dto.GetNetworkDisplayName(),
+		Network:              dto.GetNetwork(),
+		NetworkDisplayName:   dto.GetNetworkDisplayName(),
 		Date:                 dto.GetDate().Format(common.TIME_DISPLAY_FORMAT),
 		Type:                 strings.Title(dto.GetType()),
+		Category:             strings.Title(dto.GetCategory()),
 		CurrencyPair:         dto.GetCurrencyPair(),
 		Quantity:             dto.GetQuantity(),
 		QuantityCurrency:     dto.GetQuantityCurrency(),

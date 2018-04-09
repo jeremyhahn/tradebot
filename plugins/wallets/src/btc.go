@@ -51,12 +51,10 @@ type BlockchainTickerItem struct {
 }
 
 type BtcWallet struct {
-	logger    *logging.Logger
-	client    http.Client
-	items     BlockchainTickerItem
-	lastPrice decimal.Decimal
-	params    *common.WalletParams
-	endpoint  string
+	logger   *logging.Logger
+	client   http.Client
+	params   *common.WalletParams
+	endpoint string
 	common.Wallet
 }
 
@@ -67,11 +65,10 @@ func main() {}
 func CreateBtcWallet(params *common.WalletParams) common.Wallet {
 	client := http.Client{Timeout: common.HTTP_CLIENT_TIMEOUT}
 	return &BtcWallet{
-		logger:    params.Context.GetLogger(),
-		client:    client,
-		lastPrice: decimal.NewFromFloat(0),
-		params:    params,
-		endpoint:  "https://blockchain.info"}
+		logger:   params.Context.GetLogger(),
+		client:   client,
+		params:   params,
+		endpoint: "https://blockchain.info"}
 }
 
 func (b *BtcWallet) GetPrice() decimal.Decimal {
@@ -182,23 +179,24 @@ func (b *BtcWallet) getTransactionsAt(address string, offset int) ([]common.Tran
 			quantity = myInputSum
 			fee = myInputSum.Sub(outputSum)
 		}
-
 		timestamp := time.Unix(tx.Time, 0)
 		candlestick, err := b.params.FiatPriceService.GetPriceAt("BTC", timestamp)
 		if err != nil {
 			return nil, err
 		}
-		fiatTotal := quantity.Mul(candlestick.Close)
+		fiatFee := fee.Mul(candlestick.Close)
+		fiatTotal := quantity.Mul(candlestick.Close).Add(fiatFee)
 		transactions = append(transactions, &dto.TransactionDTO{
 			Id:                   tx.Hash,
 			Date:                 timestamp,
 			CurrencyPair:         currencyPair,
 			Type:                 txType,
+			Category:             common.TX_CATEGORY_TRANSFER,
 			Network:              "Bitcoin",
 			NetworkDisplayName:   "Bitcoin",
 			Quantity:             quantity.StringFixed(8),
 			QuantityCurrency:     "BTC",
-			FiatQuantity:         fiatTotal.StringFixed(2),
+			FiatQuantity:         fiatTotal.Sub(fiatFee).StringFixed(2),
 			FiatQuantityCurrency: "USD",
 			Price:                candlestick.Close.StringFixed(2),
 			PriceCurrency:        "USD",
@@ -206,7 +204,7 @@ func (b *BtcWallet) getTransactionsAt(address string, offset int) ([]common.Tran
 			FiatPriceCurrency:    "USD",
 			Fee:                  fee.StringFixed(8),
 			FeeCurrency:          "BTC",
-			FiatFee:              fee.Mul(candlestick.Close).StringFixed(2),
+			FiatFee:              fiatFee.StringFixed(2),
 			FiatFeeCurrency:      "USD",
 			Total:                quantity.StringFixed(8),
 			TotalCurrency:        "BTC",

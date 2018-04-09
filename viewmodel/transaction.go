@@ -5,8 +5,10 @@ import "github.com/jeremyhahn/tradebot/common"
 type Transaction struct {
 	Id                   string               `json:"id"`
 	Network              string               `json:"network"`
+	NetworkDisplayName   string               `json:"network_display_name"`
 	Date                 string               `json:"date"`
 	Type                 string               `json:"type"`
+	Category             string               `json:"category"`
 	CurrencyPair         *common.CurrencyPair `json:"currency_pair"`
 	Quantity             string               `json:"quantity"`
 	QuantityCurrency     string               `json:"quantity_currency"`

@@ -79,6 +79,10 @@ func (ws *WebServer) Start() {
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
 		negroni.Wrap(http.HandlerFunc(transactionRestService.Synchronize)),
 	))
+	router.Handle("/api/v1/transactions/{id}", negroni.New(
+		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(transactionRestService.UpdateCategory)),
+	)).Methods("PUT")
 	router.Handle("/api/v1/exchanges/names", negroni.New(
 		negroni.HandlerFunc(ws.jsonWebTokenService.Validate),
 		negroni.Wrap(http.HandlerFunc(exchangeRestService.GetDisplayNames)),

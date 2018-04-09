@@ -28,10 +28,13 @@ import AuthService from 'app/components/AuthService';
 import {CopyToClipboard} from 'react-copy-to-clipboard';
 import Snackbar from 'material-ui/Snackbar';
 import Slide from 'material-ui/transitions/Slide';
+import Select from 'material-ui/Select';
+import { MenuItem } from 'material-ui/Menu';
 
 const columnData = [
   { id: 'date', numeric: false, disablePadding: false, label: 'Date' },
   { id: 'type', numeric: false, disablePadding: false, label: 'Type' },
+  { id: 'category', numeric: false, disablePadding: false, label: 'Category' },
   { id: 'currency', numeric: false, disablePadding: false, label: 'Currency' },
   { id: 'network', numeric: false, disablePadding: false, label: 'Network' },
   { id: 'quantity', numeric: true, disablePadding: false, label: 'Quantity' },
@@ -148,7 +151,18 @@ class Transactions extends React.Component {
       copied: false,
       copiedValue: '',
       infoMessage: '',
-      syncDisabled: false
+      syncDisabled: false,
+      categories: [
+        "trade",
+        "income",
+        "gift",
+        "mining",
+        "spend",
+        "donation",
+        "lost",
+        "transfer"
+      ],
+      selectValues: {}
     }
     this.importDialogHandler = this.importDialogHandler.bind(this)
     this.handleImportDialogClose = this.handleImportDialogClose.bind(this)
@@ -203,13 +217,17 @@ class Transactions extends React.Component {
   }
 
   syncTransactions() {
-    this.state.syncDisabled = true
-    this.state.loading = true
+    this.setState({
+      syncDisabled: true,
+      loading: true
+    })
     this.Auth.syncTransactions()
       .then(function (response) {
         console.log(response);
-        this.state.syncDisabled = false
-        this.state.loading = false
+        this.setState({
+          syncDisabled: false,
+          loading: false
+        })
         if(response.success) {
           /*
           var numTxs = response.payload.length
@@ -270,6 +288,23 @@ class Transactions extends React.Component {
     this.setState({importDialog: false})
   }
 
+  handleCategoryChange = (event, value) => {
+    var cat = event.target.value
+    const formData = new FormData();
+    formData.append('category', cat)
+    this.Auth.updateCategory(event.target.name, formData)
+      .then(function (response) {
+        if(response.data.success) {
+          for(var i=0; i<this.state.data.length; i++) {
+            if(this.state.data[i].id.indexOf(event.target.name) !== -1) {
+              this.state.data[i].category = cat.charAt(0).toUpperCase() + cat.slice(1)
+              this.setState({data: this.state.data})
+            }
+          }
+        }
+      }.bind(this))
+  };
+
   render() {
     const { classes } = this.props;
     const { data, order, orderBy, selected, rowsPerPage, page } = this.state;
@@ -307,10 +342,24 @@ class Transactions extends React.Component {
               {data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(n => {
                 const isSelected = this.isSelected(n.id);
                 return (
-                  <TableRow key={n.id}>
+                  <TableRow key={"tr" + n.id}>
                     <TableCell padding="none">{new Date(n.date).customFormat()}</TableCell>
 
                     <TableCell>{n.type}</TableCell>
+
+                    <TableCell>
+                      <Select
+                        value={n.category.toLowerCase()}
+                        onChange={this.handleCategoryChange}
+                        inputProps={{
+                          id: n.id,
+                          name: n.id
+                        }}>
+                        { this.state.categories.map( category =>
+                          <MenuItem key={category} value={category}>{category.charAt(0).toUpperCase() + category.slice(1)}</MenuItem>
+                        )}
+                      </Select>
+                    </TableCell>
 
                     <TableCell>{n.currency_pair.base}-{n.currency_pair.quote}</TableCell>
 
@@ -369,14 +418,14 @@ class Transactions extends React.Component {
               })}
               {emptyRows > 0 && (
                 <TableRow style={{ height: 49 * emptyRows }}>
-                  <TableCell colSpan={8} />
+                  <TableCell colSpan={columnData.length} />
                 </TableRow>
               )}
             </TableBody>
             <TableFooter>
               <TableRow>
                 <TablePagination
-                  colSpan={8}
+                  colSpan={columnData.length}
                   count={data.length}
                   rowsPerPage={rowsPerPage}
                   page={page}

@@ -10,6 +10,7 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/entity"
 	"github.com/jeremyhahn/tradebot/test"
+	"github.com/jeremyhahn/tradebot/util"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
@@ -83,6 +84,10 @@ func TestGDAX_GetOrderHistory(t *testing.T) {
 		Quote:         "USD",
 		LocalCurrency: "USD"})
 	assert.Equal(t, true, len(orders) > 0)
+
+	for _, o := range orders {
+		util.DUMP(o)
+	}
 
 	test.CleanupIntegrationTest()
 }

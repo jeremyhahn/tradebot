@@ -3,12 +3,13 @@ package entity
 import "time"
 
 type Transaction struct {
-	Id                   string `gorm:"primary_key"`
+	Id                   string `gorm:"type:varchar(200);primary_key"`
 	UserId               uint
 	Date                 time.Time
 	Currency             string `gorm:"type:varchar(10)"`
 	Type                 string `gorm:"type:varchar(64)"`
-	Network              string `gorm:"type:varchar(200);primary_key"`
+	Category             string `gorm:"type:varchar(200)"`
+	Network              string `gorm:"type:varchar(200)"`
 	NetworkDisplayName   string `gorm:"type:varchar(200)"`
 	Quantity             string `gorm:"type:varchar(64)"`
 	QuantityCurrency     string `gorm:"type:varchar(6)"`
@@ -47,6 +48,14 @@ func (tx *Transaction) GetCurrency() string {
 
 func (tx *Transaction) GetType() string {
 	return tx.Type
+}
+
+func (tx *Transaction) GetCategory() string {
+	return tx.Category
+}
+
+func (tx *Transaction) SetCategory(category string) {
+	tx.Category = category
 }
 
 func (tx *Transaction) GetNetwork() string {

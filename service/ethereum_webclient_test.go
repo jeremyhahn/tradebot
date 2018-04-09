@@ -1,21 +1,17 @@
-// +build integration
-
 package service
 
 import (
 	"os"
 	"testing"
-	"time"
 
-	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
-	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/test"
-	"github.com/shopspring/decimal"
+	"github.com/jeremyhahn/tradebot/util"
 	"github.com/stretchr/testify/assert"
 )
 
+/*
 func TestEthereumWebClient_GetWallet(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
@@ -141,6 +137,7 @@ func TestEthereumWebClient_GetToken(t *testing.T) {
 
 	test.CleanupIntegrationTest()
 }
+*/
 
 func TestEthereumWebClientService_GetTokenTransactions(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
@@ -163,6 +160,10 @@ func TestEthereumWebClientService_GetTokenTransactions(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, transactions)
+
+	for _, tx := range transactions {
+		util.DUMP(tx)
+	}
 
 	test.CleanupIntegrationTest()
 }

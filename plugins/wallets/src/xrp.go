@@ -188,12 +188,14 @@ func (r *Ripple) GetTransactions() ([]common.Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		total := amt.Mul(candlestick.Close)
+		fiatFee := fee.Mul(candlestick.Close)
+		fiatTotal := amt.Mul(candlestick.Close).Add(fiatFee)
 		transactions = append(transactions, &dto.TransactionDTO{
 			Id:                   tx.Hash,
 			Date:                 tx.Date,
 			CurrencyPair:         currencyPair,
 			Type:                 txType,
+			Category:             common.TX_CATEGORY_TRANSFER,
 			Network:              "ripple",
 			NetworkDisplayName:   "Ripple",
 			Quantity:             amt.StringFixed(8),
@@ -206,11 +208,11 @@ func (r *Ripple) GetTransactions() ([]common.Transaction, error) {
 			FiatPriceCurrency:    "USD",
 			Fee:                  fee.StringFixed(8),
 			FeeCurrency:          "XRP",
-			FiatFee:              fee.Mul(candlestick.Close).StringFixed(2),
+			FiatFee:              fiatFee.StringFixed(2),
 			FiatFeeCurrency:      "USD",
 			Total:                amt.StringFixed(8),
 			TotalCurrency:        "XRP",
-			FiatTotal:            total.StringFixed(2),
+			FiatTotal:            fiatTotal.StringFixed(2),
 			FiatTotalCurrency:    "USD"})
 	}
 	return transactions, nil

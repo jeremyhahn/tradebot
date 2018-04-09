@@ -12,6 +12,7 @@ type TransactionDTO struct {
 	Date                 time.Time            `json:"date"`
 	CurrencyPair         *common.CurrencyPair `json:"currency_pair"`
 	Type                 string               `json:"type"`
+	Category             string               `json:"category"`
 	Network              string               `json:"network"`
 	NetworkDisplayName   string               `json:"network_display_name"`
 	Quantity             string               `json:"quantity"`
@@ -51,6 +52,10 @@ func (t *TransactionDTO) GetCurrencyPair() *common.CurrencyPair {
 
 func (t *TransactionDTO) GetType() string {
 	return t.Type
+}
+
+func (t *TransactionDTO) GetCategory() string {
+	return t.Category
 }
 
 func (t *TransactionDTO) GetNetwork() string {
@@ -126,6 +131,6 @@ func (t *TransactionDTO) GetFiatTotalCurrency() string {
 }
 
 func (t *TransactionDTO) String() string {
-	return fmt.Sprintf("[TransactionDTO] Id: %s, Date: %s, CurrencyPair: %s, Type: %s, Network: %s, Quantity: %s, QuantityCurrency: %s, FiatQuantity: %s,  FiatQuantityCurrency: %s, Price: %s, PriceCurrency: %s, FiatPrice: %s, FiatPriceCurrency: %s, Fee: %s, FeeCurrency: %s, FiatFee: %s, FiatFeeCurrency: %s, Total: %s, TotalCurrency: %s, FiatTotal: %s, FiatTotalCurrency: %s",
-		t.Id, t.Date, t.CurrencyPair, t.Type, t.Network, t.Quantity, t.QuantityCurrency, t.FiatQuantity, t.FiatQuantityCurrency, t.Price, t.PriceCurrency, t.FiatPrice, t.FiatPriceCurrency, t.Fee, t.FeeCurrency, t.FiatFee, t.FiatFeeCurrency, t.Total, t.TotalCurrency, t.FiatTotal, t.FiatTotalCurrency)
+	return fmt.Sprintf("[TransactionDTO] Id: %s, Date: %s, CurrencyPair: %s, Type: %s, Category: %s, Network: %s, Quantity: %s, QuantityCurrency: %s, FiatQuantity: %s,  FiatQuantityCurrency: %s, Price: %s, PriceCurrency: %s, FiatPrice: %s, FiatPriceCurrency: %s, Fee: %s, FeeCurrency: %s, FiatFee: %s, FiatFeeCurrency: %s, Total: %s, TotalCurrency: %s, FiatTotal: %s, FiatTotalCurrency: %s",
+		t.Id, t.Date, t.CurrencyPair, t.Type, t.Category, t.Network, t.Quantity, t.QuantityCurrency, t.FiatQuantity, t.FiatQuantityCurrency, t.Price, t.PriceCurrency, t.FiatPrice, t.FiatPriceCurrency, t.Fee, t.FeeCurrency, t.FiatFee, t.FiatFeeCurrency, t.Total, t.TotalCurrency, t.FiatTotal, t.FiatTotalCurrency)
 }

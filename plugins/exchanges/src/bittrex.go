@@ -157,6 +157,7 @@ func (b *Bittrex) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Tr
 			NetworkDisplayName:   b.displayName,
 			Date:                 orderDate,
 			Type:                 o.OrderType,
+			Category:             common.TX_CATEGORY_TRADE,
 			CurrencyPair:         currencyPair,
 			Quantity:             qty.StringFixed(8),
 			QuantityCurrency:     currencyPair.Quote,
@@ -198,6 +199,7 @@ func (b *Bittrex) GetDepositHistory() ([]common.Transaction, error) {
 		_deposits = append(_deposits, &dto.TransactionDTO{
 			Id:                   deposit.TxId,
 			Type:                 common.DEPOSIT_ORDER_TYPE,
+			Category:             common.TX_CATEGORY_TRANSFER,
 			Date:                 orderDate,
 			Network:              b.name,
 			NetworkDisplayName:   b.displayName,
@@ -249,6 +251,7 @@ func (b *Bittrex) GetWithdrawalHistory() ([]common.Transaction, error) {
 			orders = append(orders, &dto.TransactionDTO{
 				Id:                   withdrawal.TxId,
 				Type:                 common.WITHDRAWAL_ORDER_TYPE,
+				Category:             common.TX_CATEGORY_TRANSFER,
 				Date:                 orderDate,
 				Network:              b.name,
 				NetworkDisplayName:   b.displayName,
@@ -438,9 +441,9 @@ func (b *Bittrex) ParseImport(file string) ([]common.Transaction, error) {
 		}
 		var orderType string
 		if values[2] == "LIMIT_BUY" {
-			orderType = "buy"
+			orderType = common.BUY_ORDER_TYPE
 		} else {
-			orderType = "sell"
+			orderType = common.SELL_ORDER_TYPE
 		}
 		quantity, err := decimal.NewFromString(values[3])
 		if err != nil {
@@ -469,29 +472,33 @@ func (b *Bittrex) ParseImport(file string) ([]common.Transaction, error) {
 			return nil, err
 		}
 		baseFiatPrice := b.getFiatPrice(currencyPair.Base, date)
-		quoteFiatPrice := b.getFiatPrice(currencyPair.Quote, date)
+		//quoteFiatPrice := b.getFiatPrice(currencyPair.Quote, date)
+		limitFiatPrice := limit.Mul(baseFiatPrice)
+		fiatFee := fee.Mul(baseFiatPrice)
+		fiatTotal := price.Mul(baseFiatPrice)
 		orders = append(orders, &dto.TransactionDTO{
 			Id:                   fmt.Sprintf("bittrex-csv-%d", i),
 			Network:              b.name,
 			NetworkDisplayName:   b.displayName,
 			Date:                 date,
 			Type:                 orderType,
+			Category:             common.TX_CATEGORY_TRADE,
 			CurrencyPair:         currencyPair,
 			Quantity:             quantity.StringFixed(8),
 			QuantityCurrency:     currencyPair.Quote,
-			FiatQuantity:         quantity.Mul(quoteFiatPrice).StringFixed(2),
+			FiatQuantity:         quantity.Mul(limitFiatPrice).StringFixed(2),
 			FiatQuantityCurrency: "USD",
 			Price:                limit.StringFixed(8),
 			PriceCurrency:        currencyPair.Base,
-			FiatPrice:            limit.Mul(baseFiatPrice).StringFixed(2),
+			FiatPrice:            limitFiatPrice.StringFixed(2),
 			FiatPriceCurrency:    "USD",
 			Fee:                  fee.StringFixed(8),
 			FeeCurrency:          currencyPair.Base,
-			FiatFee:              fee.Mul(baseFiatPrice).StringFixed(2),
+			FiatFee:              fiatFee.StringFixed(2),
 			FiatFeeCurrency:      "USD",
 			Total:                price.StringFixed(8),
 			TotalCurrency:        currencyPair.Base,
-			FiatTotal:            price.Mul(baseFiatPrice).StringFixed(2),
+			FiatTotal:            fiatTotal.StringFixed(2),
 			FiatTotalCurrency:    "USD"})
 	}
 	return orders, nil

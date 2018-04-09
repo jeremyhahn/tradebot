@@ -222,11 +222,13 @@ func (service *EthereumWebClient) GetTransactionsFor(address string) ([]common.T
 		if err != nil {
 			return nil, err
 		}
+		fiatTotal := finalAmount.Mul(candlestick.Close).Add(fee)
 		transactions = append(transactions, &dto.TransactionDTO{
 			Id:                   fmt.Sprintf("eth-%s", tx.Timestamp),
 			Date:                 time.Unix(timestamp, 0),
 			CurrencyPair:         &common.CurrencyPair{Base: "ETH", Quote: "ETH", LocalCurrency: localCurrency},
 			Type:                 txType,
+			Category:             common.TX_CATEGORY_TRANSFER,
 			Network:              "Ethereum",
 			NetworkDisplayName:   "Ethereum",
 			Quantity:             finalAmount.StringFixed(8),
@@ -235,12 +237,16 @@ func (service *EthereumWebClient) GetTransactionsFor(address string) ([]common.T
 			FiatQuantityCurrency: "USD",
 			Price:                candlestick.Close.StringFixed(2),
 			PriceCurrency:        "USD",
+			FiatPrice:            candlestick.Close.StringFixed(2),
+			FiatPriceCurrency:    "USD",
 			Fee:                  finalFee.StringFixed(8),
 			FeeCurrency:          "ETH",
 			FiatFee:              finalFee.Mul(candlestick.Close).StringFixed(2),
 			FiatFeeCurrency:      "USD",
 			Total:                finalAmount.Mul(candlestick.Close).StringFixed(2),
-			TotalCurrency:        "USD"})
+			TotalCurrency:        "USD",
+			FiatTotal:            fiatTotal.StringFixed(2),
+			FiatTotalCurrency:    "USD"})
 	}
 	return transactions, nil
 }

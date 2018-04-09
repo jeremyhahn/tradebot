@@ -6,11 +6,10 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
-	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
 	"github.com/jeremyhahn/tradebot/viewmodel"
@@ -22,6 +21,7 @@ type TransactionRestService interface {
 	GetDepositHistory(w http.ResponseWriter, r *http.Request)
 	GetWithdrawalHistory(w http.ResponseWriter, r *http.Request)
 	GetImportedTransactions(w http.ResponseWriter, r *http.Request)
+	UpdateCategory(w http.ResponseWriter, r *http.Request)
 	Synchronize(w http.ResponseWriter, r *http.Request)
 	Export(w http.ResponseWriter, r *http.Request)
 	Import(w http.ResponseWriter, r *http.Request)
@@ -62,7 +62,7 @@ func (restService *TransactionRestServiceImpl) Synchronize(w http.ResponseWriter
 	}
 	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
 		Success: true,
-		Payload: txs})
+		Payload: restService.formatTransactions(ctx, txs)})
 }
 
 func (restService *TransactionRestServiceImpl) GetHistory(w http.ResponseWriter, r *http.Request) {
@@ -79,17 +79,16 @@ func (restService *TransactionRestServiceImpl) GetHistory(w http.ResponseWriter,
 			Payload: err.Error()})
 		return
 	}
-	transactions, err := txService.GetHistory()
+	txs, err := txService.GetHistory()
 	if err != nil {
 		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
 			Success: false,
 			Payload: err.Error()})
 		return
 	}
-	restService.formatTransactions(&transactions)
 	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
 		Success: true,
-		Payload: &transactions})
+		Payload: restService.formatTransactions(ctx, txs)})
 }
 
 func (restService *TransactionRestServiceImpl) GetOrderHistory(w http.ResponseWriter, r *http.Request) {
@@ -105,11 +104,10 @@ func (restService *TransactionRestServiceImpl) GetOrderHistory(w http.ResponseWr
 			Success: false,
 			Payload: err.Error()})
 	}
-	transactions := txService.GetOrderHistory()
-	restService.formatTransactions(&transactions)
+	txs := txService.GetOrderHistory()
 	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
 		Success: true,
-		Payload: transactions})
+		Payload: restService.formatTransactions(ctx, txs)})
 }
 
 func (restService *TransactionRestServiceImpl) GetDepositHistory(w http.ResponseWriter, r *http.Request) {
@@ -125,11 +123,10 @@ func (restService *TransactionRestServiceImpl) GetDepositHistory(w http.Response
 			Success: false,
 			Payload: err.Error()})
 	}
-	transactions := txService.GetDepositHistory()
-	restService.formatTransactions(&transactions)
+	txs := txService.GetDepositHistory()
 	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
 		Success: true,
-		Payload: transactions})
+		Payload: restService.formatTransactions(ctx, txs)})
 }
 
 func (restService *TransactionRestServiceImpl) GetWithdrawalHistory(w http.ResponseWriter, r *http.Request) {
@@ -145,11 +142,10 @@ func (restService *TransactionRestServiceImpl) GetWithdrawalHistory(w http.Respo
 			Success: false,
 			Payload: err.Error()})
 	}
-	transactions := txService.GetWithdrawalHistory()
-	restService.formatTransactions(&transactions)
+	txs := txService.GetWithdrawalHistory()
 	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
 		Success: true,
-		Payload: transactions})
+		Payload: restService.formatTransactions(ctx, txs)})
 }
 
 func (restService *TransactionRestServiceImpl) GetImportedTransactions(w http.ResponseWriter, r *http.Request) {
@@ -167,11 +163,57 @@ func (restService *TransactionRestServiceImpl) GetImportedTransactions(w http.Re
 			Payload: err.Error()})
 	}
 
-	transactions := txService.GetImportedTransactions()
-	restService.formatTransactions(&transactions)
+	txs := txService.GetImportedTransactions()
 	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
 		Success: true,
-		Payload: transactions})
+		Payload: restService.formatTransactions(ctx, txs)})
+}
+
+func (restService *TransactionRestServiceImpl) UpdateCategory(w http.ResponseWriter, r *http.Request) {
+	ctx, err := restService.middlewareService.CreateContext(w, r)
+	if err != nil {
+		RestError(w, r, err, restService.jsonWriter)
+	}
+	defer ctx.Close()
+	ctx.GetLogger().Debugf("[TransactionRestService.UpdateCategory]")
+	txService, err := restService.createTransactionService(ctx)
+	if err != nil {
+		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
+			Success: false,
+			Payload: err.Error()})
+	}
+	params := mux.Vars(r)
+	ctx.GetLogger().Debugf("[TransactionRestService.UpdateCategory]")
+	if params["id"] == "" {
+		restService.jsonWriter.Write(w, http.StatusBadRequest, common.JsonResponse{
+			Success: false,
+			Payload: "Transaction id required"})
+		return
+	}
+	r.ParseMultipartForm(32 << 20)
+	if err != nil {
+		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
+			Success: false,
+			Payload: err.Error()})
+		return
+	}
+	category := r.FormValue("category")
+	if category == "" {
+		restService.jsonWriter.Write(w, http.StatusBadRequest, common.JsonResponse{
+			Success: false,
+			Payload: "Category required"})
+		return
+	}
+	err = txService.UpdateCategory(params["id"], category)
+	if err != nil {
+		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
+			Success: false,
+			Payload: err.Error()})
+		return
+	}
+	restService.jsonWriter.Write(w, http.StatusOK, common.JsonResponse{
+		Success: true,
+		Payload: true})
 }
 
 func (restService *TransactionRestServiceImpl) Import(w http.ResponseWriter, r *http.Request) {
@@ -257,37 +299,13 @@ func (restService *TransactionRestServiceImpl) Export(w http.ResponseWriter, r *
 	}
 }
 
-func (restService *TransactionRestServiceImpl) formatTransactions(txs *[]common.Transaction) {
-	for i, tx := range *txs {
-		id := tx.GetId()
-		if id == "" || len(id) <= 0 {
-			id = fmt.Sprintf("%d", i)
-		}
-		txID := fmt.Sprintf("%s-%s", tx.GetNetwork(), id)
-		(*txs)[i] = &dto.TransactionDTO{
-			Id:                   txID,
-			Date:                 tx.GetDate(),
-			Type:                 strings.Title(tx.GetType()),
-			CurrencyPair:         tx.GetCurrencyPair(),
-			Network:              tx.GetNetwork(),
-			NetworkDisplayName:   tx.GetNetworkDisplayName(),
-			Quantity:             tx.GetQuantity(),
-			QuantityCurrency:     tx.GetQuantityCurrency(),
-			FiatQuantity:         tx.GetFiatQuantity(),
-			FiatQuantityCurrency: tx.GetFiatQuantityCurrency(),
-			Price:                tx.GetPrice(),
-			PriceCurrency:        tx.GetPriceCurrency(),
-			FiatPrice:            tx.GetFiatPrice(),
-			FiatPriceCurrency:    tx.GetFiatPriceCurrency(),
-			Fee:                  tx.GetFee(),
-			FeeCurrency:          tx.GetFeeCurrency(),
-			FiatFee:              tx.GetFiatFee(),
-			FiatFeeCurrency:      tx.GetFiatFeeCurrency(),
-			Total:                tx.GetTotal(),
-			TotalCurrency:        tx.GetTotalCurrency(),
-			FiatTotal:            tx.GetFiatTotal(),
-			FiatTotalCurrency:    tx.GetFiatTotalCurrency()}
+func (restService *TransactionRestServiceImpl) formatTransactions(ctx common.Context, txs []common.Transaction) []viewmodel.Transaction {
+	mapper := mapper.NewTransactionMapper(ctx)
+	var viewModels []viewmodel.Transaction
+	for _, tx := range txs {
+		viewModels = append(viewModels, mapper.MapTransactionDtoToViewModel(tx))
 	}
+	return viewModels
 }
 
 func (restService *TransactionRestServiceImpl) createTransactionService(ctx common.Context) (service.TransactionService, error) {

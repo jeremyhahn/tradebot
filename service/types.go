@@ -135,6 +135,7 @@ type TransactionService interface {
 	GetDepositHistory() []common.Transaction
 	GetWithdrawalHistory() []common.Transaction
 	GetImportedTransactions() []common.Transaction
+	UpdateCategory(id, category string) error
 	ImportCSV(file, exchange string) ([]common.Transaction, error)
 	Synchronize() ([]common.Transaction, error)
 	//GetSourceTransaction(targetTx common.Transaction, transactions *[]common.Transaction) (common.Transaction, error)

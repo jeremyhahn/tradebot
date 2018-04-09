@@ -93,10 +93,10 @@ Windows Home Edition and versions prior to Windows 10 do not support native virt
 Geth requires both TCP and UDP port 30303, otherwise it will not be able to synchronize the chain data with peers on the public network. Be sure these ports are forwarded to the system hosting Geth if it's behind a router/firewall.
 
 
-## Known Issues
+## TODO
 
-1. Indicators need to be refactored from floats to decimals to avoid minor rounding errors over time (indicators only)
-   (ex: .123456789 BTC (9 places) is rounded to .12345679 (8 places) instead of .12345678)
+1. Fix broken indicators due to float64 -> decimal refactoring
+2. Add fiat conversion to Bittrex order history (currently only supported in imports)
 
 
 ## Support

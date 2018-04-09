@@ -25,6 +25,14 @@ const (
 	SELL_ORDER_TYPE       = "sell"
 	DEPOSIT_ORDER_TYPE    = "deposit"
 	WITHDRAWAL_ORDER_TYPE = "withdrawal"
+	TX_CATEGORY_TRADE     = "trade"
+	TX_CATEGORY_INCOME    = "income"
+	TX_CATEGORY_GIFT      = "gift"
+	TX_CATEGORY_MINING    = "mining"
+	TX_CATEGORY_SPEND     = "spend"
+	TX_CATEGORY_DONATION  = "donation"
+	TX_CATEGORY_LOST      = "lost"
+	TX_CATEGORY_TRANSFER  = "transfer"
 )
 
 type Transaction interface {
@@ -32,6 +40,7 @@ type Transaction interface {
 	GetDate() time.Time
 	GetCurrencyPair() *CurrencyPair
 	GetType() string
+	GetCategory() string
 	GetNetwork() string
 	GetNetworkDisplayName() string
 	GetQuantity() string

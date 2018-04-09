@@ -29,6 +29,8 @@ type TransactionEntity interface {
 	GetDate() time.Time
 	GetCurrency() string
 	GetType() string
+	GetCategory() string
+	SetCategory(category string)
 	GetNetwork() string
 	GetNetworkDisplayName() string
 	GetQuantity() string

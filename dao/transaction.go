@@ -8,8 +8,9 @@ import (
 type TransactionDAO interface {
 	Create(Transaction entity.TransactionEntity) error
 	Save(Transaction entity.TransactionEntity) error
+	Update(tx entity.TransactionEntity, field, value string) error
+	Get(id string) (entity.TransactionEntity, error)
 	Find() ([]entity.Transaction, error)
-	GetByTrade(trade entity.TradeEntity) (entity.TransactionEntity, error)
 }
 
 type TransactionDAOImpl struct {
@@ -21,12 +22,24 @@ func NewTransactionDAO(ctx common.Context) TransactionDAO {
 	return &TransactionDAOImpl{ctx: ctx}
 }
 
-func (dao *TransactionDAOImpl) Create(transaction entity.TransactionEntity) error {
-	return dao.ctx.GetCoreDB().Create(transaction).Error
+func (dao *TransactionDAOImpl) Create(tx entity.TransactionEntity) error {
+	return dao.ctx.GetCoreDB().Create(tx).Error
 }
 
-func (dao *TransactionDAOImpl) Save(Transaction entity.TransactionEntity) error {
-	return dao.ctx.GetCoreDB().Save(Transaction).Error
+func (dao *TransactionDAOImpl) Save(tx entity.TransactionEntity) error {
+	return dao.ctx.GetCoreDB().Save(tx).Error
+}
+
+func (dao *TransactionDAOImpl) Update(tx entity.TransactionEntity, field, value string) error {
+	return dao.ctx.GetCoreDB().Model(tx).Update(field, value).Error
+}
+
+func (dao *TransactionDAOImpl) Get(id string) (entity.TransactionEntity, error) {
+	tx := &entity.Transaction{Id: id}
+	if err := dao.ctx.GetCoreDB().First(tx).Error; err != nil {
+		return nil, err
+	}
+	return tx, nil
 }
 
 func (dao *TransactionDAOImpl) Find() ([]entity.Transaction, error) {

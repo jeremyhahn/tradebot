@@ -58,6 +58,19 @@ func (service *TransactionServiceImpl) isUnique(needle common.Transaction, hayst
 	return true, nil
 }
 
+func (service *TransactionServiceImpl) UpdateCategory(id, category string) error {
+	entity, err := service.dao.Get(id)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[TransactionService.UpdateCategory] Error updating %s's transaction id %s to category %s: %s",
+			service.ctx.GetUser().GetUsername(), id, category, err.Error())
+		return err
+	}
+	if entity.GetCategory() != category {
+		return service.dao.Update(entity, "category", category)
+	}
+	return nil
+}
+
 func (service *TransactionServiceImpl) Synchronize() ([]common.Transaction, error) {
 	service.ctx.GetLogger().Debugf("[TransactionService.Synchronize] Synchronizing transaction history for: %s", service.ctx.GetUser().GetUsername())
 	var synchronized []common.Transaction
@@ -70,22 +83,15 @@ func (service *TransactionServiceImpl) Synchronize() ([]common.Transaction, erro
 		if err != nil {
 			return nil, err
 		}
-		walletTransactions, err := service.GetWalletHistory()
-		if err != nil {
-			return nil, err
-		}
-		transactions = append(transactions, walletTransactions...)
-		transactions = append(transactions, service.GetOrderHistory()...)
-		transactions = append(transactions, service.GetImportedTransactions()...)
-		transactions = append(transactions, service.GetDepositHistory()...)
-		transactions = append(transactions, service.GetWithdrawalHistory()...)
 	*/
-
 	transactions, err := service.GetWalletHistory()
 	if err != nil {
 		return nil, err
 	}
-
+	transactions = append(transactions, service.GetOrderHistory()...)
+	transactions = append(transactions, service.GetDepositHistory()...)
+	transactions = append(transactions, service.GetWithdrawalHistory()...)
+	transactions = append(transactions, service.GetImportedTransactions()...)
 	service.Sort(&transactions)
 	for _, tx := range transactions {
 		if unique, err := service.isUnique(tx, &transactions, &persisted); err != nil {
