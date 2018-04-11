@@ -253,6 +253,7 @@ func (service *TransactionServiceImpl) ImportCSV(file, exchangeName string) ([]c
 func (service *TransactionServiceImpl) Sort(txs *[]common.Transaction) {
 	service.ctx.GetLogger().Debugf("[TransactionService.sort] Sorting %d transactions", len(*txs))
 	sort.Slice(*txs, func(i, j int) bool {
-		return (*txs)[i].GetDate().After((*txs)[j].GetDate())
+		return (*txs)[i].GetDate().Before((*txs)[j].GetDate()) ||
+			(*txs)[i].GetDate().Equal((*txs)[j].GetDate())
 	})
 }

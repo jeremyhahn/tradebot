@@ -2,8 +2,8 @@ package reporting
 
 import (
 	"fmt"
-	"os"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/jeremyhahn/tradebot/common"
@@ -21,26 +21,6 @@ type Report struct {
 	Trades      []common.Transaction
 	Income      []common.Transaction
 	Spends      []common.Transaction
-}
-
-type Form8949 struct {
-	LongHolds  []Form8949LineItem
-	ShortHolds []Form8949LineItem
-}
-
-type Form8949LineItem struct {
-	Description      string
-	DateAcquired     string
-	DateSold         string
-	Proceeds         string
-	CostBasis        string
-	AdjustmentCode   string
-	AdjustmentAmount string
-	GainOrLoss       string
-}
-
-type ReportParams struct {
-	ctx common.Context
 }
 
 func NewFifoReport(ctx common.Context, transactions []common.Transaction) *Report {
@@ -84,23 +64,11 @@ func NewFifoReport(ctx common.Context, transactions []common.Transaction) *Repor
 	return report
 }
 
-func (report *Report) isTaxable(tx common.Transaction) bool {
-	if tx.GetCategory() == common.TX_CATEGORY_LOST ||
-		tx.GetCategory() == common.TX_CATEGORY_GIFT ||
-		tx.GetCategory() == common.TX_CATEGORY_DONATION {
-		return false
-	}
-	return true
-}
+func (report *Report) Run(start, end time.Time) *Form8949 {
 
-func (report *Report) Run(start, end time.Time) {
-
-	zero := decimal.NewFromFloat(0)
-	unidentified := make(map[string][]common.Transaction)
+	var longs, shorts []Form8949LineItem
 	lots := make(map[string][]common.Transaction)
 	sales := make(map[string][]common.Transaction)
-	var shorts []Form8949LineItem
-	var longs []Form8949LineItem
 
 	for _, trade := range report.Trades {
 		if trade.GetDate().After(end) || !report.isTaxable(trade) {
@@ -124,9 +92,10 @@ func (report *Report) Run(start, end time.Time) {
 	}
 
 	for currency, txs := range lots {
-		if currency != "BTC" {
-			continue
-		}
+		/*
+			if currency != "BTC" {
+				continue
+			}*/
 		report.sort(&txs)
 		lots[currency] = txs
 		for _, tx := range txs {
@@ -136,242 +105,319 @@ func (report *Report) Run(start, end time.Time) {
 
 	for currency, salesTxs := range sales {
 
-		if currency != "BTC" {
-			continue
-		}
+		fmt.Printf("PROCESSING %s\n", currency)
 
 		if buyTxs, ok := lots[currency]; ok {
 
-			var deductedQty, costBasis, buyFees, saleTotal, gainOrLoss decimal.Decimal
-			remainder := make(map[string]*Remainder)
-			needsMore := make(map[string]*NeedsMore)
+			var sublot *Sublot
+			for _, saleTx := range salesTxs {
 
-			for i, saleTx := range salesTxs {
+				util.DUMP("-----------New Sale--------------")
 
-				processed := false
-				buyTx := buyTxs[0]
-				buyQty, _ := decimal.NewFromString(buyTx.GetQuantity())
-				buyTotal, _ := decimal.NewFromString(buyTx.GetFiatTotal())
-				buyFee, _ := decimal.NewFromString(buyTx.GetFiatFee())
-				buyFees = buyFees.Add(buyFee)
-				dateAcquired := buyTx.GetDate()
+				buyQty, _ := decimal.NewFromString(buyTxs[0].GetQuantity())
+				buyPrice, _ := decimal.NewFromString(buyTxs[0].GetFiatPrice())
+				buyTotal, _ := decimal.NewFromString(buyTxs[0].GetFiatTotal())
 				saleQty, _ := decimal.NewFromString(saleTx.GetQuantity())
-				/*
-					salePrice, _ := decimal.NewFromString(saleTx.GetFiatTotal())
-					saleFee, _ := decimal.NewFromString(saleTx.GetFiatFee())
-					saleTotal := saleTx.GetFiatTotal()
-				*/
-				fmt.Printf("buyTx=%+v\n", buyTx)
-				fmt.Printf("buyQty=%+v\n", buyQty)
+
+				fmt.Printf("buyTx=%+v\n", buyTxs[0])
+				fmt.Printf("buyQty=%s\n", buyQty)
+				fmt.Printf("buyPrice=%s\n", buyPrice)
 				fmt.Printf("buyTotal=%s\n", buyTotal)
-				fmt.Printf("buyFee=%s\n", buyFee)
-				fmt.Printf("buyFees=%s\n", buyFees)
 				fmt.Printf("saleTx=%+v\n", saleTx)
 				fmt.Printf("saleQty=%s\n\n", saleQty)
-				/*
-					fmt.Printf("salePrice=%s\n", salePrice)
-					fmt.Printf("saleFee=%s\n", saleFee)
-					fmt.Printf("saleTotal=%s\n", saleTotal)
-					fmt.Printf("costBasis=%s\n", costBasis)
-				*/
 
-				if r, ok := remainder[currency]; ok {
-					util.DUMP("remainder!")
+				if sublot != nil {
 
-					dateAcquired = r.Tx.GetDate()
-					deductedQty = deductedQty.Add(r.Quantity)
-					costBasis = r.CostBasis
-					saleTotal, _ = decimal.NewFromString(saleTx.GetFiatTotal())
-					gainOrLoss = saleTotal.Sub(costBasis)
-					fmt.Printf("deducted from remainder: %s\n", deductedQty)
+					util.DUMP("Procesing SUBLOT...")
+					util.DUMP(sublot)
 
-					if deductedQty.LessThan(saleQty) {
-						fmt.Printf("remainder - deducted buyQty: %s\n", buyQty)
-
-						needs := saleQty.Sub(deductedQty)
-
-						fmt.Printf("remainder- needs: %s\n", needs)
-
-						deductedQty = deductedQty.Add(buyQty)
-
-						fmt.Printf("remainder- deducted: %s\n", deductedQty)
-					}
-
-					r.Quantity = saleQty.Sub(deductedQty)
-
-					fmt.Printf("remainder (new value): %+v\n", remainder)
-
-					if r.Quantity.LessThanOrEqual(zero) {
-						delete(remainder, currency)
-						fmt.Printf("remainder (after delete): %+v\n", remainder)
-					}
-
-					processed = true
-				}
-
-				if !processed {
-					if nm, ok := needsMore[currency]; ok {
-						util.DUMP("needs more!")
-						if saleQty.GreaterThan(nm.Needed) || saleQty.Equals(nm.Needed) {
-
-							dateAcquired = nm.SalesTx.GetDate()
-							saleQty = nm.SaleQuantity
-							saleTotal, _ = decimal.NewFromString(nm.SalesTx.GetFiatTotal())
-							//	saleFee, _ := decimal.NewFromString(nm.SalesTx.GetFiatFee())
-							costBasis = costBasis.Add(saleTotal) //.Add(saleFee).Add(nm.PurchaseFee)
-							gainOrLoss = saleTotal.Sub(costBasis)
-							deductedQty = deductedQty.Add(nm.Needed)
-
-							fmt.Printf("needsMore (needed): %s\n", nm.Needed)
-							fmt.Printf("needsMore deducted (total): %s\n", deductedQty)
-
-							needsMore[currency] = &NeedsMore{
-								SaleQuantity:  nm.SaleQuantity,
-								Needed:        nm.SaleQuantity.Sub(deductedQty),
-								SalesTx:       saleTx,
-								PurchasePrice: buyTotal}
-							fmt.Printf("needsMore (new value): %+v\n", needsMore)
-
-							if needsMore[currency].Needed.LessThanOrEqual(zero) {
-								remainder[currency] = &Remainder{
-									Quantity:  buyQty.Sub(nm.Needed),
-									CostBasis: costBasis,
-									Tx:        buyTx}
-								fmt.Printf("needsMore remainder: %+v\n", remainder[currency])
-								delete(needsMore, currency)
-							} else {
-								continue
-							}
-
-							processed = true
-						} else {
-							remainder[currency] = &Remainder{
-								Quantity:  needsMore[currency].SaleQuantity.Sub(saleQty),
-								CostBasis: costBasis,
-								Tx:        buyTx}
-							fmt.Printf("needsMore remainder: %+v\n", remainder)
-							deductedQty = deductedQty.Add(saleQty)
-							fmt.Printf("needsMore (new value 2): %s\n", deductedQty.String())
-
+					if saleQty.GreaterThan(sublot.Quantity) {
+						var txs []common.Transaction
+						sum := sublot.Quantity
+						i := 1
+						for sum.LessThan(saleQty) {
+							qty, _ := decimal.NewFromString(buyTxs[0].GetQuantity())
+							sum = sum.Add(qty)
+							txs = append(txs, buyTxs[0])
+							report.ctx.GetLogger().Debugf("[FIFOReport.Run] qty=%s, sum=%s, txs size: %d, i=%d", qty, sum, len(txs), i)
 							buyTxs = buyTxs[1:]
-							continue
+							fmt.Printf("buyTx=%+v\n", buyTxs[0])
+							i++
+						}
+						_sublot, lineItems := report.calculateLotsWithSublot(&txs, saleTx, sublot)
+						sublot = _sublot
+						util.DUMP(sublot)
+						util.DUMP("")
+						util.DUMP(lineItems)
+						util.DUMP("")
+						for _, item := range lineItems {
+							if report.isShortSale(&item) {
+								shorts = append(shorts, item)
+							} else {
+								longs = append(longs, item)
+							}
+						}
+					} else {
+						_sublot, lineItem := report.calculateSublot(sublot, saleTx)
+						sublot = _sublot
+						util.DUMP(sublot)
+						util.DUMP(lineItem)
+						util.DUMP("")
+						if report.isShortSale(lineItem) {
+							shorts = append(shorts, *lineItem)
+						} else {
+							longs = append(longs, *lineItem)
 						}
 					}
+					continue
 				}
 
-				if !processed {
-					if saleQty.GreaterThan(buyQty) || saleQty.Equals(buyQty) {
-
-						deductedQty = deductedQty.Add(buyQty)
-						fmt.Printf("deducted: %s\n", deductedQty.String())
-
-						needsMore[currency] = &NeedsMore{
-							Needed:        saleQty.Sub(deductedQty),
-							SaleQuantity:  saleQty,
-							SalesTx:       saleTx,
-							PurchasePrice: buyTotal}
-						fmt.Printf("needsMore: %+v\n", needsMore)
-
-						buyTxs = buyTxs[1:]
-						continue
+				if saleQty.LessThanOrEqual(buyQty) {
+					_sublot, lineItem := report.calculate(buyTxs[0], saleTx)
+					sublot = _sublot
+					util.DUMP(lineItem)
+					util.DUMP("")
+					if report.isShortSale(lineItem) {
+						shorts = append(shorts, *lineItem)
 					} else {
-
-						//saleFee, _ := decimal.NewFromString(saleTx.GetFiatFee())
-						saleTotal, _ = decimal.NewFromString(saleTx.GetFiatTotal())
-						costBasis = saleQty.Div(buyQty).Mul(buyTotal) //.Add(buyFee).Add(saleFee)
-						gainOrLoss = saleTotal.Sub(costBasis)
-
-						remainder[currency] = &Remainder{
-							Quantity:  buyQty.Sub(saleQty),
-							CostBasis: costBasis,
-							Tx:        buyTx}
-
-						fmt.Printf("remainder: %+v\n", remainder)
-
-						deductedQty = deductedQty.Add(saleQty)
-						fmt.Printf("deducted: %s\n", deductedQty.String())
-
+						longs = append(longs, *lineItem)
+					}
+					buyTxs = buyTxs[1:]
+				} else {
+					util.DUMP("saleQty > buyQty... getting multiple txs")
+					var txs []common.Transaction
+					var sum decimal.Decimal
+					for sum.LessThan(saleQty) {
+						qty, _ := decimal.NewFromString(buyTxs[0].GetQuantity())
+						sum = sum.Add(qty)
+						txs = append(txs, buyTxs[0])
+						report.ctx.GetLogger().Debugf("[FIFOReport.Run] qty=%s, sum=%s, fiatTotal:%s, txs size: %d",
+							qty, sum, buyTxs[0].GetFiatTotal(), len(txs))
 						buyTxs = buyTxs[1:]
 					}
+					_sublot, lineItem := report.calculateLots(&txs, saleTx)
+					sublot = _sublot
+					util.DUMP(lineItem)
+					util.DUMP(sublot)
+					util.DUMP("")
+					if report.isShortSale(lineItem) {
+						shorts = append(shorts, *lineItem)
+					} else {
+						longs = append(longs, *lineItem)
+					}
 				}
-
-				lineItem := Form8949LineItem{
-					Description:      saleQty.StringFixed(8),
-					DateAcquired:     dateAcquired.String(),
-					DateSold:         saleTx.GetDate().String(),
-					Proceeds:         saleTotal.StringFixed(2),
-					CostBasis:        costBasis.StringFixed(2),
-					AdjustmentCode:   "",
-					AdjustmentAmount: "",
-					GainOrLoss:       gainOrLoss.StringFixed(2)}
-
-				util.DUMP(lineItem)
-
-				deductedQty = decimal.NewFromFloat(0)
-				costBasis = decimal.NewFromFloat(0)
-				buyFees = decimal.NewFromFloat(0)
-				saleTotal = decimal.NewFromFloat(0)
-				gainOrLoss = decimal.NewFromFloat(0)
-
-				if i == 4 {
-					os.Exit(0)
-				}
-
-				if dateAcquired.Before(time.Now().AddDate(-1, 0, 0)) {
-					longs = append(longs, lineItem)
-				} else {
-					shorts = append(shorts, lineItem)
-				}
-
-			}
-
-		} else {
-			for _, tx := range buyTxs {
-				unidentified[currency] = append(unidentified[currency], tx)
 			}
 		}
 	}
 
+	form := &Form8949{
+		LongHolds:  longs,
+		ShortHolds: shorts}
+	form.sort()
+	return form
+}
+
+func (report *Report) isShortSale(lineItem *Form8949LineItem) bool {
+	diff := lineItem.DateSold.Sub(lineItem.DateAcquired)
+	return int(diff.Hours()/24) > 365
+}
+
+func (report *Report) isTaxable(tx common.Transaction) bool {
+	if tx.GetCategory() == common.TX_CATEGORY_LOST ||
+		tx.GetCategory() == common.TX_CATEGORY_GIFT ||
+		tx.GetCategory() == common.TX_CATEGORY_DONATION {
+		return false
+	}
+	return true
+}
+
+func (report *Report) calculateSublot(lot *Sublot, saleTx common.Transaction) (*Sublot, *Form8949LineItem) {
+
+	report.ctx.GetLogger().Debugf("[FIFOReport.calculateSublot] Calculate sublot (%s) for saleTx: %s\n", lot.Quantity, saleTx.GetQuantity())
+
+	var sublot *Sublot
+	saleQty, _ := decimal.NewFromString(saleTx.GetQuantity())
+
+	if lot.Quantity.GreaterThan(saleQty) {
+		subqty := lot.Quantity.Sub(saleQty)
+		sublot = &Sublot{
+			Date:      lot.Date,
+			Quantity:  subqty,
+			Price:     lot.Price,
+			CostBasis: lot.Price.Mul(subqty)}
+	}
+
+	proceeds, _ := decimal.NewFromString(saleTx.GetFiatQuantity())
+	costBasis := lot.Price.Mul(saleQty)
+
+	return sublot, &Form8949LineItem{
+		Currency:         saleTx.GetQuantityCurrency(),
+		Description:      fmt.Sprintf("%s %s", saleTx.GetQuantity(), saleTx.GetQuantityCurrency()),
+		DateAcquired:     lot.Date,
+		DateSold:         saleTx.GetDate(),
+		Proceeds:         proceeds.StringFixed(2),
+		CostBasis:        costBasis.StringFixed(2),
+		AdjustmentCode:   "",
+		AdjustmentAmount: "",
+		GainOrLoss:       proceeds.Sub(costBasis).StringFixed(2)}
+}
+
+func (report *Report) calculateLots(lots *[]common.Transaction, saleTx common.Transaction) (*Sublot, *Form8949LineItem) {
+	report.ctx.GetLogger().Debugf("[FIFOReport.calculateLots] Calculating %d lots for saleTx: %s\n", len(*lots), saleTx.GetQuantity())
+	var sublot *Sublot
+	_lots := *lots
+	lotLen, _ := decimal.NewFromString(strconv.Itoa(len(_lots)))
+	dateAcquired := _lots[0].GetDate()
+	saleQty, _ := decimal.NewFromString(saleTx.GetQuantity())
+	proceeds, _ := decimal.NewFromString(saleTx.GetFiatQuantity())
+	deductedQty := decimal.NewFromFloat(0)
+	costBasis := decimal.NewFromFloat(0)
+	for _, lot := range *lots {
+		lotprice, _ := decimal.NewFromString(lot.GetFiatPrice())
+		lotQty, _ := decimal.NewFromString(lot.GetQuantity())
+		deductedQty = deductedQty.Add(lotQty)
+		costBasis = costBasis.Add(lotprice.Mul(saleQty))
+		if deductedQty.GreaterThan(saleQty) {
+			subqty := deductedQty.Sub(saleQty)
+			sublot = &Sublot{
+				Date:      lot.GetDate(),
+				Quantity:  subqty,
+				Price:     lotprice,
+				CostBasis: lotprice.Mul(subqty)}
+			break
+		}
+	}
+	costBasis = costBasis.Div(lotLen)
+	return sublot, &Form8949LineItem{
+		Currency:         saleTx.GetQuantityCurrency(),
+		Description:      fmt.Sprintf("%s %s", saleTx.GetQuantity(), saleTx.GetQuantityCurrency()), // deductedQty
+		DateAcquired:     dateAcquired,
+		DateSold:         saleTx.GetDate(),
+		Proceeds:         proceeds.StringFixed(2),
+		CostBasis:        costBasis.StringFixed(2),
+		AdjustmentCode:   "",
+		AdjustmentAmount: "",
+		GainOrLoss:       proceeds.Sub(costBasis).StringFixed(2)}
+}
+
+func (report *Report) calculateLotsWithSublot(lots *[]common.Transaction, saleTx common.Transaction, slot *Sublot) (*Sublot, []Form8949LineItem) {
+	report.ctx.GetLogger().Debugf("[FIFOReport.calculateLotsWithSublot] Calculating %d lots with sublot %s for saleTx: %s\n",
+		len(*lots), slot, saleTx.GetQuantity())
+
+	util.DUMP("calculateLotsWithSublot")
+	util.DUMP(slot)
+
+	lineItems := make([]Form8949LineItem, 2)
+
+	saleTotal, _ := decimal.NewFromString(saleTx.GetFiatPrice())
+	slotProceeds := saleTotal.Mul(slot.Quantity)
+	lineItems[0] = Form8949LineItem{
+		Currency:         saleTx.GetQuantityCurrency(),
+		Description:      fmt.Sprintf("%s %s", slot.Quantity, saleTx.GetQuantityCurrency()),
+		DateAcquired:     slot.Date,
+		DateSold:         saleTx.GetDate(),
+		Proceeds:         slotProceeds.StringFixed(2),
+		CostBasis:        slot.CostBasis.StringFixed(2),
+		AdjustmentCode:   "",
+		AdjustmentAmount: "",
+		GainOrLoss:       slotProceeds.Sub(slot.CostBasis).StringFixed(2)}
+
+	util.DUMP(lineItems[0])
+
+	var sublot *Sublot
+	_lots := *lots
+	lotLen, _ := decimal.NewFromString(strconv.Itoa(len(_lots)))
+	dateAcquired := _lots[0].GetDate()
+	proceeds, _ := decimal.NewFromString(saleTx.GetFiatQuantity())
+	proceeds = proceeds.Sub(slotProceeds)
+	preSaleQty, _ := decimal.NewFromString(saleTx.GetQuantity())
+	saleQty := preSaleQty.Sub(slot.Quantity)
+	deductedQty := decimal.NewFromFloat(0)
+	costBasis := decimal.NewFromFloat(0)
+	for _, lot := range *lots {
+		lotprice, _ := decimal.NewFromString(lot.GetFiatPrice())
+		lotQty, _ := decimal.NewFromString(lot.GetQuantity())
+		deductedQty = deductedQty.Add(lotQty)
+		costBasis = costBasis.Add(lotprice.Mul(saleQty))
+		if deductedQty.GreaterThan(saleQty) {
+			subqty := deductedQty.Sub(saleQty)
+			sublot = &Sublot{
+				Date:      lot.GetDate(),
+				Quantity:  subqty,
+				Price:     lotprice,
+				CostBasis: lotprice.Mul(subqty)}
+			break
+		}
+	}
+	costBasis = costBasis.Div(lotLen)
+	lineItems[1] = Form8949LineItem{
+		Currency:         saleTx.GetQuantityCurrency(),
+		Description:      fmt.Sprintf("%s %s", deductedQty, saleTx.GetQuantityCurrency()),
+		DateAcquired:     dateAcquired,
+		DateSold:         slot.Date,
+		Proceeds:         proceeds.StringFixed(2),
+		CostBasis:        costBasis.StringFixed(2),
+		AdjustmentCode:   "",
+		AdjustmentAmount: "",
+		GainOrLoss:       proceeds.Sub(costBasis).StringFixed(2)}
+
+	util.DUMP(lineItems[1])
+
+	return sublot, lineItems
+}
+
+func (report *Report) calculate(lot common.Transaction, saleTx common.Transaction) (*Sublot, *Form8949LineItem) {
+	report.ctx.GetLogger().Debugf("[FIFOReport.calculate] Calculate single lot (%s) for saleTx: %s\n", lot.GetQuantity(), saleTx.GetQuantity())
+	var sublot *Sublot
+	lotQty, _ := decimal.NewFromString(lot.GetQuantity())
+	lotPrice, _ := decimal.NewFromString(lot.GetFiatPrice())
+	saleQty, _ := decimal.NewFromString(saleTx.GetQuantity())
+	proceeds, _ := decimal.NewFromString(saleTx.GetFiatQuantity())
+	costBasis := lotPrice.Mul(saleQty)
+	if lotQty.GreaterThan(saleQty) {
+		subqty := lotQty.Sub(saleQty)
+		sublot = &Sublot{
+			Date:      lot.GetDate(),
+			Quantity:  subqty,
+			Price:     lotPrice,
+			CostBasis: lotPrice.Mul(subqty)}
+	}
+	return sublot, &Form8949LineItem{
+		Currency:         saleTx.GetQuantityCurrency(),
+		Description:      fmt.Sprintf("%s %s", saleTx.GetQuantity(), saleTx.GetQuantityCurrency()),
+		DateAcquired:     lot.GetDate(),
+		DateSold:         saleTx.GetDate(),
+		Proceeds:         proceeds.StringFixed(2),
+		CostBasis:        costBasis.StringFixed(2),
+		AdjustmentCode:   "",
+		AdjustmentAmount: "",
+		GainOrLoss:       proceeds.Sub(costBasis).StringFixed(2)}
 }
 
 func (report *Report) sort(txs *[]common.Transaction) {
 	report.ctx.GetLogger().Debugf("[FIFOReport.Sort] Sorting %d transactions", len(*txs))
 	sort.Slice(*txs, func(i, j int) bool {
-		if (*txs)[i].GetDate().Equal((*txs)[j].GetDate()) {
-			return true
-		}
-		return (*txs)[i].GetDate().Before((*txs)[j].GetDate())
+		return (*txs)[i].GetDate().Before((*txs)[j].GetDate()) ||
+			(*txs)[i].GetDate().Equal((*txs)[j].GetDate())
 	})
 }
 
-func (report *Report) sum(txs []common.Transaction) decimal.Decimal {
-	var sum decimal.Decimal
-	for _, tx := range txs {
-		quantity, err := decimal.NewFromString(tx.GetQuantity())
-		if err != nil {
-			report.ctx.GetLogger().Errorf("[FIFOReport.sum] Error: %s", err.Error())
+/*func (report *Report) sortLots(lots map[string][]common.Transaction) map[string][]common.Transaction {
+	exists := make(map[string]bool, len(lots))
+	keys := make([]string, len(lots))
+	for k, _ := range lots {
+		if _, ok := exists[k]; !ok {
+			keys = append(keys, k)
+			exists[k] = true
 		}
-		sum = sum.Add(quantity)
 	}
-	return sum
-}
-
-/*
-func WriteCSV() {
-	  filename := fmt.Sprintf("/tmp/%s-%s", ctx.GetUser().GetUsername(), "fifo.csv")
-		file, err := os.Create(filename)
-		if err != nil {
-			return "", err
-		}
-		defer file.Close()
-		writer := csv.NewWriter(file)
-		defer writer.Flush()
-
-			ctx.ResponseWriter.Header().Set("Content-Type", "text/csv")
-			ctx.ResponseWriter.Header().Set("Content-Disposition", "attachment;filename=TheCSVFileName.csv")
-			ctx.ResponseWriter.Write(b.Bytes())
-}
-*/
+	sort.Strings(keys)
+	sorted := make(map[string][]common.Transaction)
+	for _, k := range keys {
+		sorted[k] = lots[k]
+	}
+	return sorted
+}*/
 
 func createTransactionService(ctx common.Context) service.TransactionService {
 	pluginDAO := dao.NewPluginDAO(ctx)

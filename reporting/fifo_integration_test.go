@@ -18,7 +18,8 @@ func TestFIFO(t *testing.T) {
 	location := time.Now().Location()
 	start := time.Date(2017, 01, 01, 0, 0, 0, 0, location)
 	end := time.Date(2017, 12, 31, 0, 0, 0, 0, location)
-	fifo.Run(start, end)
+	form8948 := fifo.Run(start, end)
+	form8948.WriteCSV("/tmp/8949.csv")
 
 	//test.CleanupIntegrationTest()
 }
