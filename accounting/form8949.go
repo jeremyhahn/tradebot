@@ -23,14 +23,6 @@ func (form *Form8949) sort() {
 		return form.LongHolds[i].DateAcquired.Before(form.LongHolds[j].DateAcquired) ||
 			form.LongHolds[i].DateAcquired.Equal(form.LongHolds[j].DateAcquired)
 	})
-	/*
-		sort.Slice(form.ShortHolds, func(i, j int) bool {
-			return len(form.ShortHolds[i].Currency) < len(form.ShortHolds[j].Currency)
-		})
-		sort.Slice(form.LongHolds, func(i, j int) bool {
-			return len(form.LongHolds[i].Currency) < len(form.LongHolds[j].Currency)
-		})
-	*/
 }
 
 func (form *Form8949) WriteCSV(filename string) error {
@@ -96,8 +88,8 @@ type Form8949LineItem struct {
 func (item *Form8949LineItem) Record() []string {
 	return []string{
 		item.Description,
-		item.DateAcquired.Format(common.TIME_DISPLAY_FORMAT),
-		item.DateSold.Format(common.TIME_DISPLAY_FORMAT),
+		item.DateAcquired.Local().Format(common.TIME_DISPLAY_FORMAT),
+		item.DateSold.Local().Format(common.TIME_DISPLAY_FORMAT),
 		item.Proceeds,
 		item.CostBasis,
 		item.AdjustmentCode,

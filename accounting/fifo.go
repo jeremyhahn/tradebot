@@ -104,18 +104,19 @@ func (report *Report) Run(start, end time.Time) *Form8949 {
 
 	}
 
-	/*
-		select * from transactions where currency_pair like '%BTC%' and deleted = 0 order by date asc
-		delete from transactions where network = 'Bittrex' and type = 'buy' or type = 'sell'
-		select * from transactions where network = 'Bittrex'
-	*/
-
 	var shorts, longs []Form8949LineItem
+
 	for currency, _ := range buyLots {
 		_shorts, _longs := report.process(buyLots[currency], saleLots[currency])
 		shorts = append(shorts, _shorts...)
 		longs = append(longs, _longs...)
 	}
+
+	/*
+		_shorts, _longs := report.process(buyLots["BTC"], saleLots["BTC"])
+		shorts = append(shorts, _shorts...)
+		longs = append(longs, _longs...)
+	*/
 
 	form := &Form8949{
 		ShortHolds: shorts,
