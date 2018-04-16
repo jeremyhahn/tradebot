@@ -1,13 +1,15 @@
 package rest
 
 import (
-	"encoding/csv"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/jeremyhahn/tradebot/accounting"
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/mapper"
@@ -79,7 +81,7 @@ func (restService *TransactionRestServiceImpl) GetHistory(w http.ResponseWriter,
 			Payload: err.Error()})
 		return
 	}
-	txs, err := txService.GetHistory()
+	txs, err := txService.GetHistory("desc")
 	if err != nil {
 		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
 			Success: false,
@@ -279,24 +281,43 @@ func (restService *TransactionRestServiceImpl) Export(w http.ResponseWriter, r *
 		return
 	}
 	defer ctx.Close()
-
-	filename := fmt.Sprintf("%s-%s", ctx.GetUser().GetUsername(), "-8949.csv")
-	file, err := os.Create(filename)
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
 	ctx.GetLogger().Debugf("[TransactionHistoryRestService.Export]")
-	orderService, err := restService.createTransactionService(ctx)
+	service, err := restService.createTransactionService(ctx)
 	if err != nil {
 		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
 			Success: false,
 			Payload: err.Error()})
+		return
 	}
-	orderHistory := orderService.GetOrderHistory()
-	var orders []viewmodel.Transaction
-	for _, order := range orderHistory {
-		orders = append(orders, orderService.GetMapper().MapTransactionDtoToViewModel(order))
+	transactions, err := service.GetHistory("asc")
+	if err != nil {
+		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
+			Success: false,
+			Payload: err.Error()})
+		return
 	}
+	fifo := accounting.NewFifoReport(ctx, transactions)
+	location := time.Now().Location()
+	start := time.Date(2017, 01, 01, 0, 0, 0, 0, location)
+	end := time.Date(2017, 12, 31, 0, 0, 0, 0, location)
+	form8948 := fifo.Run(start, end)
+
+	filename := fmt.Sprintf("/tmp/%s-%s", ctx.GetUser().GetUsername(), "-8949.csv")
+	form8948.WriteCSV(filename)
+
+	csvBytes, err := ioutil.ReadFile(filename)
+	if err != nil {
+		restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
+			Success: false,
+			Payload: err.Error()})
+		return
+	}
+
+	restService.jsonWriter.Write(w, http.StatusInternalServerError, common.JsonResponse{
+		Success: true,
+		Payload: string(csvBytes)})
+
+	os.Remove(filename)
 }
 
 func (restService *TransactionRestServiceImpl) formatTransactions(ctx common.Context, txs []common.Transaction) []viewmodel.Transaction {

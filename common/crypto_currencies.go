@@ -1,6 +1,6 @@
 package common
 
-var CryptoNames = map[string]string{
+var CryptoCurrencies = map[string]string{
 	"42":         "42 Coin",
 	"300":        "300 token",
 	"365":        "365Coin",

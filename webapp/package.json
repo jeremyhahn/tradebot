@@ -46,6 +46,7 @@
     "d3-scale": "^1.0.7",
     "d3-time-format": "^2.1.1",
     "g": "^2.0.1",
+    "js-file-download": "^0.4.1",
     "jwt-decode": "^2.2.0",
     "material-ui": "^1.0.0-beta.30",
     "material-ui-dropzone": "^1.0.3",

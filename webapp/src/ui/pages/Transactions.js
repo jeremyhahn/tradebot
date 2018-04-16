@@ -31,6 +31,8 @@ import Slide from 'material-ui/transitions/Slide';
 import Select from 'material-ui/Select';
 import { MenuItem } from 'material-ui/Menu';
 
+var downloader = require('js-file-download');
+
 const columnData = [
   { id: 'date', numeric: false, disablePadding: false, label: 'Date' },
   { id: 'type', numeric: false, disablePadding: false, label: 'Type' },
@@ -168,6 +170,7 @@ class Transactions extends React.Component {
     this.handleImportDialogClose = this.handleImportDialogClose.bind(this)
     this.appendImportData = this.appendImportData.bind(this)
     this.fetchTransactions = this.fetchTransactions.bind(this)
+    this.exportTransactions = this.exportTransactions.bind(this)
     this.syncTransactions = this.syncTransactions.bind(this)
     this.snackbarClose = this.snackbarClose.bind(this)
     this.infoSnackbarClose = this.infoSnackbarClose.bind(this)
@@ -212,6 +215,16 @@ class Transactions extends React.Component {
             loading: false,
             data: response.payload
           })
+        }
+      }.bind(this))
+  }
+
+  exportTransactions() {
+    this.Auth.exportTransactions()
+      .then(function (response) {
+        console.log(response);
+        if(response.success) {
+          downloader(response.payload, "8949.csv")
         }
       }.bind(this))
   }
@@ -322,7 +335,7 @@ class Transactions extends React.Component {
             <Button className={classes.buttonText} size="small" color="inherit" onClick={this.importDialogHandler}>
               Import <FileUpload className={classes.leftIcon} />
             </Button>
-            <Button className={classes.buttonText} size="small" color="inherit">
+            <Button className={classes.buttonText} size="small" color="inherit" onClick={this.exportTransactions}>
               Statement <FileDownload className={classes.leftIcon} />
             </Button>
             <Button disabled={this.state.syncDisabled} className={classes.buttonText} size="small" color="inherit" onClick={this.syncTransactions}>

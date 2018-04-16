@@ -3,30 +3,34 @@ package entity
 import "time"
 
 type Transaction struct {
-	Id                   string `gorm:"type:varchar(200);primary_key"`
-	UserId               uint
-	Date                 time.Time
-	Currency             string `gorm:"type:varchar(10)"`
-	Type                 string `gorm:"type:varchar(64)"`
-	Category             string `gorm:"type:varchar(200)"`
-	Network              string `gorm:"type:varchar(200)"`
-	NetworkDisplayName   string `gorm:"type:varchar(200)"`
-	Quantity             string `gorm:"type:varchar(64)"`
-	QuantityCurrency     string `gorm:"type:varchar(6)"`
-	FiatQuantity         string `gorm:"type:varchar(64)"`
-	FiatQuantityCurrency string `gorm:"type:varchar(6)"`
-	Price                string `gorm:"type:varchar(64)"`
-	PriceCurrency        string `gorm:"type:varchar(6)"`
-	FiatPrice            string `gorm:"type:varchar(64)"`
-	FiatPriceCurrency    string `gorm:"type:varchar(6)"`
-	Fee                  string `gorm:"type:varchar(64)"`
-	FeeCurrency          string `gorm:"type:varchar(6)"`
-	FiatFee              string `gorm:"type:varchar(64)"`
-	FiatFeeCurrency      string `gorm:"type:varchar(6)"`
-	Total                string `gorm:"type:varchar(64)"`
-	TotalCurrency        string `gorm:"type:varchar(6)"`
-	FiatTotal            string `gorm:"type:varchar(64)"`
-	FiatTotalCurrency    string `gorm:"type:varchar(6)"`
+	Id                     string `gorm:"type:varchar(200);primary_key"`
+	UserId                 uint
+	Date                   time.Time
+	MarketPair             string `gorm:"type:varchar(10)"`
+	CurrencyPair           string `gorm:"type:varchar(10)"`
+	Type                   string `gorm:"type:varchar(64)"`
+	Category               string `gorm:"type:varchar(200)"`
+	Network                string `gorm:"type:varchar(200)"`
+	NetworkDisplayName     string `gorm:"type:varchar(200)"`
+	Quantity               string `gorm:"type:varchar(64)"`
+	QuantityCurrency       string `gorm:"type:varchar(6)"`
+	FiatQuantity           string `gorm:"type:varchar(64)"`
+	FiatQuantityCurrency   string `gorm:"type:varchar(6)"`
+	Price                  string `gorm:"type:varchar(64)"`
+	PriceCurrency          string `gorm:"type:varchar(6)"`
+	FiatPrice              string `gorm:"type:varchar(64)"`
+	FiatPriceCurrency      string `gorm:"type:varchar(6)"`
+	QuoteFiatPrice         string `gorm:"type:varchar(64)"`
+	QuoteFiatPriceCurrency string `gorm:"type:varchar(6)"`
+	Fee                    string `gorm:"type:varchar(64)"`
+	FeeCurrency            string `gorm:"type:varchar(6)"`
+	FiatFee                string `gorm:"type:varchar(64)"`
+	FiatFeeCurrency        string `gorm:"type:varchar(6)"`
+	Total                  string `gorm:"type:varchar(64)"`
+	TotalCurrency          string `gorm:"type:varchar(6)"`
+	FiatTotal              string `gorm:"type:varchar(64)"`
+	FiatTotalCurrency      string `gorm:"type:varchar(6)"`
+	Deleted                int    `gorm:"type:integer;default:0"`
 	TransactionEntity
 }
 
@@ -42,8 +46,12 @@ func (tx *Transaction) GetDate() time.Time {
 	return tx.Date
 }
 
-func (tx *Transaction) GetCurrency() string {
-	return tx.Currency
+func (tx *Transaction) GetMarketPair() string {
+	return tx.MarketPair
+}
+
+func (tx *Transaction) GetCurrencyPair() string {
+	return tx.CurrencyPair
 }
 
 func (tx *Transaction) GetType() string {
@@ -98,6 +106,14 @@ func (tx *Transaction) GetFiatPriceCurrency() string {
 	return tx.FiatPriceCurrency
 }
 
+func (tx *Transaction) GetQuoteFiatPrice() string {
+	return tx.QuoteFiatPrice
+}
+
+func (tx *Transaction) GetQuoteFiatPriceCurrency() string {
+	return tx.QuoteFiatPriceCurrency
+}
+
 func (tx *Transaction) GetFee() string {
 	return tx.Fee
 }
@@ -128,4 +144,12 @@ func (tx *Transaction) GetFiatTotal() string {
 
 func (tx *Transaction) GetFiatTotalCurrency() string {
 	return tx.FiatTotalCurrency
+}
+
+func (tx *Transaction) IsDeleted() bool {
+	return tx.Deleted > 0
+}
+
+func (tx *Transaction) SetDeleted(value int) {
+	tx.Deleted = value
 }

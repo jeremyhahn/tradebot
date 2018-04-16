@@ -38,6 +38,7 @@ const (
 type Transaction interface {
 	GetId() string
 	GetDate() time.Time
+	GetMarketPair() *CurrencyPair
 	GetCurrencyPair() *CurrencyPair
 	GetType() string
 	GetCategory() string
@@ -49,9 +50,10 @@ type Transaction interface {
 	GetFiatQuantityCurrency() string
 	GetPrice() string
 	GetPriceCurrency() string
-	GetPriceString() string
 	GetFiatPrice() string
 	GetFiatPriceCurrency() string
+	GetQuoteFiatPrice() string
+	GetQuoteFiatPriceCurrency() string
 	GetFee() string
 	GetFeeCurrency() string
 	GetTotal() string
@@ -60,6 +62,7 @@ type Transaction interface {
 	GetFiatFeeCurrency() string
 	GetFiatTotal() string
 	GetFiatTotalCurrency() string
+	IsDeleted() bool
 	String() string
 }
 

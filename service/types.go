@@ -130,7 +130,7 @@ type ExchangeService interface {
 
 type TransactionService interface {
 	GetMapper() mapper.TransactionMapper
-	GetHistory() ([]common.Transaction, error)
+	GetHistory(order string) ([]common.Transaction, error)
 	GetOrderHistory() []common.Transaction
 	GetDepositHistory() []common.Transaction
 	GetWithdrawalHistory() []common.Transaction

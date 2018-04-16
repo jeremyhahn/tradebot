@@ -223,10 +223,12 @@ func (service *EthereumWebClient) GetTransactionsFor(address string) ([]common.T
 			return nil, err
 		}
 		fiatTotal := finalAmount.Mul(candlestick.Close).Add(fee)
+		currencyPair := &common.CurrencyPair{Base: "ETH", Quote: "ETH", LocalCurrency: localCurrency}
 		transactions = append(transactions, &dto.TransactionDTO{
 			Id:                   fmt.Sprintf("eth-%s", tx.Timestamp),
-			Date:                 time.Unix(timestamp, 0),
-			CurrencyPair:         &common.CurrencyPair{Base: "ETH", Quote: "ETH", LocalCurrency: localCurrency},
+			Date:                 time.Unix(timestamp, 0).UTC(),
+			MarketPair:           currencyPair,
+			CurrencyPair:         currencyPair,
 			Type:                 txType,
 			Category:             common.TX_CATEGORY_TRANSFER,
 			Network:              "Ethereum",

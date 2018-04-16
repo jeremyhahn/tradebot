@@ -23,6 +23,7 @@ Decentralized cryptocurrency trading platform with portfolio, accounting / tax r
 * Live Charts
 * Integrate with open source, decentralized atomic swap exchange(s)
 * Financial lending
+* Social and communication integration (community chat, share portfolio to social media, etc)
 
 
 ## Build
@@ -93,10 +94,10 @@ Windows Home Edition and versions prior to Windows 10 do not support native virt
 Geth requires both TCP and UDP port 30303, otherwise it will not be able to synchronize the chain data with peers on the public network. Be sure these ports are forwarded to the system hosting Geth if it's behind a router/firewall.
 
 
-## TODO
+## Broken
 
 1. Fix broken indicators due to float64 -> decimal refactoring
-2. Add fiat conversion to Bittrex order history (currently only supported in imports)
+2. Add fiat conversion to Bittrex order history (currently only supported by CSV import)
 
 
 ## Support

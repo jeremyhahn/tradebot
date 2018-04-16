@@ -74,7 +74,7 @@ func (service *TransactionServiceImpl) UpdateCategory(id, category string) error
 func (service *TransactionServiceImpl) Synchronize() ([]common.Transaction, error) {
 	service.ctx.GetLogger().Debugf("[TransactionService.Synchronize] Synchronizing transaction history for: %s", service.ctx.GetUser().GetUsername())
 	var synchronized []common.Transaction
-	persisted, err := service.dao.Find()
+	persisted, err := service.dao.Find("desc")
 	if err != nil {
 		return synchronized, err
 	}
@@ -111,10 +111,10 @@ func (service *TransactionServiceImpl) Synchronize() ([]common.Transaction, erro
 	return synchronized, nil
 }
 
-func (service *TransactionServiceImpl) GetHistory() ([]common.Transaction, error) {
-	service.ctx.GetLogger().Debugf("[TransactionService.GetHistory] Retrieving transaction history for %s.",
-		service.ctx.GetUser().GetUsername())
-	entities, err := service.dao.Find()
+func (service *TransactionServiceImpl) GetHistory(order string) ([]common.Transaction, error) {
+	service.ctx.GetLogger().Debugf("[TransactionService.GetHistory] Retrieving transaction history for %s in %s order.",
+		service.ctx.GetUser().GetUsername(), order)
+	entities, err := service.dao.Find(order)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,6 @@ func (service *TransactionServiceImpl) GetHistory() ([]common.Transaction, error
 		for i, entity := range entities {
 			transactions[i] = service.mapper.MapTransactionEntityToDto(&entity)
 		}
-		service.Sort(&transactions)
 		return transactions, nil
 	}
 	return service.Synchronize()
@@ -222,7 +221,7 @@ func (service *TransactionServiceImpl) GetWithdrawalHistory() []common.Transacti
 
 func (service *TransactionServiceImpl) GetImportedTransactions() []common.Transaction {
 	var txs []common.Transaction
-	txEntities, err := service.dao.Find()
+	txEntities, err := service.dao.Find("desc")
 	if err != nil {
 		service.ctx.GetLogger().Errorf("[TransactionService.GetTransactionHistory] %s", err.Error())
 	} else {
@@ -253,7 +252,6 @@ func (service *TransactionServiceImpl) ImportCSV(file, exchangeName string) ([]c
 func (service *TransactionServiceImpl) Sort(txs *[]common.Transaction) {
 	service.ctx.GetLogger().Debugf("[TransactionService.sort] Sorting %d transactions", len(*txs))
 	sort.Slice(*txs, func(i, j int) bool {
-		return (*txs)[i].GetDate().Before((*txs)[j].GetDate()) ||
-			(*txs)[i].GetDate().Equal((*txs)[j].GetDate())
+		return (*txs)[i].GetDate().After((*txs)[j].GetDate()) // || (*txs)[i].GetDate().Equal((*txs)[j].GetDate())
 	})
 }

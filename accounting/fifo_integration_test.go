@@ -1,4 +1,4 @@
-package reporting
+package accounting
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ import (
 func TestFIFO(t *testing.T) {
 	ctx := test.NewIntegrationTestContext()
 
-	transactions, err := createTransactionService(ctx).GetHistory()
+	transactions, err := createTransactionService(ctx).GetHistory("asc")
 	assert.Nil(t, err)
 
 	fifo := NewFifoReport(ctx, transactions)

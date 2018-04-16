@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"fmt"
+
 	"github.com/jeremyhahn/tradebot/common"
 	"github.com/jeremyhahn/tradebot/entity"
 )
@@ -10,7 +12,7 @@ type TransactionDAO interface {
 	Save(Transaction entity.TransactionEntity) error
 	Update(tx entity.TransactionEntity, field, value string) error
 	Get(id string) (entity.TransactionEntity, error)
-	Find() ([]entity.Transaction, error)
+	Find(order string) ([]entity.Transaction, error)
 }
 
 type TransactionDAOImpl struct {
@@ -42,10 +44,11 @@ func (dao *TransactionDAOImpl) Get(id string) (entity.TransactionEntity, error) 
 	return tx, nil
 }
 
-func (dao *TransactionDAOImpl) Find() ([]entity.Transaction, error) {
+func (dao *TransactionDAOImpl) Find(direction string) ([]entity.Transaction, error) {
 	var transactions []entity.Transaction
+	_order := fmt.Sprintf("date %s", direction)
 	daoUser := &entity.User{Id: dao.ctx.GetUser().GetId()}
-	if err := dao.ctx.GetCoreDB().Model(daoUser).Related(&transactions).Error; err != nil {
+	if err := dao.ctx.GetCoreDB().Where("deleted < 1").Order(_order).Model(daoUser).Related(&transactions).Error; err != nil {
 		return nil, err
 	}
 	return transactions, nil

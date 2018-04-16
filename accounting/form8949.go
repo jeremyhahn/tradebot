@@ -1,4 +1,4 @@
-package reporting
+package accounting
 
 import (
 	"encoding/csv"
@@ -16,12 +16,12 @@ type Form8949 struct {
 
 func (form *Form8949) sort() {
 	sort.Slice(form.ShortHolds, func(i, j int) bool {
-		return form.ShortHolds[i].DateSold.Before(form.ShortHolds[j].DateSold) ||
-			form.ShortHolds[i].DateSold.Equal(form.ShortHolds[j].DateSold)
+		return form.ShortHolds[i].DateAcquired.Before(form.ShortHolds[j].DateAcquired) ||
+			form.ShortHolds[i].DateAcquired.Equal(form.ShortHolds[j].DateAcquired)
 	})
 	sort.Slice(form.LongHolds, func(i, j int) bool {
-		return form.LongHolds[i].DateSold.Before(form.LongHolds[j].DateSold) ||
-			form.LongHolds[i].DateSold.Equal(form.LongHolds[j].DateSold)
+		return form.LongHolds[i].DateAcquired.Before(form.LongHolds[j].DateAcquired) ||
+			form.LongHolds[i].DateAcquired.Equal(form.LongHolds[j].DateAcquired)
 	})
 	/*
 		sort.Slice(form.ShortHolds, func(i, j int) bool {

@@ -58,6 +58,14 @@ export default class AuthService {
       })
     }
 
+    exportTransactions() {
+      return this.fetch(`${this.domain}/transactions/export`, {
+          method: 'GET'
+      }).then(res => {
+          return Promise.resolve(res)
+      })
+    }
+
     importOrders(formData) {
       const config = {
           headers: {
