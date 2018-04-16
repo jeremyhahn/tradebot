@@ -27,8 +27,11 @@ type TransactionEntity interface {
 	GetId() string
 	GetUserId() uint
 	GetDate() time.Time
-	GetCurrency() string
+	GetMarketPair() string
+	GetCurrencyPair() string
 	GetType() string
+	GetCategory() string
+	SetCategory(category string)
 	GetNetwork() string
 	GetNetworkDisplayName() string
 	GetQuantity() string
@@ -37,9 +40,10 @@ type TransactionEntity interface {
 	GetFiatQuantityCurrency() string
 	GetPrice() string
 	GetPriceCurrency() string
-	GetPriceString() string
 	GetFiatPrice() string
 	GetFiatPriceCurrency() string
+	GetQuoteFiatPrice() string
+	GetQuoteFiatPriceCurrency() string
 	GetFee() string
 	GetFeeCurrency() string
 	GetTotal() string
@@ -48,6 +52,8 @@ type TransactionEntity interface {
 	GetFiatFeeCurrency() string
 	GetFiatTotal() string
 	GetFiatTotalCurrency() string
+	IsDeleted() bool
+	SetDeleted(value int)
 }
 
 type UserEntity interface {

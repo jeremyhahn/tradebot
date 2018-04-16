@@ -36,7 +36,7 @@ func TestTransactionService_ImportCSV(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, true, len(transactions) > 0)
 
-	persistedTransactions, err := transactionDAO.Find()
+	persistedTransactions, err := transactionDAO.Find("asc")
 	assert.Nil(t, err)
 	assert.Equal(t, true, len(persistedTransactions) == 2)
 

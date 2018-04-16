@@ -14,37 +14,37 @@ import (
 func TestTransactionDAO(t *testing.T) {
 	ctx := NewIntegrationTestContext()
 
-	orderDAO := NewTransactionDAO(ctx)
+	transactionDAO := NewTransactionDAO(ctx)
 	order1 := &entity.Transaction{
-		Id:       "1",
-		UserId:   1,
-		Date:     time.Now(),
-		Network:  "Test",
-		Type:     "buy",
-		Currency: "TST-USD",
-		Quantity: decimal.NewFromFloat(25.67).StringFixed(2),
-		Price:    decimal.NewFromFloat(123.45).StringFixed(2),
-		Fee:      decimal.NewFromFloat(1.23).StringFixed(2),
-		Total:    decimal.NewFromFloat(124.67).StringFixed(2)}
+		Id:           "1",
+		UserId:       1,
+		Date:         time.Now(),
+		Network:      "Test",
+		Type:         "buy",
+		CurrencyPair: "TST-USD",
+		Quantity:     decimal.NewFromFloat(25.67).StringFixed(2),
+		Price:        decimal.NewFromFloat(123.45).StringFixed(2),
+		Fee:          decimal.NewFromFloat(1.23).StringFixed(2),
+		Total:        decimal.NewFromFloat(124.67).StringFixed(2)}
 	order2 := &entity.Transaction{
-		Id:       "2",
-		UserId:   1,
-		Date:     time.Now(),
-		Network:  "Test 2",
-		Type:     "buy",
-		Currency: "TST-USD",
-		Quantity: decimal.NewFromFloat(25.67).StringFixed(2),
-		Price:    decimal.NewFromFloat(123.45).StringFixed(2),
-		Fee:      decimal.NewFromFloat(1.23).StringFixed(2),
-		Total:    decimal.NewFromFloat(124.67).StringFixed(2)}
+		Id:           "2",
+		UserId:       1,
+		Date:         time.Now(),
+		Network:      "Test 2",
+		Type:         "buy",
+		CurrencyPair: "TST-USD",
+		Quantity:     decimal.NewFromFloat(25.67).StringFixed(2),
+		Price:        decimal.NewFromFloat(123.45).StringFixed(2),
+		Fee:          decimal.NewFromFloat(1.23).StringFixed(2),
+		Total:        decimal.NewFromFloat(124.67).StringFixed(2)}
 
-	err := orderDAO.Create(order1)
+	err := transactionDAO.Create(order1)
 	assert.Nil(t, err)
 
-	err = orderDAO.Create(order2)
+	err = transactionDAO.Create(order2)
 	assert.Nil(t, err)
 
-	orders, err := orderDAO.Find()
+	orders, err := transactionDAO.Find("asc")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(orders))
 	assert.Equal(t, "1", orders[0].GetId())

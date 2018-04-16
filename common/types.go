@@ -25,13 +25,23 @@ const (
 	SELL_ORDER_TYPE       = "sell"
 	DEPOSIT_ORDER_TYPE    = "deposit"
 	WITHDRAWAL_ORDER_TYPE = "withdrawal"
+	TX_CATEGORY_TRADE     = "trade"
+	TX_CATEGORY_INCOME    = "income"
+	TX_CATEGORY_GIFT      = "gift"
+	TX_CATEGORY_MINING    = "mining"
+	TX_CATEGORY_SPEND     = "spend"
+	TX_CATEGORY_DONATION  = "donation"
+	TX_CATEGORY_LOST      = "lost"
+	TX_CATEGORY_TRANSFER  = "transfer"
 )
 
 type Transaction interface {
 	GetId() string
 	GetDate() time.Time
+	GetMarketPair() *CurrencyPair
 	GetCurrencyPair() *CurrencyPair
 	GetType() string
+	GetCategory() string
 	GetNetwork() string
 	GetNetworkDisplayName() string
 	GetQuantity() string
@@ -40,9 +50,10 @@ type Transaction interface {
 	GetFiatQuantityCurrency() string
 	GetPrice() string
 	GetPriceCurrency() string
-	GetPriceString() string
 	GetFiatPrice() string
 	GetFiatPriceCurrency() string
+	GetQuoteFiatPrice() string
+	GetQuoteFiatPriceCurrency() string
 	GetFee() string
 	GetFeeCurrency() string
 	GetTotal() string
@@ -51,6 +62,7 @@ type Transaction interface {
 	GetFiatFeeCurrency() string
 	GetFiatTotal() string
 	GetFiatTotalCurrency() string
+	IsDeleted() bool
 	String() string
 }
 

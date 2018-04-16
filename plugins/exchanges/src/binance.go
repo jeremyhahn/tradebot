@@ -127,7 +127,7 @@ func (b *Binance) GetBalances() ([]common.Coin, decimal.Decimal) {
 		}
 		if bal.GreaterThan(decimal.NewFromFloat(0)) {
 			b.logger.Debugf("[Binance.GetBalances] Getting balance for %s", balance.Asset)
-			bitcoin, err := b.GetPriceAt("BTC", time.Now())
+			bitcoin, err := b.GetPriceAt("BTC", time.Now().UTC())
 			if err != nil {
 				b.logger.Errorf("[Binance.GetBalances] Error getting current bitcoin price: %s", err.Error())
 			}
@@ -214,7 +214,7 @@ func (b *Binance) GetPriceHistory(currencyPair *common.CurrencyPair,
 		}
 		candlesticks = append(candlesticks, common.Candlestick{
 			CurrencyPair: currencyPair,
-			Date:         time.Unix(k.CloseTime/1000, 0),
+			Date:         time.Unix(k.CloseTime/1000, 0).UTC(),
 			Exchange:     b.name,
 			Open:         open,
 			High:         high,
@@ -238,7 +238,7 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Tr
 	for _, o := range orders {
 		var id, orderType string
 		var fiatFee decimal.Decimal
-		orderDate := time.Unix(o.Time/1000, 0)
+		orderDate := time.Unix(o.Time/1000, 0).UTC()
 		baseFiatPrice := b.getFiatPrice(currencyPair.Base, orderDate)
 		quoteFiatPrice := b.getFiatPrice(currencyPair.Quote, orderDate)
 		quantity, err := decimal.NewFromString(o.Quantity)
@@ -268,28 +268,32 @@ func (b *Binance) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Tr
 		fiatTotal := quantity.Mul(purchasePrice).Mul(quoteFiatPrice)
 		fiatPrice := purchasePrice.Mul(quoteFiatPrice)
 		_orders = append(_orders, &dto.TransactionDTO{
-			Id:                   id,
-			Network:              b.name,
-			NetworkDisplayName:   b.displayName,
-			Type:                 orderType,
-			CurrencyPair:         currencyPair,
-			Date:                 orderDate,
-			Quantity:             quantity.StringFixed(8),
-			QuantityCurrency:     currencyPair.Base,
-			FiatQuantity:         quantity.Mul(baseFiatPrice).StringFixed(2),
-			FiatQuantityCurrency: "USD",
-			Price:                purchasePrice.StringFixed(8),
-			PriceCurrency:        currencyPair.Quote,
-			FiatPrice:            fiatPrice.StringFixed(2),
-			FiatPriceCurrency:    "USD",
-			Fee:                  fee.StringFixed(8),
-			FeeCurrency:          o.CommissionAsset,
-			FiatFee:              fiatFee.StringFixed(2),
-			FiatFeeCurrency:      "USD",
-			TotalCurrency:        currencyPair.Quote,
-			Total:                quantity.Mul(purchasePrice).StringFixed(8),
-			FiatTotal:            fiatTotal.StringFixed(2),
-			FiatTotalCurrency:    "USD"})
+			Id:                     id,
+			Network:                b.name,
+			NetworkDisplayName:     b.displayName,
+			Type:                   orderType,
+			Category:               common.TX_CATEGORY_TRADE,
+			MarketPair:             currencyPair,
+			CurrencyPair:           currencyPair,
+			Date:                   orderDate,
+			Quantity:               quantity.StringFixed(8),
+			QuantityCurrency:       currencyPair.Base,
+			FiatQuantity:           fiatTotal.Sub(fiatFee).StringFixed(2),
+			FiatQuantityCurrency:   "USD",
+			Price:                  purchasePrice.StringFixed(8),
+			PriceCurrency:          currencyPair.Quote,
+			FiatPrice:              fiatPrice.StringFixed(2),
+			FiatPriceCurrency:      "USD",
+			QuoteFiatPrice:         quoteFiatPrice.StringFixed(2),
+			QuoteFiatPriceCurrency: currencyPair.Quote,
+			Fee:               fee.StringFixed(8),
+			FeeCurrency:       o.CommissionAsset,
+			FiatFee:           fiatFee.StringFixed(2),
+			FiatFeeCurrency:   "USD",
+			TotalCurrency:     currencyPair.Quote,
+			Total:             quantity.Mul(purchasePrice).StringFixed(8),
+			FiatTotal:         fiatTotal.StringFixed(2),
+			FiatTotalCurrency: "USD"})
 	}
 	return _orders
 }
@@ -308,33 +312,37 @@ func (b *Binance) GetDepositHistory() ([]common.Transaction, error) {
 				Base:          deposit.Asset,
 				Quote:         deposit.Asset,
 				LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
-			orderDate := time.Unix(deposit.InsertTime/1000, 0)
+			orderDate := time.Unix(deposit.InsertTime/1000, 0).UTC()
 			quantity := decimal.NewFromFloat(deposit.Amount)
 			baseFiatPrice := b.getFiatPrice(currencyPair.Base, orderDate)
 			fiatTotal := quantity.Mul(baseFiatPrice)
 			orders = append(orders, &dto.TransactionDTO{
-				Id:                   deposit.TxID,
-				Type:                 common.DEPOSIT_ORDER_TYPE,
-				Date:                 orderDate,
-				Network:              b.name,
-				NetworkDisplayName:   b.displayName,
-				CurrencyPair:         currencyPair,
-				Quantity:             quantity.StringFixed(8),
-				QuantityCurrency:     deposit.Asset,
-				FiatQuantity:         fiatTotal.StringFixed(2),
-				FiatQuantityCurrency: "USD",
-				Price:                baseFiatPrice.StringFixed(2),
-				PriceCurrency:        "USD",
-				FiatPrice:            baseFiatPrice.StringFixed(2),
-				FiatPriceCurrency:    "USD",
-				Fee:                  "0.00000000",
-				FeeCurrency:          deposit.Asset,
-				FiatFee:              "0.00",
-				FiatFeeCurrency:      "USD",
-				Total:                quantity.StringFixed(8),
-				TotalCurrency:        deposit.Asset,
-				FiatTotal:            fiatTotal.StringFixed(2),
-				FiatTotalCurrency:    "USD"})
+				Id:                     deposit.TxID,
+				Type:                   common.DEPOSIT_ORDER_TYPE,
+				Category:               common.TX_CATEGORY_TRANSFER,
+				Date:                   orderDate,
+				Network:                b.name,
+				NetworkDisplayName:     b.displayName,
+				MarketPair:             currencyPair,
+				CurrencyPair:           currencyPair,
+				Quantity:               quantity.StringFixed(8),
+				QuantityCurrency:       deposit.Asset,
+				FiatQuantity:           fiatTotal.StringFixed(2),
+				FiatQuantityCurrency:   "USD",
+				Price:                  baseFiatPrice.StringFixed(2),
+				PriceCurrency:          "USD",
+				FiatPrice:              baseFiatPrice.StringFixed(2),
+				FiatPriceCurrency:      "USD",
+				QuoteFiatPrice:         baseFiatPrice.StringFixed(2),
+				QuoteFiatPriceCurrency: currencyPair.Quote,
+				Fee:               "0.00000000",
+				FeeCurrency:       deposit.Asset,
+				FiatFee:           "0.00",
+				FiatFeeCurrency:   "USD",
+				Total:             quantity.StringFixed(8),
+				TotalCurrency:     deposit.Asset,
+				FiatTotal:         fiatTotal.StringFixed(2),
+				FiatTotalCurrency: "USD"})
 		}
 	}
 	return orders, nil
@@ -353,7 +361,7 @@ func (b *Binance) GetWithdrawalHistory() ([]common.Transaction, error) {
 			if withdrawal.Status != 6 { // 0:Email Sent,1:Cancelled 2:Awaiting Approval 3:Rejected 4:Processing 5:Failure 6:Completed
 				continue
 			}
-			orderDate := time.Unix(withdrawal.ApplyTime/1000, 0)
+			orderDate := time.Unix(withdrawal.ApplyTime/1000, 0).UTC()
 			currencyPair := &common.CurrencyPair{
 				Base:          withdrawal.Asset,
 				Quote:         withdrawal.Asset,
@@ -362,28 +370,32 @@ func (b *Binance) GetWithdrawalHistory() ([]common.Transaction, error) {
 			quantity := decimal.NewFromFloat(withdrawal.Amount)
 			fiatTotal := quantity.Mul(baseFiatPrice)
 			orders = append(orders, &dto.TransactionDTO{
-				Id:                   withdrawal.TxID,
-				Type:                 common.WITHDRAWAL_ORDER_TYPE,
-				Date:                 orderDate,
-				Network:              b.name,
-				NetworkDisplayName:   b.displayName,
-				CurrencyPair:         currencyPair,
-				Quantity:             quantity.StringFixed(8),
-				QuantityCurrency:     withdrawal.Asset,
-				FiatQuantity:         fiatTotal.StringFixed(2),
-				FiatQuantityCurrency: "USD",
-				Price:                baseFiatPrice.StringFixed(2),
-				PriceCurrency:        "USD",
-				FiatPrice:            baseFiatPrice.StringFixed(2),
-				FiatPriceCurrency:    "USD",
-				Fee:                  "0.00000000",
-				FeeCurrency:          withdrawal.Asset,
-				FiatFee:              "0.00",
-				FiatFeeCurrency:      "N/A",
-				Total:                quantity.StringFixed(8),
-				TotalCurrency:        withdrawal.Asset,
-				FiatTotal:            fiatTotal.StringFixed(2),
-				FiatTotalCurrency:    "USD"})
+				Id:                     withdrawal.TxID,
+				Type:                   common.WITHDRAWAL_ORDER_TYPE,
+				Category:               common.TX_CATEGORY_TRANSFER,
+				Date:                   orderDate,
+				Network:                b.name,
+				NetworkDisplayName:     b.displayName,
+				MarketPair:             currencyPair,
+				CurrencyPair:           currencyPair,
+				Quantity:               quantity.StringFixed(8),
+				QuantityCurrency:       withdrawal.Asset,
+				FiatQuantity:           fiatTotal.StringFixed(2),
+				FiatQuantityCurrency:   "USD",
+				Price:                  baseFiatPrice.StringFixed(2),
+				PriceCurrency:          "USD",
+				FiatPrice:              baseFiatPrice.StringFixed(2),
+				FiatPriceCurrency:      "USD",
+				QuoteFiatPrice:         baseFiatPrice.StringFixed(2),
+				QuoteFiatPriceCurrency: currencyPair.Quote,
+				Fee:               "0.00000000",
+				FeeCurrency:       withdrawal.Asset,
+				FiatFee:           "0.00",
+				FiatFeeCurrency:   "N/A",
+				Total:             quantity.StringFixed(8),
+				TotalCurrency:     withdrawal.Asset,
+				FiatTotal:         fiatTotal.StringFixed(2),
+				FiatTotalCurrency: "USD"})
 		}
 	}
 	return orders, nil
@@ -453,11 +465,11 @@ func (b *Binance) GetCurrencies() (map[string]*common.Currency, error) {
 	}
 	for k, _ := range currencyMap {
 		var name string
-		if _, found := common.CryptoNames[k]; !found {
-			b.ctx.GetLogger().Errorf("[Binance.GetCurrencies] Unable to locate currency %s in common.CryptoNames", k)
+		if _, found := common.CryptoCurrencies[k]; !found {
+			b.ctx.GetLogger().Errorf("[Binance.GetCurrencies] Unable to locate currency %s in common.CryptoCurrencies", k)
 			name = k
 		} else {
-			name = common.CryptoNames[k]
+			name = common.CryptoCurrencies[k]
 		}
 		currencies[k] = &common.Currency{
 			ID:           k,

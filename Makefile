@@ -72,6 +72,7 @@ wallets:
 	cd plugins/wallets/src && go build -buildmode=plugin -o ../btc.so btc.go
 	cd plugins/wallets/src && go build -buildmode=plugin -o ../eth.so eth.go
 	cd plugins/wallets/src && go build -buildmode=plugin -o ../xrp.so xrp.go
+	#cd plugins/wallets/src && go build -buildmode=plugin -o ../bch.so bch.go
 
 plugins: indicators strategies exchanges wallets
 

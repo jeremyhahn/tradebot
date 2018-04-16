@@ -20,15 +20,15 @@ import (
 )
 
 type Bittrex struct {
-	ctx           common.Context
-	client        *bittrex.Bittrex
-	logger        *logging.Logger
-	name          string
-	displayName   string
-	tradingFee    decimal.Decimal
-	usdtMarkets   []string
-	currencyPairs string
-	cache         *cache.Cache
+	ctx         common.Context
+	client      *bittrex.Bittrex
+	logger      *logging.Logger
+	name        string
+	displayName string
+	tradingFee  decimal.Decimal
+	usdtMarkets []string
+	marketPairs string
+	cache       *cache.Cache
 	common.Exchange
 }
 
@@ -36,13 +36,13 @@ var BITTREX_RATE_LIMITER = common.NewRateLimiter(1, 1)
 
 func CreateBittrex(ctx common.Context, userExchangeEntity entity.UserExchangeEntity) common.Exchange {
 	return &Bittrex{
-		ctx:           ctx,
-		client:        bittrex.New(userExchangeEntity.GetKey(), userExchangeEntity.GetSecret()),
-		logger:        ctx.GetLogger(),
-		name:          "Bittrex",
-		displayName:   "Bittrex",
-		tradingFee:    decimal.NewFromFloat(.025),
-		currencyPairs: userExchangeEntity.GetExtra(),
+		ctx:         ctx,
+		client:      bittrex.New(userExchangeEntity.GetKey(), userExchangeEntity.GetSecret()),
+		logger:      ctx.GetLogger(),
+		name:        "Bittrex",
+		displayName: "Bittrex",
+		tradingFee:  decimal.NewFromFloat(.025),
+		marketPairs: userExchangeEntity.GetExtra(),
 		usdtMarkets: []string{"BTC", "ETH", "XRP", "NEO", "ADA", "LTC",
 			"BCC", "OMG", "ETC", "ZEC", "XMR", "XVG", "BTG", "DASH", "NXT"},
 		cache: cache.New(1*time.Minute, 1*time.Minute)}
@@ -50,20 +50,20 @@ func CreateBittrex(ctx common.Context, userExchangeEntity entity.UserExchangeEnt
 
 func (b *Bittrex) GetPriceAt(currency string, atDate time.Time) (*common.Candlestick, error) {
 	var candles []common.Candlestick
-	currencyPair := &common.CurrencyPair{
+	marketPair := &common.CurrencyPair{
 		Base:          "USDT",
 		Quote:         currency,
 		LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
 	monthAgo := time.Now().AddDate(0, -1, 0)
 	if atDate.Before(monthAgo) {
 		atDate := time.Date(atDate.Year(), atDate.Month(), atDate.Day(), 0, 0, 0, 0, atDate.Location())
-		klines, err := b.GetPriceHistory(currencyPair, atDate.Add(-24*time.Hour), atDate.Add(24*time.Hour), 1000)
+		klines, err := b.GetPriceHistory(marketPair, atDate.Add(-24*time.Hour), atDate.Add(24*time.Hour), 1000)
 		if err != nil {
 			return &common.Candlestick{}, err
 		}
 		candles = klines
 	} else {
-		klines, err := b.GetPriceHistory(currencyPair, atDate.Add(-5*time.Minute), atDate.Add(5*time.Minute), 1)
+		klines, err := b.GetPriceHistory(marketPair, atDate.Add(-5*time.Minute), atDate.Add(5*time.Minute), 1)
 		if err != nil {
 			return &common.Candlestick{}, err
 		}
@@ -76,9 +76,9 @@ func (b *Bittrex) GetPriceAt(currency string, atDate time.Time) (*common.Candles
 	return closestCandle, nil
 }
 
-func (b *Bittrex) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceChange chan common.PriceChange) {
+func (b *Bittrex) SubscribeToLiveFeed(marketPair *common.CurrencyPair, priceChange chan common.PriceChange) {
 	for {
-		symbol := b.FormattedCurrencyPair(currencyPair)
+		symbol := b.FormattedCurrencyPair(marketPair)
 		time.Sleep(10 * time.Second)
 		ticker, err := b.client.GetTicker(symbol)
 		if err != nil {
@@ -87,17 +87,17 @@ func (b *Bittrex) SubscribeToLiveFeed(currencyPair *common.CurrencyPair, priceCh
 		}
 		b.logger.Debugf("[Bittrex.SubscribeToLiveFeed] Sending live price: %s", ticker.Last.StringFixed(8))
 		priceChange <- common.PriceChange{
-			CurrencyPair: currencyPair,
+			CurrencyPair: marketPair,
 			Satoshis:     ticker.Last,
 			Price:        ticker.Last}
 	}
 }
 
-func (b *Bittrex) GetPriceHistory(currencyPair *common.CurrencyPair,
+func (b *Bittrex) GetPriceHistory(marketPair *common.CurrencyPair,
 	start, end time.Time, granularity int) ([]common.Candlestick, error) {
 	BITTREX_RATE_LIMITER.RespectRateLimit()
 	b.logger.Debugf("[Bittrex.GetPriceHistory] Getting %s price history for %s between %s and %s",
-		currencyPair, b.ctx.GetUser().GetUsername(), start, end)
+		marketPair, b.ctx.GetUser().GetUsername(), start, end)
 	interval := "hour"
 	switch {
 	case granularity == 1:
@@ -112,7 +112,7 @@ func (b *Bittrex) GetPriceHistory(currencyPair *common.CurrencyPair,
 		interval = "day"
 	}
 	candlesticks := make([]common.Candlestick, 0)
-	ticks, err := b.client.GetTicks(b.FormattedCurrencyPair(currencyPair), interval)
+	ticks, err := b.client.GetTicks(b.FormattedCurrencyPair(marketPair), interval)
 	if err != nil {
 		b.logger.Errorf("[Bittrex.GetPriceHistory] Error: %s", err.Error())
 		return nil, err
@@ -133,9 +133,9 @@ func (b *Bittrex) GetPriceHistory(currencyPair *common.CurrencyPair,
 	return candlesticks, nil
 }
 
-func (b *Bittrex) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Transaction {
+func (b *Bittrex) GetOrderHistory(marketPair *common.CurrencyPair) []common.Transaction {
 	BITTREX_RATE_LIMITER.RespectRateLimit()
-	formattedCurrencyPair := b.FormattedCurrencyPair(currencyPair)
+	formattedCurrencyPair := b.FormattedCurrencyPair(marketPair)
 	b.logger.Debugf("[Bittrex.GetOrderHistory] Getting %s order history", formattedCurrencyPair)
 	var orders []common.Transaction
 	orderHistory, err := b.client.GetOrderHistory(formattedCurrencyPair)
@@ -152,28 +152,35 @@ func (b *Bittrex) GetOrderHistory(currencyPair *common.CurrencyPair) []common.Tr
 		fee := o.Commission
 		total := qty.Mul(price)
 		orders = append(orders, &dto.TransactionDTO{
-			Id:                   o.OrderUuid,
-			Network:              b.name,
-			NetworkDisplayName:   b.displayName,
-			Date:                 orderDate,
-			Type:                 o.OrderType,
-			CurrencyPair:         currencyPair,
-			Quantity:             qty.StringFixed(8),
-			QuantityCurrency:     currencyPair.Quote,
-			FiatQuantity:         "0.00",
-			FiatQuantityCurrency: "N/A",
-			Price:                price.StringFixed(8),
-			PriceCurrency:        currencyPair.Base,
-			FiatPrice:            "0.00",
-			FiatPriceCurrency:    "N/A",
-			Fee:                  fee.StringFixed(8),
-			FeeCurrency:          currencyPair.Base,
-			FiatFee:              "0.00",
-			FiatFeeCurrency:      "N/A",
-			Total:                total.StringFixed(8),
-			TotalCurrency:        currencyPair.Base,
-			FiatTotal:            "0.00",
-			FiatTotalCurrency:    "N/A"})
+			Id:                 o.OrderUuid,
+			Network:            b.name,
+			NetworkDisplayName: b.displayName,
+			Date:               orderDate,
+			Type:               o.OrderType,
+			Category:           common.TX_CATEGORY_TRADE,
+			MarketPair:         marketPair,
+			CurrencyPair: &common.CurrencyPair{
+				Base:          marketPair.Quote,
+				Quote:         marketPair.Base,
+				LocalCurrency: b.ctx.GetUser().GetLocalCurrency()},
+			Quantity:               qty.StringFixed(8),
+			QuantityCurrency:       marketPair.Quote,
+			FiatQuantity:           "0.00",
+			FiatQuantityCurrency:   "N/A",
+			Price:                  price.StringFixed(8),
+			PriceCurrency:          marketPair.Base,
+			FiatPrice:              "0.00",
+			FiatPriceCurrency:      "N/A",
+			QuoteFiatPrice:         "0.00",
+			QuoteFiatPriceCurrency: "N/A",
+			Fee:               fee.StringFixed(8),
+			FeeCurrency:       marketPair.Base,
+			FiatFee:           "0.00",
+			FiatFeeCurrency:   "N/A",
+			Total:             total.StringFixed(8),
+			TotalCurrency:     marketPair.Base,
+			FiatTotal:         "0.00",
+			FiatTotalCurrency: "N/A"})
 	}
 	return orders
 }
@@ -187,37 +194,44 @@ func (b *Bittrex) GetDepositHistory() ([]common.Transaction, error) {
 		return _deposits, err
 	}
 	for _, deposit := range deposits {
-		currencyPair := &common.CurrencyPair{
+		marketPair := &common.CurrencyPair{
 			Base:          deposit.Currency,
 			Quote:         deposit.Currency,
 			LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
 		orderDate := deposit.LastUpdated.Time
 		quantity := deposit.Amount
-		baseFiatPrice := b.getFiatPrice(currencyPair.Base, orderDate)
+		baseFiatPrice := b.getFiatPrice(marketPair.Base, orderDate)
 		fiatTotal := quantity.Mul(baseFiatPrice)
 		_deposits = append(_deposits, &dto.TransactionDTO{
-			Id:                   deposit.TxId,
-			Type:                 common.DEPOSIT_ORDER_TYPE,
-			Date:                 orderDate,
-			Network:              b.name,
-			NetworkDisplayName:   b.displayName,
-			CurrencyPair:         currencyPair,
-			Quantity:             quantity.StringFixed(8),
-			QuantityCurrency:     deposit.Currency,
-			FiatQuantity:         fiatTotal.StringFixed(2),
-			FiatQuantityCurrency: "USD",
-			Price:                baseFiatPrice.StringFixed(2),
-			PriceCurrency:        "USD",
-			FiatPrice:            baseFiatPrice.StringFixed(2),
-			FiatPriceCurrency:    "USD",
-			Fee:                  "0.00000000",
-			FeeCurrency:          deposit.Currency,
-			FiatFee:              "0.00",
-			FiatFeeCurrency:      "USD",
-			Total:                fiatTotal.StringFixed(2),
-			TotalCurrency:        "USD",
-			FiatTotal:            fiatTotal.StringFixed(2),
-			FiatTotalCurrency:    "USD"})
+			Id:                 deposit.TxId,
+			Type:               common.DEPOSIT_ORDER_TYPE,
+			Category:           common.TX_CATEGORY_TRANSFER,
+			Date:               orderDate,
+			Network:            b.name,
+			NetworkDisplayName: b.displayName,
+			MarketPair:         marketPair,
+			CurrencyPair: &common.CurrencyPair{
+				Base:          marketPair.Quote,
+				Quote:         marketPair.Base,
+				LocalCurrency: b.ctx.GetUser().GetLocalCurrency()},
+			Quantity:               quantity.StringFixed(8),
+			QuantityCurrency:       deposit.Currency,
+			FiatQuantity:           fiatTotal.StringFixed(2),
+			FiatQuantityCurrency:   "USD",
+			Price:                  baseFiatPrice.StringFixed(2),
+			PriceCurrency:          "USD",
+			FiatPrice:              baseFiatPrice.StringFixed(2),
+			FiatPriceCurrency:      "USD",
+			QuoteFiatPrice:         baseFiatPrice.StringFixed(2),
+			QuoteFiatPriceCurrency: "USD",
+			Fee:               "0.00000000",
+			FeeCurrency:       deposit.Currency,
+			FiatFee:           "0.00",
+			FiatFeeCurrency:   "USD",
+			Total:             fiatTotal.StringFixed(2),
+			TotalCurrency:     "USD",
+			FiatTotal:         fiatTotal.StringFixed(2),
+			FiatTotalCurrency: "USD"})
 	}
 	b.ctx.GetLogger().Debugf("[Bittrex.GetDepositHistory] Retrieved %d deposits", len(_deposits))
 	return _deposits, nil
@@ -238,37 +252,44 @@ func (b *Bittrex) GetWithdrawalHistory() ([]common.Transaction, error) {
 				continue
 			}
 			orderDate := withdrawal.Opened.Time
-			currencyPair := &common.CurrencyPair{
+			marketPair := &common.CurrencyPair{
 				Base:          withdrawal.Currency,
 				Quote:         withdrawal.Currency,
 				LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
 			quantity := withdrawal.Amount
 			txCost := withdrawal.TxCost
-			baseFiatPrice := b.getFiatPrice(currencyPair.Base, orderDate)
+			baseFiatPrice := b.getFiatPrice(marketPair.Base, orderDate)
 			total := quantity.Mul(baseFiatPrice)
 			orders = append(orders, &dto.TransactionDTO{
-				Id:                   withdrawal.TxId,
-				Type:                 common.WITHDRAWAL_ORDER_TYPE,
-				Date:                 orderDate,
-				Network:              b.name,
-				NetworkDisplayName:   b.displayName,
-				CurrencyPair:         currencyPair,
-				Quantity:             quantity.StringFixed(8),
-				QuantityCurrency:     withdrawal.Currency,
-				FiatQuantity:         "0.00",
-				FiatQuantityCurrency: "N/A",
-				Price:                baseFiatPrice.StringFixed(2),
-				PriceCurrency:        "USD",
-				FiatPrice:            baseFiatPrice.StringFixed(2),
-				FiatPriceCurrency:    "USD",
-				Fee:                  txCost.StringFixed(8),
-				FeeCurrency:          withdrawal.Currency,
-				FiatFee:              txCost.Mul(baseFiatPrice).StringFixed(2),
-				FiatFeeCurrency:      "USD",
-				Total:                quantity.StringFixed(8),
-				TotalCurrency:        withdrawal.Currency,
-				FiatTotal:            total.StringFixed(2),
-				FiatTotalCurrency:    "USD"})
+				Id:                 withdrawal.TxId,
+				Type:               common.WITHDRAWAL_ORDER_TYPE,
+				Category:           common.TX_CATEGORY_TRANSFER,
+				Date:               orderDate,
+				Network:            b.name,
+				NetworkDisplayName: b.displayName,
+				MarketPair:         marketPair,
+				CurrencyPair: &common.CurrencyPair{
+					Base:          marketPair.Quote,
+					Quote:         marketPair.Base,
+					LocalCurrency: b.ctx.GetUser().GetLocalCurrency()},
+				Quantity:               quantity.StringFixed(8),
+				QuantityCurrency:       withdrawal.Currency,
+				FiatQuantity:           "0.00",
+				FiatQuantityCurrency:   "N/A",
+				Price:                  baseFiatPrice.StringFixed(2),
+				PriceCurrency:          "USD",
+				FiatPrice:              baseFiatPrice.StringFixed(2),
+				FiatPriceCurrency:      "USD",
+				QuoteFiatPrice:         baseFiatPrice.StringFixed(2),
+				QuoteFiatPriceCurrency: "USD",
+				Fee:               txCost.StringFixed(8),
+				FeeCurrency:       withdrawal.Currency,
+				FiatFee:           txCost.Mul(baseFiatPrice).StringFixed(2),
+				FiatFeeCurrency:   "USD",
+				Total:             quantity.StringFixed(8),
+				TotalCurrency:     withdrawal.Currency,
+				FiatTotal:         total.StringFixed(2),
+				FiatTotalCurrency: "USD"})
 		}
 	}
 	return orders, nil
@@ -336,7 +357,7 @@ func (b *Bittrex) GetBalances() ([]common.Coin, decimal.Decimal) {
 func (b *Bittrex) GetCurrencies() (map[string]*common.Currency, error) {
 	b.ctx.GetLogger().Debugf("[Bittrex.GetCurrencies] Getting currency list")
 	currencies := make(map[string]*common.Currency)
-	configuredCurrencies := strings.Split(b.currencyPairs, ",")
+	configuredCurrencies := strings.Split(b.marketPairs, ",")
 	currencyMap := make(map[string]bool, len(configuredCurrencies))
 	for _, cur := range configuredCurrencies {
 		pieces := strings.Split(cur, "-")
@@ -351,11 +372,11 @@ func (b *Bittrex) GetCurrencies() (map[string]*common.Currency, error) {
 	}
 	for k, _ := range currencyMap {
 		var name string
-		if _, found := common.CryptoNames[k]; !found {
-			b.ctx.GetLogger().Errorf("[Bittrex.GetCurrencies] Unable to locate currency %s in common.CryptoNames", k)
+		if _, found := common.CryptoCurrencies[k]; !found {
+			b.ctx.GetLogger().Errorf("[Bittrex.GetCurrencies] Unable to locate currency %s in common.CryptoCurrencies", k)
 			name = k
 		} else {
-			name = common.CryptoNames[k]
+			name = common.CryptoCurrencies[k]
 		}
 		currencies[k] = &common.Currency{
 			ID:           k,
@@ -438,9 +459,9 @@ func (b *Bittrex) ParseImport(file string) ([]common.Transaction, error) {
 		}
 		var orderType string
 		if values[2] == "LIMIT_BUY" {
-			orderType = "buy"
+			orderType = common.BUY_ORDER_TYPE
 		} else {
-			orderType = "sell"
+			orderType = common.SELL_ORDER_TYPE
 		}
 		quantity, err := decimal.NewFromString(values[3])
 		if err != nil {
@@ -463,42 +484,53 @@ func (b *Bittrex) ParseImport(file string) ([]common.Transaction, error) {
 			b.ctx.GetLogger().Errorf("[Bittrex.ParseImport] Error parsing float: %s", err.Error())
 			return orders, err
 		}
-		currencyPair, err := common.NewCurrencyPair(values[1], b.ctx.GetUser().GetLocalCurrency())
+		marketPair, err := common.NewCurrencyPair(values[1], b.ctx.GetUser().GetLocalCurrency())
 		if err != nil {
 			b.ctx.GetLogger().Errorf("[Bittrex.ParseImport] Invalid currency pair: %s", values[1])
 			return nil, err
 		}
-		baseFiatPrice := b.getFiatPrice(currencyPair.Base, date)
-		quoteFiatPrice := b.getFiatPrice(currencyPair.Quote, date)
+		currencyPair := &common.CurrencyPair{
+			Base:          marketPair.Quote,
+			Quote:         marketPair.Base,
+			LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
+		baseFiatPrice := b.getFiatPrice(marketPair.Base, date)
+		limitFiatPrice := limit.Mul(baseFiatPrice)
+		fiatFee := fee.Mul(baseFiatPrice)
+		total := price.Add(fee)
+		fiatTotal := total.Mul(baseFiatPrice)
 		orders = append(orders, &dto.TransactionDTO{
-			Id:                   fmt.Sprintf("bittrex-csv-%d", i),
-			Network:              b.name,
-			NetworkDisplayName:   b.displayName,
-			Date:                 date,
-			Type:                 orderType,
-			CurrencyPair:         currencyPair,
-			Quantity:             quantity.StringFixed(8),
-			QuantityCurrency:     currencyPair.Quote,
-			FiatQuantity:         quantity.Mul(quoteFiatPrice).StringFixed(2),
-			FiatQuantityCurrency: "USD",
-			Price:                limit.StringFixed(8),
-			PriceCurrency:        currencyPair.Base,
-			FiatPrice:            limit.Mul(baseFiatPrice).StringFixed(2),
-			FiatPriceCurrency:    "USD",
-			Fee:                  fee.StringFixed(8),
-			FeeCurrency:          currencyPair.Base,
-			FiatFee:              fee.Mul(baseFiatPrice).StringFixed(2),
-			FiatFeeCurrency:      "USD",
-			Total:                price.StringFixed(8),
-			TotalCurrency:        currencyPair.Base,
-			FiatTotal:            price.Mul(baseFiatPrice).StringFixed(2),
-			FiatTotalCurrency:    "USD"})
+			Id:                     fmt.Sprintf("bittrex-csv-%d", i),
+			Network:                b.name,
+			NetworkDisplayName:     b.displayName,
+			Date:                   date,
+			Type:                   orderType,
+			Category:               common.TX_CATEGORY_TRADE,
+			MarketPair:             marketPair,
+			CurrencyPair:           currencyPair,
+			Quantity:               quantity.StringFixed(8),
+			QuantityCurrency:       marketPair.Quote,
+			FiatQuantity:           quantity.Mul(limitFiatPrice).StringFixed(2),
+			FiatQuantityCurrency:   "USD",
+			Price:                  limit.StringFixed(8),
+			PriceCurrency:          marketPair.Base,
+			FiatPrice:              limitFiatPrice.StringFixed(2),
+			FiatPriceCurrency:      "USD",
+			QuoteFiatPrice:         baseFiatPrice.StringFixed(2),
+			QuoteFiatPriceCurrency: marketPair.Base,
+			Fee:               fee.StringFixed(8),
+			FeeCurrency:       marketPair.Base,
+			FiatFee:           fiatFee.StringFixed(2),
+			FiatFeeCurrency:   "USD",
+			Total:             total.StringFixed(8),
+			TotalCurrency:     marketPair.Base,
+			FiatTotal:         fiatTotal.StringFixed(2),
+			FiatTotalCurrency: "USD"})
 	}
 	return orders, nil
 }
 
-func (b *Bittrex) FormattedCurrencyPair(currencyPair *common.CurrencyPair) string {
-	cp := b.localizedCurrencyPair(currencyPair)
+func (b *Bittrex) FormattedCurrencyPair(marketPair *common.CurrencyPair) string {
+	cp := b.localizedCurrencyPair(marketPair)
 	return fmt.Sprintf("%s-%s", cp.Base, cp.Quote)
 }
 
@@ -550,7 +582,7 @@ func (b *Bittrex) toBTCtoUSDT(currency string, atDate time.Time) (*common.Candle
 		return candle.(*common.Candlestick), nil
 	}
 	bitcoinCandle, err := b.GetPriceAt("BTC", atDate)
-	currencyPair := &common.CurrencyPair{
+	marketPair := &common.CurrencyPair{
 		Base:          "BTC",
 		Quote:         currency,
 		LocalCurrency: b.ctx.GetUser().GetLocalCurrency()}
@@ -558,13 +590,13 @@ func (b *Bittrex) toBTCtoUSDT(currency string, atDate time.Time) (*common.Candle
 	var candles []common.Candlestick
 	monthAgo := time.Now().AddDate(0, -1, 0)
 	if atDate.Before(monthAgo) {
-		klines, err := b.GetPriceHistory(currencyPair, atDate.Add(-24*time.Hour), atDate.Add(24*time.Hour), 1000)
+		klines, err := b.GetPriceHistory(marketPair, atDate.Add(-24*time.Hour), atDate.Add(24*time.Hour), 1000)
 		if err != nil {
 			return &common.Candlestick{}, err
 		}
 		candles = klines
 	} else {
-		klines, err := b.GetPriceHistory(currencyPair, atDate.Add(-5*time.Minute), atDate.Add(5*time.Minute), 1)
+		klines, err := b.GetPriceHistory(marketPair, atDate.Add(-5*time.Minute), atDate.Add(5*time.Minute), 1)
 		if err != nil {
 			return &common.Candlestick{}, err
 		}
@@ -581,15 +613,15 @@ func (b *Bittrex) toBTCtoUSDT(currency string, atDate time.Time) (*common.Candle
 	return candlestick, nil
 }
 
-func (b *Bittrex) localizedCurrencyPair(currencyPair *common.CurrencyPair) *common.CurrencyPair {
+func (b *Bittrex) localizedCurrencyPair(marketPair *common.CurrencyPair) *common.CurrencyPair {
 	var cp *common.CurrencyPair
-	if currencyPair.Quote == "USD" {
+	if marketPair.Quote == "USD" {
 		cp = &common.CurrencyPair{
 			Base:          "USDT",
-			Quote:         currencyPair.Base,
+			Quote:         marketPair.Base,
 			LocalCurrency: "USDT"}
 	} else {
-		cp = currencyPair
+		cp = marketPair
 	}
 	return cp
 }

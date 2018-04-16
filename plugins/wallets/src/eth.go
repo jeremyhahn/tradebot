@@ -176,25 +176,36 @@ func (service *EthWallet) GetTransactions() ([]common.Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
+		fiatFee := finalFee.Mul(candlestick.Close)
+		fiatTotal := finalAmount.Mul(candlestick.Close).Add(fiatFee)
+		currencyPair := &common.CurrencyPair{Base: "ETH", Quote: "ETH", LocalCurrency: localCurrency}
 		transactions = append(transactions, &dto.TransactionDTO{
-			Id:                   tx.Hash,
-			Date:                 time.Unix(timestamp, 0),
-			CurrencyPair:         &common.CurrencyPair{Base: "ETH", Quote: "ETH", LocalCurrency: localCurrency},
-			Type:                 txType,
-			Network:              "etherscan",
-			NetworkDisplayName:   "Ethereum",
-			Quantity:             finalAmount.StringFixed(8),
-			QuantityCurrency:     "ETH",
-			FiatQuantity:         finalAmount.Mul(candlestick.Close).StringFixed(2),
-			FiatQuantityCurrency: "USD",
-			Price:                candlestick.Close.StringFixed(2),
-			PriceCurrency:        "USD",
-			Fee:                  finalFee.StringFixed(8),
-			FeeCurrency:          "ETH",
-			FiatFee:              finalFee.Mul(candlestick.Close).StringFixed(2),
-			FiatFeeCurrency:      "USD",
-			Total:                finalAmount.Mul(candlestick.Close).StringFixed(2),
-			TotalCurrency:        "USD"})
+			Id:                     tx.Hash,
+			Date:                   time.Unix(timestamp, 0).UTC(),
+			MarketPair:             currencyPair,
+			CurrencyPair:           currencyPair,
+			Type:                   txType,
+			Category:               common.TX_CATEGORY_TRANSFER,
+			Network:                "etherscan",
+			NetworkDisplayName:     "Ethereum",
+			Quantity:               finalAmount.StringFixed(8),
+			QuantityCurrency:       "ETH",
+			FiatQuantity:           finalAmount.Mul(candlestick.Close).StringFixed(2),
+			FiatQuantityCurrency:   "USD",
+			Price:                  candlestick.Close.StringFixed(2),
+			PriceCurrency:          "USD",
+			FiatPrice:              candlestick.Close.StringFixed(2),
+			FiatPriceCurrency:      "USD",
+			QuoteFiatPrice:         candlestick.Close.StringFixed(2),
+			QuoteFiatPriceCurrency: "USD",
+			Fee:               finalFee.StringFixed(8),
+			FeeCurrency:       "ETH",
+			FiatFee:           fiatFee.StringFixed(2),
+			FiatFeeCurrency:   "USD",
+			Total:             finalAmount.StringFixed(8),
+			TotalCurrency:     "ETH",
+			FiatTotal:         fiatTotal.StringFixed(2),
+			FiatTotalCurrency: "USD"})
 	}
 	return transactions, nil
 }

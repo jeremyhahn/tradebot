@@ -58,6 +58,14 @@ export default class AuthService {
       })
     }
 
+    exportTransactions() {
+      return this.fetch(`${this.domain}/transactions/export`, {
+          method: 'GET'
+      }).then(res => {
+          return Promise.resolve(res)
+      })
+    }
+
     importOrders(formData) {
       const config = {
           headers: {
@@ -69,6 +77,19 @@ export default class AuthService {
           config.headers['Authorization'] = 'Bearer ' + this.getToken()
       }
       return axios.post(`${this.domain}/transactions/import`, formData, config)
+    }
+
+    updateCategory(id, formData) {
+      const config = {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'multipart/form-data'
+          }
+      }
+      if(this.loggedIn()) {
+          config.headers['Authorization'] = 'Bearer ' + this.getToken()
+      }
+      return axios.put(`${this.domain}/transactions/${id}`, formData, config)
     }
 
     createExchange(formData) {

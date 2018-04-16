@@ -12,6 +12,7 @@ import (
 	"github.com/jeremyhahn/tradebot/dto"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/test"
+	"github.com/jeremyhahn/tradebot/util"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
@@ -163,6 +164,10 @@ func TestEthereumWebClientService_GetTokenTransactions(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, transactions)
+
+	for _, tx := range transactions {
+		util.DUMP(tx)
+	}
 
 	test.CleanupIntegrationTest()
 }

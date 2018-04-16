@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Zauberstuhl/go-coinbase"
@@ -48,6 +49,20 @@ func (cb *Coinbase) GetName() string {
 
 func (cb *Coinbase) GetDisplayName() string {
 	return cb.displayName
+}
+
+func (cb *Coinbase) GetPriceAt(currency string, atDate time.Time) (*common.Candlestick, error) {
+	cb.ctx.GetLogger().Debugf("[Coinbase.GetOrderHistory] Getting spot price for %s on %s", currency, atDate)
+	balance, err := cb.client.GetSpotPrice(coinbase.ConfigPrice{
+		From: currency,
+		To:   "USD",
+		Date: atDate})
+	if err != nil {
+		return nil, err
+	}
+	return &common.Candlestick{
+		Date:  atDate,
+		Close: decimal.NewFromFloat(balance.Data.Amount)}, nil
 }
 
 func (cb *Coinbase) GetBalances() ([]common.Coin, decimal.Decimal) {
@@ -101,7 +116,6 @@ func (cb *Coinbase) GetOrderHistory(currencyPair *common.CurrencyPair) []common.
 	if accountId == "" {
 		return txs
 	}
-
 	cb.ctx.GetLogger().Debugf("[Coinbase.GetOrderHistory] Getting order history for %s", currencyPair.Base)
 	acctId := coinbase.AccountId(accountId)
 	buys, err := cb.client.ListBuys(acctId)
@@ -126,33 +140,41 @@ func (cb *Coinbase) GetOrderHistory(currencyPair *common.CurrencyPair) []common.
 			cb.ctx.GetLogger().Errorf("[Coinbase.GetOrderHistory] Error getting buy quote currency: %s", err.Error())
 			continue
 		}
+		candle, err := cb.GetPriceAt(buy.Amount.Currency, createdAt)
+		if err != nil {
+			cb.ctx.GetLogger().Errorf("[Coinbase.GetOrderHistory] Error getting %s price on %s: %s", buy.Amount.Currency, createdAt, err.Error())
+		}
 		quantity := decimal.NewFromFloat(buy.Amount.Amount)
-		fee := decimal.NewFromFloat(buy.Fee.Amount)
+		subtotal := decimal.NewFromFloat(buy.Subtotal.Amount)
 		total := decimal.NewFromFloat(buy.Total.Amount)
-		fiatPrice := total.Mul(quantity)
+		fee := total.Sub(subtotal)
 		txs = append(txs, &dto.TransactionDTO{
-			Id:                   buy.Transaction.Id,
-			Type:                 buy.Resource,
-			Date:                 createdAt,
-			Network:              cb.name,
-			NetworkDisplayName:   cb.displayName,
-			CurrencyPair:         currencyPair,
-			Quantity:             quantity.StringFixed(baseCurrency.GetDecimalPlace()),
-			QuantityCurrency:     buy.Amount.Currency,
-			FiatQuantity:         total.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatQuantityCurrency: buy.Total.Currency,
-			Price:                fiatPrice.StringFixed(quoteCurrency.GetDecimalPlace()),
-			PriceCurrency:        buy.Total.Currency,
-			FiatPrice:            fiatPrice.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatPriceCurrency:    buy.Total.Currency,
-			Fee:                  fee.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FeeCurrency:          buy.Total.Currency,
-			FiatFee:              fee.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatFeeCurrency:      currencyPair.Quote,
-			Total:                quantity.StringFixed(baseCurrency.GetDecimalPlace()),
-			TotalCurrency:        buy.Amount.Currency,
-			FiatTotal:            total.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatTotalCurrency:    buy.Total.Currency})
+			Id:                     buy.Transaction.Id,
+			Type:                   buy.Resource,
+			Category:               common.TX_CATEGORY_TRADE,
+			Date:                   createdAt,
+			Network:                cb.name,
+			NetworkDisplayName:     cb.displayName,
+			MarketPair:             currencyPair,
+			CurrencyPair:           currencyPair,
+			Quantity:               quantity.StringFixed(baseCurrency.GetDecimalPlace()),
+			QuantityCurrency:       buy.Amount.Currency,
+			FiatQuantity:           subtotal.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatQuantityCurrency:   buy.Subtotal.Currency,
+			Price:                  candle.Close.StringFixed(quoteCurrency.GetDecimalPlace()),
+			PriceCurrency:          buy.Total.Currency,
+			FiatPrice:              candle.Close.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatPriceCurrency:      buy.Total.Currency,
+			QuoteFiatPrice:         candle.Close.StringFixed(quoteCurrency.GetDecimalPlace()),
+			QuoteFiatPriceCurrency: buy.Total.Currency,
+			Fee:               fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FeeCurrency:       buy.Total.Currency,
+			FiatFee:           fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatFeeCurrency:   currencyPair.Quote,
+			Total:             quantity.StringFixed(baseCurrency.GetDecimalPlace()),
+			TotalCurrency:     buy.Amount.Currency,
+			FiatTotal:         total.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatTotalCurrency: buy.Total.Currency})
 	}
 
 	sells, err := cb.client.ListSells(acctId)
@@ -184,30 +206,33 @@ func (cb *Coinbase) GetOrderHistory(currencyPair *common.CurrencyPair) []common.
 		total := decimal.NewFromFloat(sell.Total.Amount)
 		fiatPrice := price.Mul(quantity)
 		txs = append(txs, &dto.TransactionDTO{
-			Id:                   sell.Transaction.Id,
-			Type:                 sell.Resource,
-			Date:                 createdAt,
-			Network:              cb.name,
-			NetworkDisplayName:   cb.displayName,
-			CurrencyPair:         currencyPair,
-			Quantity:             quantity.StringFixed(baseCurrency.GetDecimalPlace()),
-			QuantityCurrency:     sell.Amount.Currency,
-			FiatQuantity:         total.Sub(fee).StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatQuantityCurrency: currencyPair.Quote,
-			Price:                price.StringFixed(quoteCurrency.GetDecimalPlace()),
-			PriceCurrency:        currencyPair.Quote,
-			FiatPrice:            fiatPrice.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatPriceCurrency:    currencyPair.Quote,
-			Fee:                  fee.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FeeCurrency:          sell.Amount.Currency,
-			FiatFee:              fee.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatFeeCurrency:      currencyPair.Quote,
-			Total:                total.StringFixed(baseCurrency.GetDecimalPlace()),
-			TotalCurrency:        sell.Total.Currency,
-			FiatTotal:            total.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatTotalCurrency:    currencyPair.Quote})
+			Id:                     sell.Transaction.Id,
+			Type:                   sell.Resource,
+			Category:               common.TX_CATEGORY_TRADE,
+			Date:                   createdAt,
+			Network:                cb.name,
+			NetworkDisplayName:     cb.displayName,
+			MarketPair:             currencyPair,
+			CurrencyPair:           currencyPair,
+			Quantity:               quantity.StringFixed(baseCurrency.GetDecimalPlace()),
+			QuantityCurrency:       sell.Amount.Currency,
+			FiatQuantity:           total.Sub(fee).StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatQuantityCurrency:   currencyPair.Quote,
+			Price:                  price.StringFixed(quoteCurrency.GetDecimalPlace()),
+			PriceCurrency:          currencyPair.Quote,
+			FiatPrice:              fiatPrice.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatPriceCurrency:      currencyPair.Quote,
+			QuoteFiatPrice:         fiatPrice.StringFixed(quoteCurrency.GetDecimalPlace()),
+			QuoteFiatPriceCurrency: currencyPair.Quote,
+			Fee:               fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FeeCurrency:       sell.Amount.Currency,
+			FiatFee:           fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatFeeCurrency:   currencyPair.Quote,
+			Total:             total.StringFixed(baseCurrency.GetDecimalPlace()),
+			TotalCurrency:     sell.Total.Currency,
+			FiatTotal:         total.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatTotalCurrency: currencyPair.Quote})
 	}
-
 	return txs
 }
 
@@ -217,6 +242,72 @@ func (cb *Coinbase) GetDepositHistory() ([]common.Transaction, error) {
 	accounts, err := cb.client.Accounts()
 	if err != nil {
 		return nil, err
+	}
+	for _, acct := range accounts.Data {
+		transactions, err := cb.client.GetTransactions(acct.Id)
+		if err != nil {
+			return nil, err
+		}
+		for _, deposit := range transactions.Data {
+			if strings.Contains(strings.ToLower(deposit.Details.Title), "received") {
+				if deposit.Status != cb.STATUS_COMPLETED {
+					continue
+				}
+				createdAt, err := time.Parse(cb.TIME_FORMAT, deposit.Created_at)
+				if err != nil {
+					cb.ctx.GetLogger().Debugf("[Coinbase.GetDepositHistory] Error parsing Created_at: %s", err.Error())
+				}
+				currencyPair := &common.CurrencyPair{
+					Base:          deposit.Amount.Currency,
+					Quote:         deposit.Native_amount.Currency,
+					LocalCurrency: cb.ctx.GetUser().GetLocalCurrency()}
+				baseCurrency, err := cb.getCurrency(currencyPair.Base)
+				if err != nil {
+					cb.ctx.GetLogger().Errorf("[Coinbase.GetDepositHistory] Error getting base currency: %s", err.Error())
+					continue
+				}
+				quoteCurrency, err := cb.getCurrency(currencyPair.Quote)
+				if err != nil {
+					cb.ctx.GetLogger().Errorf("[Coinbase.GetDepositHistory] Error getting quote currency: %s", err.Error())
+					continue
+				}
+				quantity := decimal.NewFromFloat(deposit.Amount.Amount)
+				candle, err := cb.GetPriceAt(deposit.Amount.Currency, createdAt)
+				if err != nil {
+					cb.ctx.GetLogger().Errorf("[Coinbase.GetDepositHistory] Error getting %s spot price on %s: %s",
+						deposit.Amount.Currency, createdAt, err.Error())
+				}
+				fee := decimal.NewFromFloat(0)
+				total := decimal.NewFromFloat(deposit.Native_amount.Amount)
+				_deposits = append(_deposits, &dto.TransactionDTO{
+					Id:                     deposit.Id,
+					Type:                   common.DEPOSIT_ORDER_TYPE,
+					Category:               common.TX_CATEGORY_TRANSFER,
+					Date:                   createdAt,
+					Network:                cb.name,
+					NetworkDisplayName:     cb.displayName,
+					MarketPair:             currencyPair,
+					CurrencyPair:           currencyPair,
+					Quantity:               quantity.StringFixed(baseCurrency.GetDecimalPlace()),
+					QuantityCurrency:       deposit.Amount.Currency,
+					FiatQuantity:           total.Sub(fee).StringFixed(2),
+					FiatQuantityCurrency:   currencyPair.Quote,
+					Price:                  candle.Close.StringFixed(quoteCurrency.GetDecimalPlace()),
+					PriceCurrency:          currencyPair.Quote,
+					FiatPrice:              candle.Close.StringFixed(2),
+					FiatPriceCurrency:      currencyPair.Quote,
+					QuoteFiatPrice:         candle.Close.StringFixed(2),
+					QuoteFiatPriceCurrency: currencyPair.Quote,
+					Fee:               fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+					FeeCurrency:       deposit.Native_amount.Currency,
+					FiatFee:           fee.StringFixed(2),
+					FiatFeeCurrency:   currencyPair.Quote,
+					Total:             total.StringFixed(quoteCurrency.GetDecimalPlace()),
+					TotalCurrency:     deposit.Native_amount.Currency,
+					FiatTotal:         total.StringFixed(quoteCurrency.GetDecimalPlace()),
+					FiatTotalCurrency: currencyPair.Quote})
+			}
+		}
 	}
 	for _, acct := range accounts.Data {
 		acctId := coinbase.AccountId(acct.Id)
@@ -251,28 +342,32 @@ func (cb *Coinbase) GetDepositHistory() ([]common.Transaction, error) {
 			fee := decimal.NewFromFloat(deposit.Fee.Amount)
 			total := decimal.NewFromFloat(deposit.Subtotal.Amount)
 			_deposits = append(_deposits, &dto.TransactionDTO{
-				Id:                   deposit.Transaction.Id,
-				Type:                 common.DEPOSIT_ORDER_TYPE,
-				Date:                 createdAt,
-				Network:              cb.name,
-				NetworkDisplayName:   cb.displayName,
-				CurrencyPair:         currencyPair,
-				Quantity:             quantity.StringFixed(baseCurrency.GetDecimalPlace()),
-				QuantityCurrency:     deposit.Amount.Currency,
-				FiatQuantity:         total.Sub(fee).StringFixed(quoteCurrency.GetDecimalPlace()),
-				FiatQuantityCurrency: currencyPair.Quote,
-				Price:                price.StringFixed(quoteCurrency.GetDecimalPlace()),
-				PriceCurrency:        currencyPair.Quote,
-				FiatPrice:            price.StringFixed(quoteCurrency.GetDecimalPlace()),
-				FiatPriceCurrency:    currencyPair.Quote,
-				Fee:                  fee.StringFixed(quoteCurrency.GetDecimalPlace()),
-				FeeCurrency:          currencyPair.Quote,
-				FiatFee:              fee.StringFixed(quoteCurrency.GetDecimalPlace()),
-				FiatFeeCurrency:      currencyPair.Quote,
-				Total:                total.StringFixed(baseCurrency.GetDecimalPlace()),
-				TotalCurrency:        deposit.Subtotal.Currency,
-				FiatTotal:            total.StringFixed(quoteCurrency.GetDecimalPlace()),
-				FiatTotalCurrency:    currencyPair.Quote})
+				Id:                     deposit.Transaction.Id,
+				Type:                   common.DEPOSIT_ORDER_TYPE,
+				Category:               common.TX_CATEGORY_TRANSFER,
+				Date:                   createdAt,
+				Network:                cb.name,
+				NetworkDisplayName:     cb.displayName,
+				MarketPair:             currencyPair,
+				CurrencyPair:           currencyPair,
+				Quantity:               quantity.StringFixed(baseCurrency.GetDecimalPlace()),
+				QuantityCurrency:       deposit.Amount.Currency,
+				FiatQuantity:           total.Sub(fee).StringFixed(quoteCurrency.GetDecimalPlace()),
+				FiatQuantityCurrency:   currencyPair.Quote,
+				Price:                  price.StringFixed(quoteCurrency.GetDecimalPlace()),
+				PriceCurrency:          currencyPair.Quote,
+				FiatPrice:              price.StringFixed(quoteCurrency.GetDecimalPlace()),
+				FiatPriceCurrency:      currencyPair.Quote,
+				QuoteFiatPrice:         price.StringFixed(quoteCurrency.GetDecimalPlace()),
+				QuoteFiatPriceCurrency: currencyPair.Quote,
+				Fee:               fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+				FeeCurrency:       currencyPair.Quote,
+				FiatFee:           fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+				FiatFeeCurrency:   currencyPair.Quote,
+				Total:             total.StringFixed(baseCurrency.GetDecimalPlace()),
+				TotalCurrency:     deposit.Subtotal.Currency,
+				FiatTotal:         total.StringFixed(quoteCurrency.GetDecimalPlace()),
+				FiatTotalCurrency: currencyPair.Quote})
 		}
 	}
 	return _deposits, nil
@@ -280,28 +375,94 @@ func (cb *Coinbase) GetDepositHistory() ([]common.Transaction, error) {
 
 func (cb *Coinbase) GetWithdrawalHistory() ([]common.Transaction, error) {
 	cb.ctx.GetLogger().Debugf("[Coinbase.GetWithdrawallHistory] Getting withdrawal history for %s", cb.ctx.GetUser().GetUsername())
-	var _withdrawls []common.Transaction
+	var _withdrawals []common.Transaction
 	accounts, err := cb.client.Accounts()
 	if err != nil {
 		return nil, err
 	}
 	for _, acct := range accounts.Data {
-		acctId := coinbase.AccountId(acct.Id)
-		withdrawls, err := cb.client.ListWithdrawals(acctId)
+		transactions, err := cb.client.GetTransactions(acct.Id)
 		if err != nil {
 			return nil, err
 		}
-		for _, withdrawl := range withdrawls.Data {
-			if withdrawl.Status != cb.STATUS_COMPLETED {
+		for _, withdrawal := range transactions.Data {
+			if strings.Contains(strings.ToLower(withdrawal.Details.Title), "sent") {
+				if withdrawal.Status != cb.STATUS_COMPLETED {
+					continue
+				}
+				createdAt, err := time.Parse(cb.TIME_FORMAT, withdrawal.Created_at)
+				if err != nil {
+					cb.ctx.GetLogger().Debugf("[Coinbase.GetWithdrawallHistory] Error parsing Created_at: %s", err.Error())
+				}
+				currencyPair := &common.CurrencyPair{
+					Base:          withdrawal.Amount.Currency,
+					Quote:         withdrawal.Native_amount.Currency,
+					LocalCurrency: cb.ctx.GetUser().GetLocalCurrency()}
+				baseCurrency, err := cb.getCurrency(currencyPair.Base)
+				if err != nil {
+					cb.ctx.GetLogger().Errorf("[Coinbase.GetWithdrawalHistory] Error getting base currency: %s", err.Error())
+					continue
+				}
+				quoteCurrency, err := cb.getCurrency(currencyPair.Quote)
+				if err != nil {
+					cb.ctx.GetLogger().Errorf("[Coinbase.GetWithdrawalHistory] Error getting quote currency: %s", err.Error())
+					continue
+				}
+				candle, err := cb.GetPriceAt(withdrawal.Amount.Currency, createdAt)
+				if err != nil {
+					cb.ctx.GetLogger().Errorf("[Coinbase.GetWithdrawalHistory] Error getting %s spot price on %s: %s",
+						withdrawal.Amount.Currency, createdAt, err.Error())
+				}
+				quantity := decimal.NewFromFloat(withdrawal.Amount.Amount)
+				fee := decimal.NewFromFloat(0)
+				total := decimal.NewFromFloat(withdrawal.Native_amount.Amount)
+				_withdrawals = append(_withdrawals, &dto.TransactionDTO{
+					Id:                     withdrawal.Id,
+					Type:                   common.WITHDRAWAL_ORDER_TYPE,
+					Category:               common.TX_CATEGORY_TRANSFER,
+					Date:                   createdAt,
+					Network:                cb.name,
+					NetworkDisplayName:     cb.displayName,
+					MarketPair:             currencyPair,
+					CurrencyPair:           currencyPair,
+					Quantity:               quantity.StringFixed(baseCurrency.GetDecimalPlace()),
+					QuantityCurrency:       withdrawal.Amount.Currency,
+					FiatQuantity:           total.Sub(fee).StringFixed(2),
+					FiatQuantityCurrency:   currencyPair.Quote,
+					Price:                  candle.Close.StringFixed(quoteCurrency.GetDecimalPlace()),
+					PriceCurrency:          currencyPair.Quote,
+					FiatPrice:              candle.Close.StringFixed(2),
+					FiatPriceCurrency:      currencyPair.Quote,
+					QuoteFiatPrice:         candle.Close.StringFixed(2),
+					QuoteFiatPriceCurrency: currencyPair.Quote,
+					Fee:               fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+					FeeCurrency:       withdrawal.Native_amount.Currency,
+					FiatFee:           fee.StringFixed(2),
+					FiatFeeCurrency:   currencyPair.Quote,
+					Total:             total.StringFixed(quoteCurrency.GetDecimalPlace()),
+					TotalCurrency:     withdrawal.Native_amount.Currency,
+					FiatTotal:         total.StringFixed(quoteCurrency.GetDecimalPlace()),
+					FiatTotalCurrency: currencyPair.Quote})
+			}
+		}
+	}
+	for _, acct := range accounts.Data {
+		acctId := coinbase.AccountId(acct.Id)
+		withdrawals, err := cb.client.ListWithdrawals(acctId)
+		if err != nil {
+			return nil, err
+		}
+		for _, withdrawal := range withdrawals.Data {
+			if withdrawal.Status != cb.STATUS_COMPLETED {
 				continue
 			}
-			createdAt, err := time.Parse(cb.TIME_FORMAT, withdrawl.Created_at)
+			createdAt, err := time.Parse(cb.TIME_FORMAT, withdrawal.Created_at)
 			if err != nil {
 				cb.ctx.GetLogger().Debugf("[Coinbase.GetWithdrawallHistory] Error parsing Created_at: %s", err.Error())
 			}
 			currencyPair := &common.CurrencyPair{
-				Base:          withdrawl.Amount.Currency,
-				Quote:         withdrawl.Subtotal.Currency,
+				Base:          withdrawal.Amount.Currency,
+				Quote:         withdrawal.Subtotal.Currency,
 				LocalCurrency: cb.ctx.GetUser().GetLocalCurrency()}
 			baseCurrency, err := cb.getCurrency(currencyPair.Base)
 			if err != nil {
@@ -313,36 +474,40 @@ func (cb *Coinbase) GetWithdrawalHistory() ([]common.Transaction, error) {
 				cb.ctx.GetLogger().Errorf("[Coinbase.GetWithdrawalHistory] Error getting quote currency: %s", err.Error())
 				continue
 			}
-			quantity := decimal.NewFromFloat(withdrawl.Amount.Amount)
-			price := decimal.NewFromFloat(withdrawl.Amount.Amount)
-			fee := decimal.NewFromFloat(withdrawl.Fee.Amount)
-			total := decimal.NewFromFloat(withdrawl.Subtotal.Amount)
-			_withdrawls = append(_withdrawls, &dto.TransactionDTO{
-				Id:                   withdrawl.Transaction.Id,
-				Type:                 common.WITHDRAWAL_ORDER_TYPE,
-				Date:                 createdAt,
-				Network:              cb.name,
-				NetworkDisplayName:   cb.displayName,
-				CurrencyPair:         currencyPair,
-				Quantity:             quantity.StringFixed(baseCurrency.GetDecimalPlace()),
-				QuantityCurrency:     withdrawl.Amount.Currency,
-				FiatQuantity:         total.Sub(fee).StringFixed(2),
-				FiatQuantityCurrency: currencyPair.Quote,
-				Price:                price.StringFixed(quoteCurrency.GetDecimalPlace()),
-				PriceCurrency:        currencyPair.Quote,
-				FiatPrice:            price.StringFixed(2),
-				FiatPriceCurrency:    currencyPair.Quote,
-				Fee:                  fee.StringFixed(quoteCurrency.GetDecimalPlace()),
-				FeeCurrency:          withdrawl.Subtotal.Currency,
-				FiatFee:              fee.StringFixed(2),
-				FiatFeeCurrency:      currencyPair.Quote,
-				Total:                total.StringFixed(baseCurrency.GetDecimalPlace()),
-				TotalCurrency:        withdrawl.Subtotal.Currency,
-				FiatTotal:            total.StringFixed(quoteCurrency.GetDecimalPlace()),
-				FiatTotalCurrency:    currencyPair.Quote})
+			quantity := decimal.NewFromFloat(withdrawal.Amount.Amount)
+			price := decimal.NewFromFloat(withdrawal.Amount.Amount)
+			fee := decimal.NewFromFloat(withdrawal.Fee.Amount)
+			total := decimal.NewFromFloat(withdrawal.Subtotal.Amount)
+			_withdrawals = append(_withdrawals, &dto.TransactionDTO{
+				Id:                     withdrawal.Transaction.Id,
+				Type:                   common.WITHDRAWAL_ORDER_TYPE,
+				Category:               common.TX_CATEGORY_TRANSFER,
+				Date:                   createdAt,
+				Network:                cb.name,
+				NetworkDisplayName:     cb.displayName,
+				MarketPair:             currencyPair,
+				CurrencyPair:           currencyPair,
+				Quantity:               quantity.StringFixed(baseCurrency.GetDecimalPlace()),
+				QuantityCurrency:       withdrawal.Amount.Currency,
+				FiatQuantity:           total.Sub(fee).StringFixed(2),
+				FiatQuantityCurrency:   currencyPair.Quote,
+				Price:                  price.StringFixed(quoteCurrency.GetDecimalPlace()),
+				PriceCurrency:          currencyPair.Quote,
+				FiatPrice:              price.StringFixed(2),
+				FiatPriceCurrency:      currencyPair.Quote,
+				QuoteFiatPrice:         price.StringFixed(2),
+				QuoteFiatPriceCurrency: currencyPair.Quote,
+				Fee:               fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+				FeeCurrency:       withdrawal.Subtotal.Currency,
+				FiatFee:           fee.StringFixed(2),
+				FiatFeeCurrency:   currencyPair.Quote,
+				Total:             total.StringFixed(baseCurrency.GetDecimalPlace()),
+				TotalCurrency:     withdrawal.Subtotal.Currency,
+				FiatTotal:         total.StringFixed(quoteCurrency.GetDecimalPlace()),
+				FiatTotalCurrency: currencyPair.Quote})
 		}
 	}
-	return _withdrawls, nil
+	return _withdrawals, nil
 }
 
 func (cb *Coinbase) GetCurrencies() (map[string]*common.Currency, error) {
@@ -378,7 +543,7 @@ func (cb *Coinbase) GetCurrencies() (map[string]*common.Currency, error) {
 		}
 		_currencies[coin.GetCurrency()] = &common.Currency{
 			ID:           coin.GetCurrency(),
-			Name:         common.CryptoNames[coin.GetCurrency()],
+			Name:         common.CryptoCurrencies[coin.GetCurrency()],
 			BaseUnit:     baseUnit,
 			TxFee:        decimal.NewFromFloat(0.0),
 			DecimalPlace: decimalPlace}

@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -133,14 +132,14 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.T
 	GDAX_RATELIMITER.RespectRateLimit()
 	accounts, err := _gdax.gdax.GetAccounts()
 	if err != nil {
-		_gdax.logger.Errorf("[GDAX.GetOrderHistory] %s", err.Error())
+		_gdax.logger.Errorf("[GDAX.GetOrderHistory] Error getting accounts: %s", err.Error())
 	}
 	for _, a := range accounts {
 		GDAX_RATELIMITER.RespectRateLimit()
 		cursor := _gdax.gdax.ListAccountLedger(a.Id)
 		for cursor.HasMore {
 			if err := cursor.NextPage(&ledger); err != nil {
-				_gdax.logger.Errorf("[GDAX.GetOrderHistory] %s", err.Error())
+				_gdax.logger.Errorf("[GDAX.GetOrderHistory] ListAccountLedger pagination error: %s", err.Error())
 			}
 			for _, e := range ledger {
 				if e.Type != "match" {
@@ -151,54 +150,66 @@ func (_gdax *GDAX) GetOrderHistory(currencyPair *common.CurrencyPair) []common.T
 				}
 				orderIds[e.Details.OrderId] = true
 				GDAX_RATELIMITER.RespectRateLimit()
-				order, err := _gdax.gdax.GetOrder(e.Details.OrderId)
-				if err != nil {
-					_gdax.ctx.GetLogger().Errorf("[GDAX.GetOrderHistory] Error retrieving order: %s", err.Error())
-					continue
+				var fills []gdax.Fill
+				fillCursor := _gdax.gdax.ListFills(gdax.ListFillsParams{OrderId: e.Details.OrderId, ProductId: e.Details.ProductId})
+				for fillCursor.HasMore {
+					if err := fillCursor.NextPage(&fills); err != nil {
+						_gdax.logger.Errorf("[GDAX.GetOrderHistory] ListFills paging error: %s", err.Error())
+					}
+					for _, fill := range fills {
+						if !fill.Settled {
+							continue
+						}
+						currencyPair, err := common.NewCurrencyPair(fill.ProductId, _gdax.ctx.GetUser().GetLocalCurrency())
+						if err != nil {
+							_gdax.ctx.GetLogger().Errorf("[GDAX.GetOrderHistory] Error parsing currency pair: %s", err.Error())
+							continue
+						}
+						baseCurrency, err := _gdax.getCurrency(currencyPair.Base)
+						if err != nil {
+							_gdax.ctx.GetLogger().Errorf("[GDAX.GetOrderHistory] Unsupported base currency: %s", currencyPair.Base)
+							continue
+						}
+						quoteCurrency, err := _gdax.getCurrency(currencyPair.Quote)
+						if err != nil {
+							_gdax.ctx.GetLogger().Errorf("[GDAX.GetOrderHistory] Unsupported quote currency: %s", currencyPair.Quote)
+							continue
+						}
+						orderDate := fill.CreatedAt.Time()
+						quantity := decimal.NewFromFloat(fill.Size)
+						fee := decimal.NewFromFloat(fill.Fee)
+						price := decimal.NewFromFloat(fill.Price)
+						fiatTotal := quantity.Mul(price)
+						fiatSubtotal := fiatTotal.Sub(fee)
+						orders = append(orders, &dto.TransactionDTO{
+							Id:                     fmt.Sprintf("%s/%d", fill.FillId, fill.TradeId),
+							Type:                   fill.Side,
+							Category:               common.TX_CATEGORY_TRADE,
+							Date:                   orderDate,
+							Network:                _gdax.name,
+							NetworkDisplayName:     _gdax.displayName,
+							MarketPair:             currencyPair,
+							CurrencyPair:           currencyPair,
+							Quantity:               quantity.StringFixed(baseCurrency.GetDecimalPlace()),
+							QuantityCurrency:       currencyPair.Base,
+							FiatQuantity:           fiatSubtotal.StringFixed(quoteCurrency.GetDecimalPlace()),
+							FiatQuantityCurrency:   currencyPair.Quote,
+							Price:                  price.StringFixed(quoteCurrency.GetDecimalPlace()),
+							PriceCurrency:          currencyPair.Quote,
+							FiatPrice:              price.StringFixed(quoteCurrency.GetDecimalPlace()),
+							FiatPriceCurrency:      currencyPair.Quote,
+							QuoteFiatPrice:         price.StringFixed(quoteCurrency.GetDecimalPlace()),
+							QuoteFiatPriceCurrency: currencyPair.Quote,
+							Fee:               fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+							FeeCurrency:       currencyPair.Quote,
+							FiatFee:           fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+							FiatFeeCurrency:   currencyPair.Quote,
+							Total:             quantity.StringFixed(baseCurrency.GetDecimalPlace()),
+							TotalCurrency:     currencyPair.Base,
+							FiatTotal:         fiatTotal.StringFixed(quoteCurrency.GetDecimalPlace()),
+							FiatTotalCurrency: currencyPair.Quote})
+					}
 				}
-				currencyPair, err := common.NewCurrencyPair(e.Details.ProductId, _gdax.ctx.GetUser().GetLocalCurrency())
-				if err != nil {
-					_gdax.ctx.GetLogger().Errorf("[GDAX.GetOrderHistory] Error parsing currency pair: %s", err.Error())
-					continue
-				}
-				baseCurrency, err := _gdax.getCurrency(currencyPair.Base)
-				if err != nil {
-					_gdax.ctx.GetLogger().Errorf("[GDAX.GetOrderHistory] Unsupported base currency: %s", currencyPair.Base)
-					continue
-				}
-				quoteCurrency, err := _gdax.getCurrency(currencyPair.Quote)
-				if err != nil {
-					_gdax.ctx.GetLogger().Errorf("[GDAX.GetOrderHistory] Unsupported quote currency: %s", currencyPair.Quote)
-					continue
-				}
-				orderDate := e.CreatedAt.Time()
-				quantity := decimal.NewFromFloat(order.FilledSize)
-				fee := decimal.NewFromFloat(order.FillFees)
-				total := decimal.NewFromFloat(order.ExecutedValue)
-				price := total.Div(quantity)
-				orders = append(orders, &dto.TransactionDTO{
-					Id:                   strconv.FormatInt(int64(e.Id), 10),
-					Type:                 order.Side,
-					Date:                 orderDate,
-					Network:              _gdax.name,
-					NetworkDisplayName:   _gdax.displayName,
-					CurrencyPair:         currencyPair,
-					Quantity:             quantity.StringFixed(baseCurrency.GetDecimalPlace()),
-					QuantityCurrency:     currencyPair.Base,
-					FiatQuantity:         total.StringFixed(quoteCurrency.GetDecimalPlace()),
-					FiatQuantityCurrency: currencyPair.Quote,
-					Price:                price.StringFixed(quoteCurrency.GetDecimalPlace()),
-					PriceCurrency:        currencyPair.Quote,
-					FiatPrice:            price.StringFixed(quoteCurrency.GetDecimalPlace()),
-					FiatPriceCurrency:    currencyPair.Quote,
-					Fee:                  fee.StringFixed(quoteCurrency.GetDecimalPlace()),
-					FeeCurrency:          currencyPair.Quote,
-					FiatFee:              decimal.NewFromFloat(order.FillFees).StringFixed(quoteCurrency.GetDecimalPlace()),
-					FiatFeeCurrency:      currencyPair.Quote,
-					Total:                quantity.StringFixed(baseCurrency.GetDecimalPlace()),
-					TotalCurrency:        currencyPair.Base,
-					FiatTotal:            total.StringFixed(quoteCurrency.GetDecimalPlace()),
-					FiatTotalCurrency:    currencyPair.Quote})
 			}
 		}
 	}
@@ -258,7 +269,6 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 		return nil, err
 	}
 	for _, a := range accounts {
-		GDAX_RATELIMITER.RespectRateLimit()
 		cursor := _gdax.gdax.ListAccountLedger(a.Id)
 		for cursor.HasMore {
 			if err := cursor.NextPage(&ledger); err != nil {
@@ -327,28 +337,32 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 				}
 				total = baseFiatPrice.Close.Mul(quantity.Abs())
 				orders = append(orders, &dto.TransactionDTO{
-					Id:                   buy.Id,
-					Type:                 txType,
-					Date:                 orderDate,
-					Network:              _gdax.name,
-					NetworkDisplayName:   _gdax.displayName,
-					CurrencyPair:         transferCurrencyPair,
-					Quantity:             quantity.StringFixed(8),
-					QuantityCurrency:     transferCurrencyPair.Base,
-					FiatQuantity:         total.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
-					FiatQuantityCurrency: buyCurrencyPair.Quote,
-					Price:                baseFiatPrice.Close.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
-					PriceCurrency:        buyQuoteCurrency.GetID(),
-					FiatPrice:            price.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
-					FiatPriceCurrency:    buyQuoteCurrency.GetID(),
-					Fee:                  fee.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
-					FeeCurrency:          buyQuoteCurrency.GetID(),
-					FiatFee:              fee.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
-					FiatFeeCurrency:      buyQuoteCurrency.GetID(),
-					Total:                quantity.StringFixed(8),
-					TotalCurrency:        currencyPair.Base,
-					FiatTotal:            total.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
-					FiatTotalCurrency:    buyQuoteCurrency.GetID()})
+					Id:                     buy.Id,
+					Type:                   txType,
+					Category:               common.TX_CATEGORY_TRANSFER,
+					Date:                   orderDate,
+					Network:                _gdax.name,
+					NetworkDisplayName:     _gdax.displayName,
+					MarketPair:             transferCurrencyPair,
+					CurrencyPair:           transferCurrencyPair,
+					Quantity:               quantity.StringFixed(8),
+					QuantityCurrency:       transferCurrencyPair.Base,
+					FiatQuantity:           total.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					FiatQuantityCurrency:   buyCurrencyPair.Quote,
+					Price:                  baseFiatPrice.Close.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					PriceCurrency:          buyQuoteCurrency.GetID(),
+					FiatPrice:              price.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					FiatPriceCurrency:      buyQuoteCurrency.GetID(),
+					QuoteFiatPrice:         price.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					QuoteFiatPriceCurrency: buyQuoteCurrency.GetID(),
+					Fee:               fee.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					FeeCurrency:       buyQuoteCurrency.GetID(),
+					FiatFee:           fee.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					FiatFeeCurrency:   buyQuoteCurrency.GetID(),
+					Total:             quantity.StringFixed(8),
+					TotalCurrency:     currencyPair.Base,
+					FiatTotal:         total.StringFixed(buyQuoteCurrency.GetDecimalPlace()),
+					FiatTotalCurrency: buyQuoteCurrency.GetID()})
 				continue
 			}
 			if _, ok := common.FiatCurrencies[currencyPair.Base]; ok {
@@ -367,28 +381,32 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 					id = fmt.Sprintf("gdax-%s", orderDate)
 				}
 				orders = append(orders, &dto.TransactionDTO{
-					Id:                   id,
-					Type:                 txType,
-					Date:                 orderDate,
-					Network:              _gdax.name,
-					NetworkDisplayName:   _gdax.displayName,
-					CurrencyPair:         transferCurrencyPair,
-					Quantity:             quantity.StringFixed(8),
-					QuantityCurrency:     transferCurrencyPair.Base,
-					FiatQuantity:         total.StringFixed(2),
-					FiatQuantityCurrency: "USD",
-					Price:                price.StringFixed(2),
-					PriceCurrency:        "USD",
-					FiatPrice:            price.StringFixed(2),
-					FiatPriceCurrency:    "USD",
-					Fee:                  fee.StringFixed(2),
-					FeeCurrency:          "USD",
-					FiatFee:              fee.StringFixed(2),
-					FiatFeeCurrency:      "USD",
-					Total:                quantity.StringFixed(8),
-					TotalCurrency:        currencyPair.Base,
-					FiatTotal:            total.StringFixed(2),
-					FiatTotalCurrency:    "USD"})
+					Id:                     id,
+					Type:                   txType,
+					Category:               common.TX_CATEGORY_TRANSFER,
+					Date:                   orderDate,
+					Network:                _gdax.name,
+					NetworkDisplayName:     _gdax.displayName,
+					MarketPair:             transferCurrencyPair,
+					CurrencyPair:           transferCurrencyPair,
+					Quantity:               quantity.StringFixed(8),
+					QuantityCurrency:       transferCurrencyPair.Base,
+					FiatQuantity:           total.StringFixed(2),
+					FiatQuantityCurrency:   "USD",
+					Price:                  price.StringFixed(2),
+					PriceCurrency:          "USD",
+					FiatPrice:              price.StringFixed(2),
+					FiatPriceCurrency:      "USD",
+					QuoteFiatPrice:         price.StringFixed(2),
+					QuoteFiatPriceCurrency: "USD",
+					Fee:               fee.StringFixed(2),
+					FeeCurrency:       "USD",
+					FiatFee:           fee.StringFixed(2),
+					FiatFeeCurrency:   "USD",
+					Total:             quantity.StringFixed(8),
+					TotalCurrency:     currencyPair.Base,
+					FiatTotal:         total.StringFixed(2),
+					FiatTotalCurrency: "USD"})
 				continue
 			}
 		} else {
@@ -443,28 +461,32 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 			feeCurrency = currencyPair.Quote
 		}
 		orders = append(orders, &dto.TransactionDTO{
-			Id:                   id,
-			Type:                 txType,
-			Date:                 orderDate,
-			Network:              _gdax.name,
-			NetworkDisplayName:   _gdax.displayName,
-			CurrencyPair:         currencyPair,
-			Quantity:             quantity.StringFixed(baseCurrency.GetDecimalPlace()),
-			QuantityCurrency:     currencyPair.Base,
-			FiatQuantity:         total.Sub(fee).StringFixed(2),
-			FiatQuantityCurrency: currencyPair.Quote,
-			Price:                price.StringFixed(quoteCurrency.GetDecimalPlace()),
-			PriceCurrency:        priceCurrency,
-			FiatPrice:            price.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatPriceCurrency:    currencyPair.Quote,
-			Fee:                  fee.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FeeCurrency:          currencyPair.Quote,
-			FiatFee:              fee.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatFeeCurrency:      currencyPair.Quote,
-			Total:                decimal.NewFromFloat(order.Amount).StringFixed(baseCurrency.GetDecimalPlace()),
-			TotalCurrency:        currencyPair.Base,
-			FiatTotal:            total.StringFixed(quoteCurrency.GetDecimalPlace()),
-			FiatTotalCurrency:    currencyPair.Quote})
+			Id:                     id,
+			Type:                   txType,
+			Category:               common.TX_CATEGORY_TRANSFER,
+			Date:                   orderDate,
+			Network:                _gdax.name,
+			NetworkDisplayName:     _gdax.displayName,
+			MarketPair:             currencyPair,
+			CurrencyPair:           currencyPair,
+			Quantity:               quantity.StringFixed(baseCurrency.GetDecimalPlace()),
+			QuantityCurrency:       currencyPair.Base,
+			FiatQuantity:           total.Sub(fee).StringFixed(2),
+			FiatQuantityCurrency:   currencyPair.Quote,
+			Price:                  price.StringFixed(quoteCurrency.GetDecimalPlace()),
+			PriceCurrency:          priceCurrency,
+			FiatPrice:              price.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatPriceCurrency:      currencyPair.Quote,
+			QuoteFiatPrice:         price.StringFixed(quoteCurrency.GetDecimalPlace()),
+			QuoteFiatPriceCurrency: currencyPair.Quote,
+			Fee:               fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FeeCurrency:       currencyPair.Quote,
+			FiatFee:           fee.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatFeeCurrency:   currencyPair.Quote,
+			Total:             decimal.NewFromFloat(order.Amount).StringFixed(baseCurrency.GetDecimalPlace()),
+			TotalCurrency:     currencyPair.Base,
+			FiatTotal:         total.StringFixed(quoteCurrency.GetDecimalPlace()),
+			FiatTotalCurrency: currencyPair.Quote})
 	}
 	_gdax.cache.Set(cacheKey, &orders, cache.DefaultExpiration)
 	return orders, nil

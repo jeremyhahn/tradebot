@@ -58,10 +58,23 @@ func (service *TransactionServiceImpl) isUnique(needle common.Transaction, hayst
 	return true, nil
 }
 
+func (service *TransactionServiceImpl) UpdateCategory(id, category string) error {
+	entity, err := service.dao.Get(id)
+	if err != nil {
+		service.ctx.GetLogger().Errorf("[TransactionService.UpdateCategory] Error updating %s's transaction id %s to category %s: %s",
+			service.ctx.GetUser().GetUsername(), id, category, err.Error())
+		return err
+	}
+	if entity.GetCategory() != category {
+		return service.dao.Update(entity, "category", category)
+	}
+	return nil
+}
+
 func (service *TransactionServiceImpl) Synchronize() ([]common.Transaction, error) {
 	service.ctx.GetLogger().Debugf("[TransactionService.Synchronize] Synchronizing transaction history for: %s", service.ctx.GetUser().GetUsername())
 	var synchronized []common.Transaction
-	persisted, err := service.dao.Find()
+	persisted, err := service.dao.Find("desc")
 	if err != nil {
 		return synchronized, err
 	}
@@ -70,22 +83,15 @@ func (service *TransactionServiceImpl) Synchronize() ([]common.Transaction, erro
 		if err != nil {
 			return nil, err
 		}
-		walletTransactions, err := service.GetWalletHistory()
-		if err != nil {
-			return nil, err
-		}
-		transactions = append(transactions, walletTransactions...)
-		transactions = append(transactions, service.GetOrderHistory()...)
-		transactions = append(transactions, service.GetImportedTransactions()...)
-		transactions = append(transactions, service.GetDepositHistory()...)
-		transactions = append(transactions, service.GetWithdrawalHistory()...)
 	*/
-
 	transactions, err := service.GetWalletHistory()
 	if err != nil {
 		return nil, err
 	}
-
+	transactions = append(transactions, service.GetOrderHistory()...)
+	transactions = append(transactions, service.GetDepositHistory()...)
+	transactions = append(transactions, service.GetWithdrawalHistory()...)
+	transactions = append(transactions, service.GetImportedTransactions()...)
 	service.Sort(&transactions)
 	for _, tx := range transactions {
 		if unique, err := service.isUnique(tx, &transactions, &persisted); err != nil {
@@ -105,10 +111,10 @@ func (service *TransactionServiceImpl) Synchronize() ([]common.Transaction, erro
 	return synchronized, nil
 }
 
-func (service *TransactionServiceImpl) GetHistory() ([]common.Transaction, error) {
-	service.ctx.GetLogger().Debugf("[TransactionService.GetHistory] Retrieving transaction history for %s.",
-		service.ctx.GetUser().GetUsername())
-	entities, err := service.dao.Find()
+func (service *TransactionServiceImpl) GetHistory(order string) ([]common.Transaction, error) {
+	service.ctx.GetLogger().Debugf("[TransactionService.GetHistory] Retrieving transaction history for %s in %s order.",
+		service.ctx.GetUser().GetUsername(), order)
+	entities, err := service.dao.Find(order)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +124,6 @@ func (service *TransactionServiceImpl) GetHistory() ([]common.Transaction, error
 		for i, entity := range entities {
 			transactions[i] = service.mapper.MapTransactionEntityToDto(&entity)
 		}
-		service.Sort(&transactions)
 		return transactions, nil
 	}
 	return service.Synchronize()
@@ -216,7 +221,7 @@ func (service *TransactionServiceImpl) GetWithdrawalHistory() []common.Transacti
 
 func (service *TransactionServiceImpl) GetImportedTransactions() []common.Transaction {
 	var txs []common.Transaction
-	txEntities, err := service.dao.Find()
+	txEntities, err := service.dao.Find("desc")
 	if err != nil {
 		service.ctx.GetLogger().Errorf("[TransactionService.GetTransactionHistory] %s", err.Error())
 	} else {
@@ -247,6 +252,6 @@ func (service *TransactionServiceImpl) ImportCSV(file, exchangeName string) ([]c
 func (service *TransactionServiceImpl) Sort(txs *[]common.Transaction) {
 	service.ctx.GetLogger().Debugf("[TransactionService.sort] Sorting %d transactions", len(*txs))
 	sort.Slice(*txs, func(i, j int) bool {
-		return (*txs)[i].GetDate().After((*txs)[j].GetDate())
+		return (*txs)[i].GetDate().After((*txs)[j].GetDate()) // || (*txs)[i].GetDate().Equal((*txs)[j].GetDate())
 	})
 }
