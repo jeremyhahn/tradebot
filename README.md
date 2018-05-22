@@ -49,9 +49,18 @@ Due to limitations of [Golang plugins](https://golang.org/pkg/plugin/), this sof
 
 #### Linux / Mac OS - Native
 
-After installing the dependencies listed above, simply run `make` to build the `tradebot` binary and then run the application.
+After installing the dependencies listed above, simply run `make` to build the `tradebot` binary. The database will need to be initialized the first time and then it can be started.
 
+    # Install dependencies
+    make deps
+
+    # Build backend and webapp
     make
+
+    # Initialize the database
+    ./tradebot --initdb
+
+    # Start in debug mode / logging
     ./tradebot --debug
 
 

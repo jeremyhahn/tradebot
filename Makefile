@@ -103,5 +103,5 @@ quick: quickdebug plugins
 webapp:
 	cd webapp && npm i && yarn build:dev
 
-build: clean certs plugins test webapp
+build: clean certs plugins webapp
 	go build
