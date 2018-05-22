@@ -46,6 +46,9 @@ class Settings extends React.Component {
 				{this.state.loading &&
 					<Loading text="Loading settings..." />
 				}
+
+        <p>TODO: Create settings here</p>
+
 			</Paper>
 		)
 

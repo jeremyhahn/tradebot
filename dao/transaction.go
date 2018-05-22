@@ -46,7 +46,7 @@ func (dao *TransactionDAOImpl) Get(id string) (entity.TransactionEntity, error) 
 
 func (dao *TransactionDAOImpl) Find(direction string) ([]entity.Transaction, error) {
 	var transactions []entity.Transaction
-	_order := fmt.Sprintf("date %s", direction)
+	_order := fmt.Sprintf("date %s, id %s", direction, direction)
 	daoUser := &entity.User{Id: dao.ctx.GetUser().GetId()}
 	if err := dao.ctx.GetCoreDB().Where("deleted < 1").Order(_order).Model(daoUser).Related(&transactions).Error; err != nil {
 		return nil, err

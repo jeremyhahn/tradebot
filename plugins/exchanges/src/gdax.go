@@ -256,8 +256,8 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 		}
 		return cachedTransactions, nil
 	}
-	GDAX_RATELIMITER.RespectRateLimit()
 	_gdax.logger.Debug("[GDAX.getDepositWithdrawalHistory] Getting deposit/withdrawal history")
+	GDAX_RATELIMITER.RespectRateLimit()
 	var orders []common.Transaction
 	var ledger []gdax.LedgerEntry
 	var transfers []gdax.LedgerEntry
@@ -278,6 +278,15 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 			for _, order := range ledger {
 				if order.Type == "match" {
 					matches[fmt.Sprintf("%.8f", order.Amount)] = order
+					_gdax.logger.Debugf("[GDAX.getDepositWithdrawalHistory] Retrieving order %s for account %s", order.Details.OrderId, a.Id)
+
+					cacheKey := fmt.Sprintf("%d-%s-%s", _gdax.ctx.GetUser().GetId(), "-gdax-order", order.Details.OrderId)
+					if x, found := _gdax.cache.Get(cacheKey); found {
+						_gdax.logger.Debugf("[GDAX.getDepositWithdrawalHistory] Returning cached order %s", order.Details.OrderId)
+						o := x.(gdax.Order)
+						buys[fmt.Sprintf("%.8f", o.FilledSize)] = o
+						continue
+					}
 					GDAX_RATELIMITER.RespectRateLimit()
 					o, err := _gdax.gdax.GetOrder(order.Details.OrderId)
 					if err != nil {
@@ -286,6 +295,7 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 					if o.Side == "buy" {
 						buys[fmt.Sprintf("%.8f", o.FilledSize)] = o
 					}
+					_gdax.cache.Set(cacheKey, o, cache.DefaultExpiration)
 					continue
 				}
 				if order.Type == "transfer" {
@@ -327,9 +337,9 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 				}
 				fee = decimal.NewFromFloat(buy.FillFees).Abs()
 				if order.Amount < 0 {
-					txType = common.WITHDRAWAL_ORDER_TYPE
+					txType = common.TX_CATEGORY_WITHDRAWAL
 				} else {
-					txType = common.DEPOSIT_ORDER_TYPE
+					txType = common.TX_CATEGORY_DEPOSIT
 				}
 				buyQuoteCurrency, err := _gdax.getCurrency(buyCurrencyPair.Quote)
 				if err != nil {
@@ -339,7 +349,7 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 				orders = append(orders, &dto.TransactionDTO{
 					Id:                     buy.Id,
 					Type:                   txType,
-					Category:               common.TX_CATEGORY_TRANSFER,
+					Category:               txType,
 					Date:                   orderDate,
 					Network:                _gdax.name,
 					NetworkDisplayName:     _gdax.displayName,
@@ -383,7 +393,7 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 				orders = append(orders, &dto.TransactionDTO{
 					Id:                     id,
 					Type:                   txType,
-					Category:               common.TX_CATEGORY_TRANSFER,
+					Category:               txType,
 					Date:                   orderDate,
 					Network:                _gdax.name,
 					NetworkDisplayName:     _gdax.displayName,
@@ -441,9 +451,9 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 			continue
 		}
 		if order.Amount < 0 {
-			txType = common.WITHDRAWAL_ORDER_TYPE
+			txType = common.TX_CATEGORY_WITHDRAWAL
 		} else {
-			txType = common.DEPOSIT_ORDER_TYPE
+			txType = common.TX_CATEGORY_DEPOSIT
 		}
 		if order.Id <= 0 {
 			id = fmt.Sprintf("%d", order.Id)
@@ -463,7 +473,7 @@ func (_gdax *GDAX) getDepositWithdrawalHistory() ([]common.Transaction, error) {
 		orders = append(orders, &dto.TransactionDTO{
 			Id:                     id,
 			Type:                   txType,
-			Category:               common.TX_CATEGORY_TRANSFER,
+			Category:               txType,
 			Date:                   orderDate,
 			Network:                _gdax.name,
 			NetworkDisplayName:     _gdax.displayName,

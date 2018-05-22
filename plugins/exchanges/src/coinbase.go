@@ -249,7 +249,8 @@ func (cb *Coinbase) GetDepositHistory() ([]common.Transaction, error) {
 			return nil, err
 		}
 		for _, deposit := range transactions.Data {
-			if strings.Contains(strings.ToLower(deposit.Details.Title), "received") {
+			exchange_withdrawal := "exchange_withdrawal"
+			if strings.Contains(strings.ToLower(deposit.Details.Title), "received") || deposit.Type == exchange_withdrawal {
 				if deposit.Status != cb.STATUS_COMPLETED {
 					continue
 				}
@@ -279,10 +280,14 @@ func (cb *Coinbase) GetDepositHistory() ([]common.Transaction, error) {
 				}
 				fee := decimal.NewFromFloat(0)
 				total := decimal.NewFromFloat(deposit.Native_amount.Amount)
+				category := common.TX_CATEGORY_DEPOSIT
+				if deposit.Type == exchange_withdrawal {
+					category = common.TX_CATEGORY_TRANSFER
+				}
 				_deposits = append(_deposits, &dto.TransactionDTO{
 					Id:                     deposit.Id,
-					Type:                   common.DEPOSIT_ORDER_TYPE,
-					Category:               common.TX_CATEGORY_TRANSFER,
+					Type:                   common.TX_CATEGORY_DEPOSIT,
+					Category:               category,
 					Date:                   createdAt,
 					Network:                cb.name,
 					NetworkDisplayName:     cb.displayName,
@@ -343,8 +348,8 @@ func (cb *Coinbase) GetDepositHistory() ([]common.Transaction, error) {
 			total := decimal.NewFromFloat(deposit.Subtotal.Amount)
 			_deposits = append(_deposits, &dto.TransactionDTO{
 				Id:                     deposit.Transaction.Id,
-				Type:                   common.DEPOSIT_ORDER_TYPE,
-				Category:               common.TX_CATEGORY_TRANSFER,
+				Type:                   common.TX_CATEGORY_DEPOSIT,
+				Category:               common.TX_CATEGORY_DEPOSIT,
 				Date:                   createdAt,
 				Network:                cb.name,
 				NetworkDisplayName:     cb.displayName,
@@ -386,7 +391,8 @@ func (cb *Coinbase) GetWithdrawalHistory() ([]common.Transaction, error) {
 			return nil, err
 		}
 		for _, withdrawal := range transactions.Data {
-			if strings.Contains(strings.ToLower(withdrawal.Details.Title), "sent") {
+			exchange_deposit := "exchange_deposit"
+			if strings.Contains(strings.ToLower(withdrawal.Details.Title), "sent") || withdrawal.Type == exchange_deposit {
 				if withdrawal.Status != cb.STATUS_COMPLETED {
 					continue
 				}
@@ -416,10 +422,14 @@ func (cb *Coinbase) GetWithdrawalHistory() ([]common.Transaction, error) {
 				quantity := decimal.NewFromFloat(withdrawal.Amount.Amount)
 				fee := decimal.NewFromFloat(0)
 				total := decimal.NewFromFloat(withdrawal.Native_amount.Amount)
+				category := common.TX_CATEGORY_WITHDRAWAL
+				if withdrawal.Type == exchange_deposit {
+					category = common.TX_CATEGORY_TRANSFER
+				}
 				_withdrawals = append(_withdrawals, &dto.TransactionDTO{
 					Id:                     withdrawal.Id,
-					Type:                   common.WITHDRAWAL_ORDER_TYPE,
-					Category:               common.TX_CATEGORY_TRANSFER,
+					Type:                   common.TX_CATEGORY_WITHDRAWAL,
+					Category:               category,
 					Date:                   createdAt,
 					Network:                cb.name,
 					NetworkDisplayName:     cb.displayName,
@@ -480,8 +490,8 @@ func (cb *Coinbase) GetWithdrawalHistory() ([]common.Transaction, error) {
 			total := decimal.NewFromFloat(withdrawal.Subtotal.Amount)
 			_withdrawals = append(_withdrawals, &dto.TransactionDTO{
 				Id:                     withdrawal.Transaction.Id,
-				Type:                   common.WITHDRAWAL_ORDER_TYPE,
-				Category:               common.TX_CATEGORY_TRANSFER,
+				Type:                   common.TX_CATEGORY_WITHDRAWAL,
+				Category:               common.TX_CATEGORY_WITHDRAWAL,
 				Date:                   createdAt,
 				Network:                cb.name,
 				NetworkDisplayName:     cb.displayName,

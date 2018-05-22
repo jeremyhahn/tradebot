@@ -204,8 +204,8 @@ func (b *Bittrex) GetDepositHistory() ([]common.Transaction, error) {
 		fiatTotal := quantity.Mul(baseFiatPrice)
 		_deposits = append(_deposits, &dto.TransactionDTO{
 			Id:                 deposit.TxId,
-			Type:               common.DEPOSIT_ORDER_TYPE,
-			Category:           common.TX_CATEGORY_TRANSFER,
+			Type:               common.TX_CATEGORY_DEPOSIT,
+			Category:           common.TX_CATEGORY_DEPOSIT,
 			Date:               orderDate,
 			Network:            b.name,
 			NetworkDisplayName: b.displayName,
@@ -262,8 +262,8 @@ func (b *Bittrex) GetWithdrawalHistory() ([]common.Transaction, error) {
 			total := quantity.Mul(baseFiatPrice)
 			orders = append(orders, &dto.TransactionDTO{
 				Id:                 withdrawal.TxId,
-				Type:               common.WITHDRAWAL_ORDER_TYPE,
-				Category:           common.TX_CATEGORY_TRANSFER,
+				Type:               common.TX_CATEGORY_WITHDRAWAL,
+				Category:           common.TX_CATEGORY_WITHDRAWAL,
 				Date:               orderDate,
 				Network:            b.name,
 				NetworkDisplayName: b.displayName,

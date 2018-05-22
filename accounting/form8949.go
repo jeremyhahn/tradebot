@@ -34,7 +34,7 @@ func (form *Form8949) WriteCSV(filename string) error {
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	form.sort()
+	//form.sort()
 
 	emptyRow := []string{}
 	header := []string{

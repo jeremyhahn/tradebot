@@ -9,30 +9,32 @@ import (
 )
 
 const (
-	APPNAME               = "tradebot"
-	APPVERSION            = "0.0.1"
-	TIME_FORMAT           = time.RFC3339
-	TIME_DISPLAY_FORMAT   = "01-02-2006 15:04:05 MST"
-	BUFFERED_CHANNEL_SIZE = 256
-	WEBSOCKET_KEEPALIVE   = 10 * time.Second
-	HTTP_CLIENT_TIMEOUT   = 10 * time.Second
-	CANDLESTICK_MIN_LOAD  = 250
-	INDICATOR_PLUGIN_TYPE = "indicator"
-	STRATEGY_PLUGIN_TYPE  = "strategy"
-	EXCHANGE_PLUGIN_TYPE  = "exchange"
-	WALLET_PLUGIN_TYPE    = "wallet"
-	BUY_ORDER_TYPE        = "buy"
-	SELL_ORDER_TYPE       = "sell"
-	DEPOSIT_ORDER_TYPE    = "deposit"
-	WITHDRAWAL_ORDER_TYPE = "withdrawal"
-	TX_CATEGORY_TRADE     = "trade"
-	TX_CATEGORY_INCOME    = "income"
-	TX_CATEGORY_GIFT      = "gift"
-	TX_CATEGORY_MINING    = "mining"
-	TX_CATEGORY_SPEND     = "spend"
-	TX_CATEGORY_DONATION  = "donation"
-	TX_CATEGORY_LOST      = "lost"
-	TX_CATEGORY_TRANSFER  = "transfer"
+	APPNAME                = "tradebot"
+	APPVERSION             = "0.0.1"
+	TIME_FORMAT            = time.RFC3339
+	TIME_DISPLAY_FORMAT    = "01-02-2006 15:04:05 MST"
+	BUFFERED_CHANNEL_SIZE  = 256
+	WEBSOCKET_KEEPALIVE    = 10 * time.Second
+	HTTP_CLIENT_TIMEOUT    = 10 * time.Second
+	CANDLESTICK_MIN_LOAD   = 250
+	INDICATOR_PLUGIN_TYPE  = "indicator"
+	STRATEGY_PLUGIN_TYPE   = "strategy"
+	EXCHANGE_PLUGIN_TYPE   = "exchange"
+	WALLET_PLUGIN_TYPE     = "wallet"
+	BUY_ORDER_TYPE         = "buy"
+	SELL_ORDER_TYPE        = "sell"
+	DEPOSIT_ORDER_TYPE     = "deposit"
+	WITHDRAWAL_ORDER_TYPE  = "withdrawal"
+	TX_CATEGORY_DEPOSIT    = "deposit"
+	TX_CATEGORY_WITHDRAWAL = "withdrawal"
+	TX_CATEGORY_TRADE      = "trade"
+	TX_CATEGORY_INCOME     = "income"
+	TX_CATEGORY_GIFT       = "gift"
+	TX_CATEGORY_MINING     = "mining"
+	TX_CATEGORY_SPEND      = "spend"
+	TX_CATEGORY_DONATION   = "donation"
+	TX_CATEGORY_LOST       = "lost"
+	TX_CATEGORY_TRANSFER   = "transfer"
 )
 
 type Transaction interface {

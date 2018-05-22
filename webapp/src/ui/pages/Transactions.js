@@ -155,6 +155,8 @@ class Transactions extends React.Component {
       infoMessage: '',
       syncDisabled: false,
       categories: [
+        "deposit",
+        "withdrawal",
         "trade",
         "income",
         "gift",

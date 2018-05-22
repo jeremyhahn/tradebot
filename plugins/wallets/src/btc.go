@@ -171,11 +171,11 @@ func (b *BtcWallet) getTransactionsAt(address string, offset int) ([]common.Tran
 		//	inputSum.StringFixed(8), myOutputSum.StringFixed(8), outputSum.StringFixed(8))
 
 		if myOutputSum.GreaterThan(zero) {
-			txType = common.DEPOSIT_ORDER_TYPE
+			txType = common.TX_CATEGORY_DEPOSIT
 			quantity = myOutputSum
 			fee = zero
 		} else if myInputSum.GreaterThan(zero) {
-			txType = common.WITHDRAWAL_ORDER_TYPE
+			txType = common.TX_CATEGORY_WITHDRAWAL
 			quantity = myInputSum
 			fee = myInputSum.Sub(outputSum)
 		}
@@ -192,7 +192,7 @@ func (b *BtcWallet) getTransactionsAt(address string, offset int) ([]common.Tran
 			MarketPair:             currencyPair,
 			CurrencyPair:           currencyPair,
 			Type:                   txType,
-			Category:               common.TX_CATEGORY_TRANSFER,
+			Category:               txType,
 			Network:                "Bitcoin",
 			NetworkDisplayName:     "Bitcoin",
 			Quantity:               quantity.StringFixed(8),

@@ -162,9 +162,9 @@ func (r *Ripple) GetTransactions() ([]common.Transaction, error) {
 	for _, tx := range rippleResponse.Transactions {
 		var txType string
 		if tx.Tx.Destination == r.params.Address {
-			txType = common.DEPOSIT_ORDER_TYPE
+			txType = common.TX_CATEGORY_DEPOSIT
 		} else {
-			txType = common.WITHDRAWAL_ORDER_TYPE
+			txType = common.TX_CATEGORY_WITHDRAWAL
 		}
 		amount := tx.Tx.Amount
 		if amount == "" {
@@ -196,7 +196,7 @@ func (r *Ripple) GetTransactions() ([]common.Transaction, error) {
 			MarketPair:             currencyPair,
 			CurrencyPair:           currencyPair,
 			Type:                   txType,
-			Category:               common.TX_CATEGORY_TRANSFER,
+			Category:               txType,
 			Network:                "ripple",
 			NetworkDisplayName:     "Ripple",
 			Quantity:               amt.StringFixed(8),

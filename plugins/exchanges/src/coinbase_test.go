@@ -104,6 +104,7 @@ func TestCoinbase_GetWithdrawls(t *testing.T) {
 	test.CleanupIntegrationTest()
 }
 
+/*
 func TestCoinbase_GetCurrencies(t *testing.T) {
 
 	ctx := test.CreateIntegrationTestContext("../../../.env", "../../../")

@@ -8,6 +8,7 @@ import (
 	"github.com/jeremyhahn/tradebot/dao"
 	"github.com/jeremyhahn/tradebot/mapper"
 	"github.com/jeremyhahn/tradebot/service"
+	"github.com/jeremyhahn/tradebot/util"
 	"github.com/shopspring/decimal"
 )
 
@@ -32,11 +33,16 @@ func (report *Report) Run(start, end time.Time) *Form8949 {
 	buyLots := make(map[string][]Coinlot)
 	saleLots := make(map[string][]Coinlot)
 
-	for _, trade := range report.Transactions {
+	for i := len(report.Transactions) - 1; i >= 0; i-- {
+		trade := report.Transactions[i]
+
 		//if trade.GetDate().After(end) || !report.isTaxable(trade) || !strings.Contains(trade.GetCurrencyPair().String(), "BTC") {
 		if trade.GetDate().After(end) || !report.isTaxable(trade) {
 			continue
 		}
+
+		util.DUMP(trade)
+
 		txType := trade.GetType()
 		quantity, _ := decimal.NewFromString(trade.GetQuantity())
 		total, _ := decimal.NewFromString(trade.GetTotal())
@@ -106,17 +112,25 @@ func (report *Report) Run(start, end time.Time) *Form8949 {
 
 	var shorts, longs []Form8949LineItem
 
+	/*
+		fmt.Println("buys")
+		for _, buy := range buyLots["BTC"] {
+			fmt.Printf("%+v\n", buy)
+		}
+		fmt.Println("sales")
+		for _, sale := range saleLots["BTC"] {
+			fmt.Printf("%+v\n", sale)
+		}
+		_shorts, _longs := report.process(buyLots["BTC"], saleLots["BTC"])
+		shorts = append(shorts, _shorts...)
+		longs = append(longs, _longs...)
+	*/
+
 	for currency, _ := range buyLots {
 		_shorts, _longs := report.process(buyLots[currency], saleLots[currency])
 		shorts = append(shorts, _shorts...)
 		longs = append(longs, _longs...)
 	}
-
-	/*
-		_shorts, _longs := report.process(buyLots["BTC"], saleLots["BTC"])
-		shorts = append(shorts, _shorts...)
-		longs = append(longs, _longs...)
-	*/
 
 	form := &Form8949{
 		ShortHolds: shorts,
@@ -130,7 +144,8 @@ func (report *Report) process(buyLots, saleLots []Coinlot) ([]Form8949LineItem, 
 	var sublot *Coinlot
 	var lineItem Form8949LineItem
 	var shorts, longs []Form8949LineItem
-	//closingPosition := make(map[string]*Coinlot)
+
+	zero := decimal.NewFromFloat(0)
 
 	for _, saleLot := range saleLots {
 
@@ -142,15 +157,14 @@ func (report *Report) process(buyLots, saleLots []Coinlot) ([]Form8949LineItem, 
 				continue
 			}
 
-			report.ctx.GetLogger().Debugf("[FIFOReport.process] Processing sublot: %s\n", sublot)
+			report.ctx.GetLogger().Debugf("[FIFOReport.process] Processing NEW sublot: %s\n", sublot)
 			report.ctx.GetLogger().Debugf("[FIFOReport.process] buyLots[0]: %+v\n", buyLots[0])
 			report.ctx.GetLogger().Debugf("[FIFOReport.process] saleLot=%+v\n", saleLot)
 
-			var unitPrice decimal.Decimal
 			if saleLot.Quantity.GreaterThan(sublot.Quantity) {
 
 				report.ctx.GetLogger().Debug("[FIFOReport.process] Sale lot quantity is greater than or equal to sublot quantity")
-				unitPrice = sublot.UnitPrice.Add(buyLots[0].UnitPrice)
+
 				proceeds := sublot.Quantity.Mul(saleLot.UnitPrice)
 				lineItem = Form8949LineItem{
 					Currency:         sublot.Currency,
@@ -162,53 +176,50 @@ func (report *Report) process(buyLots, saleLots []Coinlot) ([]Form8949LineItem, 
 					AdjustmentCode:   "",
 					AdjustmentAmount: "",
 					GainOrLoss:       proceeds.Sub(sublot.CostBasis).StringFixed(2)}
-				report.ctx.GetLogger().Debugf("[FIFOReport.process] lineItem: %+v\n", lineItem)
+				report.ctx.GetLogger().Debugf("[FIFOReport.process] (sublot) lineItem: %+v\n", lineItem)
 				if report.isShortSale(&lineItem) {
 					shorts = append(shorts, lineItem)
 				} else {
 					longs = append(longs, lineItem)
 				}
 
-				lots := []Coinlot{}
-				var sum, basis decimal.Decimal
-				for sum.LessThan(saleLot.Quantity.Sub(sublot.Quantity)) {
-					fmt.Printf("Adding buyLot=%+v\n", buyLots[0])
-					sum = sum.Add(buyLots[0].Quantity)
-					unitPrice = unitPrice.Add(buyLots[0].UnitPrice)
-					basis = basis.Add(buyLots[0].CostBasis)
-					lots = append(lots, buyLots[0])
-					report.ctx.GetLogger().Debugf("[FIFOReport.process] sale quantity=%s, sum=%s, costBasis:%s, lot size: %d",
-						saleLot.Quantity, sum, buyLots[0].CostBasis, len(lots))
-					buyLots = buyLots[1:]
+				remainder := saleLot.Quantity.Sub(sublot.Quantity)
+				if remainder.GreaterThan(zero) {
+					report.ctx.GetLogger().Debugf("[FIFOReport.process] (sublot) remainder=%s", remainder)
+					proceeds := remainder.Mul(saleLot.UnitPrice)
+					lineItem = Form8949LineItem{
+						Currency:         saleLot.Currency,
+						Description:      fmt.Sprintf("%s %s", remainder, saleLot.Currency),
+						DateAcquired:     saleLot.Date,
+						DateSold:         saleLot.Date,
+						Proceeds:         proceeds.StringFixed(2),
+						CostBasis:        saleLot.UnitPrice.Mul(remainder).StringFixed(2),
+						AdjustmentCode:   "",
+						AdjustmentAmount: "",
+						GainOrLoss:       proceeds.Sub(saleLot.CostBasis).StringFixed(2)}
+					if report.isShortSale(&lineItem) {
+						shorts = append(shorts, lineItem)
+					} else {
+						longs = append(longs, lineItem)
+					}
+					report.ctx.GetLogger().Debugf("[FIFOReport.process] (sublot) lineItem=%s", lineItem)
 				}
-				unitPrice = unitPrice.Div(decimal.NewFromFloat(float64(len(lots))))
-				newQuantity := saleLot.Quantity.Sub(sublot.Quantity)
-				newSaleLot := &Coinlot{
-					Date:      saleLot.Date,
-					Currency:  saleLot.Currency,
-					Quantity:  newQuantity,
-					UnitPrice: unitPrice,
-					SalePrice: saleLot.UnitPrice.Mul(newQuantity),
-					CostBasis: basis}
-				sublot, lineItem = report.calculateLots(&lots, newSaleLot)
-				report.ctx.GetLogger().Debugf("[FIFOReport.process] lineItem: %+v\n", lineItem)
-				report.ctx.GetLogger().Debugf("[FIFOReport.process] sublot: %+v\n", sublot)
-				if report.isShortSale(&lineItem) {
-					shorts = append(shorts, lineItem)
-				} else {
-					longs = append(longs, lineItem)
-				}
+				sublot = nil
 
 			} else {
+
 				report.ctx.GetLogger().Debug("Sublot quantity is greater than or equal to the sale lot quantity")
+
 				sublot, lineItem = report.calculate(sublot, &saleLot)
-				report.ctx.GetLogger().Debugf("[FIFOReport.process] lineItem: %+v\n", lineItem)
-				report.ctx.GetLogger().Debugf("[FIFOReport.process] sublot: %+v\n", sublot)
+				report.ctx.GetLogger().Debugf("[FIFOReport.process] (sublot-else) (calculate) lineItem: %+v\n", lineItem)
+				report.ctx.GetLogger().Debugf("[FIFOReport.process] (sublot-else) (calculate) sublot: %+v\n", sublot)
+
 				if report.isShortSale(&lineItem) {
 					shorts = append(shorts, lineItem)
 				} else {
 					longs = append(longs, lineItem)
 				}
+
 			}
 
 			if sublot != nil && len(buyLots) > 0 {
@@ -218,15 +229,15 @@ func (report *Report) process(buyLots, saleLots []Coinlot) ([]Form8949LineItem, 
 			continue
 		}
 
-		fmt.Println("-- New Sale Lot --")
-		fmt.Printf("sublot=%+v\n", sublot)
-		fmt.Printf("buyLot=%+v\n", buyLots[0])
-		fmt.Printf("saleLot=%+v\n", saleLot)
+		report.ctx.GetLogger().Debugf("[FIFOReport.process] -- New Sale Lot --")
+		report.ctx.GetLogger().Debugf("sublot=%+v\n", sublot)
+		report.ctx.GetLogger().Debugf("buyLot=%+v\n", buyLots[0])
+		report.ctx.GetLogger().Debugf("saleLot=%+v\n", saleLot)
 
 		if saleLot.Quantity.LessThanOrEqual(buyLots[0].Quantity) {
 			sublot, lineItem = report.calculate(&buyLots[0], &saleLot)
-			report.ctx.GetLogger().Debugf("[FIFOReport.process] lineItem: %+v\n", lineItem)
-			report.ctx.GetLogger().Debugf("[FIFOReport.process] sublot: %+v\n", sublot)
+			report.ctx.GetLogger().Debugf("[FIFOReport.process] (calculate) lineItem: %+v\n", lineItem)
+			report.ctx.GetLogger().Debugf("[FIFOReport.process] (calculate) sublot: %+v\n", sublot)
 			if report.isShortSale(&lineItem) {
 				shorts = append(shorts, lineItem)
 			} else {
@@ -236,19 +247,23 @@ func (report *Report) process(buyLots, saleLots []Coinlot) ([]Form8949LineItem, 
 
 		} else {
 
-			fmt.Printf("Need multiple lots to fulfil saleLot: %+v\n", saleLot)
+			report.ctx.GetLogger().Debugf("Need multiple lots to fulfil saleLot: %+v\n", saleLot)
+
 			var lots []Coinlot
 			var sum decimal.Decimal
 			for sum.LessThan(saleLot.Quantity) {
 				fmt.Printf("Adding buyLot=%+v\n", buyLots[0])
 				sum = sum.Add(buyLots[0].Quantity)
 				lots = append(lots, buyLots[0])
-				report.ctx.GetLogger().Debugf("[FIFOReport.process] sale quantity=%s, sum=%s, costBasis:%s, lot size: %d", saleLot.Quantity, sum, buyLots[0].CostBasis, len(lots))
+
+				report.ctx.GetLogger().Debugf("[FIFOReport.process] sale quantity=%s, buy quantity=%s, sum=%s, costBasis:%s, lot size: %d",
+					saleLot.Quantity, buyLots[0].Quantity, sum, buyLots[0].CostBasis, len(lots))
+
 				buyLots = buyLots[1:]
 			}
 			sublot, lineItem = report.calculateLots(&lots, &saleLot)
-			report.ctx.GetLogger().Debugf("[FIFOReport.process] lineItem: %+v\n", lineItem)
-			report.ctx.GetLogger().Debugf("[FIFOReport.process] sublot: %+v\n", sublot)
+			report.ctx.GetLogger().Debugf("[FIFOReport.process] (calculateLots) lineItem: %+v\n", lineItem)
+			report.ctx.GetLogger().Debugf("[FIFOReport.process] (calculateLots) sublot: %+v\n", sublot)
 			if report.isShortSale(&lineItem) {
 				shorts = append(shorts, lineItem)
 			} else {
@@ -262,7 +277,7 @@ func (report *Report) process(buyLots, saleLots []Coinlot) ([]Form8949LineItem, 
 }
 
 func (report *Report) calculate(buyLot *Coinlot, saleLot *Coinlot) (*Coinlot, Form8949LineItem) {
-	report.ctx.GetLogger().Debugf("[FIFOReport.calculate] Calculating single buy lot (%s) against sale: %s\n", buyLot.Quantity, saleLot.Quantity)
+	report.ctx.GetLogger().Debugf("[FIFOReport.calculate] Calculating single lot (%s) against sale: %s\n", buyLot.Quantity, saleLot.Quantity)
 	report.ctx.GetLogger().Debugf("[FIFOReport.calculate] buyLot: %s\n", buyLot)
 	report.ctx.GetLogger().Debugf("[FIFOReport.calculate] saleLot: %s\n", saleLot)
 
@@ -341,7 +356,8 @@ func (report *Report) isShortSale(lineItem *Form8949LineItem) bool {
 }
 
 func (report *Report) isTaxable(tx common.Transaction) bool {
-	if tx.GetCategory() == common.TX_CATEGORY_LOST ||
+	if tx.GetCategory() == common.TX_CATEGORY_TRANSFER ||
+		tx.GetCategory() == common.TX_CATEGORY_LOST ||
 		tx.GetCategory() == common.TX_CATEGORY_GIFT ||
 		tx.GetCategory() == common.TX_CATEGORY_DONATION {
 		return false

@@ -153,9 +153,9 @@ func (service *EthWallet) GetTransactions() ([]common.Transaction, error) {
 		var txType string
 		hexAddress := fmt.Sprintf("0x%s", service.params.Address)
 		if tx.From == hexAddress {
-			txType = common.WITHDRAWAL_ORDER_TYPE
+			txType = common.TX_CATEGORY_WITHDRAWAL
 		} else if tx.To == hexAddress {
-			txType = common.DEPOSIT_ORDER_TYPE
+			txType = common.TX_CATEGORY_DEPOSIT
 		}
 		timestamp, err := strconv.ParseInt(tx.Timestamp, 10, 64)
 		if err != nil {
@@ -185,7 +185,7 @@ func (service *EthWallet) GetTransactions() ([]common.Transaction, error) {
 			MarketPair:             currencyPair,
 			CurrencyPair:           currencyPair,
 			Type:                   txType,
-			Category:               common.TX_CATEGORY_TRANSFER,
+			Category:               txType,
 			Network:                "etherscan",
 			NetworkDisplayName:     "Ethereum",
 			Quantity:               finalAmount.StringFixed(8),

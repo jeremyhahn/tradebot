@@ -318,8 +318,8 @@ func (b *Binance) GetDepositHistory() ([]common.Transaction, error) {
 			fiatTotal := quantity.Mul(baseFiatPrice)
 			orders = append(orders, &dto.TransactionDTO{
 				Id:                     deposit.TxID,
-				Type:                   common.DEPOSIT_ORDER_TYPE,
-				Category:               common.TX_CATEGORY_TRANSFER,
+				Type:                   common.TX_CATEGORY_DEPOSIT,
+				Category:               common.TX_CATEGORY_DEPOSIT,
 				Date:                   orderDate,
 				Network:                b.name,
 				NetworkDisplayName:     b.displayName,
@@ -371,8 +371,8 @@ func (b *Binance) GetWithdrawalHistory() ([]common.Transaction, error) {
 			fiatTotal := quantity.Mul(baseFiatPrice)
 			orders = append(orders, &dto.TransactionDTO{
 				Id:                     withdrawal.TxID,
-				Type:                   common.WITHDRAWAL_ORDER_TYPE,
-				Category:               common.TX_CATEGORY_TRANSFER,
+				Type:                   common.TX_CATEGORY_WITHDRAWAL,
+				Category:               common.TX_CATEGORY_WITHDRAWAL,
 				Date:                   orderDate,
 				Network:                b.name,
 				NetworkDisplayName:     b.displayName,
