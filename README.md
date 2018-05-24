@@ -1,7 +1,6 @@
 # tradebot
 
-Decentralized cryptocurrency trading platform with portfolio, accounting / tax reports, and automated trading bot.
-
+Decentralized cryptocurrency trading platform with portfolio, accounting / tax reports, and automated trading bot. See [README-OVERVIEW](README-OVERVIEW.md) for details.
 
 ## Current Features
 * Run locally (your computer, your data), centralized (hosted), or decentralized (Ethereum).
